@@ -35,8 +35,18 @@ def parse_bytecode(code) -> ByteFlow:
     restructure_loop(bbmap)
     # handle branch
     restructure_branch(bbmap)
+    for region in _iter_subregions(bbmap):
+        restructure_branch(region.subregion)
+
     # render
     return ByteFlow(bc=bc, bbmap=bbmap)
+
+
+def _iter_subregions(bbmap: "BlockMap"):
+    for node in bbmap.graph.values():
+        if isinstance(node, RegionBlock):
+            yield node
+            yield from _iter_subregions(node.subregion)
 
 
 def build_flowinfo(bc: dis.Bytecode) -> "FlowInfo":
@@ -69,6 +79,7 @@ def build_basicblocks(flowinfo: "FlowInfo", end_offset) -> "BlockMap":
     offsets = sorted(flowinfo.block_offsets)
     bbmap = BlockMap()
     for begin, end in zip(offsets, [*offsets[1:], end_offset]):
+        targets : Tuple[int, ...]
         term_offset = _prev_inst_offset(end)
         if term_offset not in flowinfo.jump_insts:
             # implicit jump
@@ -78,7 +89,8 @@ def build_basicblocks(flowinfo: "FlowInfo", end_offset) -> "BlockMap":
             targets = flowinfo.jump_insts[term_offset]
             fallthrough = False
         bb = Block(
-            begin=begin, end=end, jump_targets=targets, fallthrough=fallthrough
+            begin=begin, end=end, jump_targets=targets, fallthrough=fallthrough,
+            backedges=(),
         )
         bbmap.add_node(bb)
     return bbmap
@@ -115,8 +127,11 @@ class Block:
     fallthrough to the next block.
     """
 
-    jump_targets: Set[int]
+    jump_targets: Tuple[int, ...]
     """The destination block offsets."""
+
+    backedges: Tuple[int, ...]
+    """Backedges offsets"""
 
     def is_exiting(self) -> bool:
         return not self.jump_targets
@@ -134,7 +149,7 @@ class Block:
             it = _next_inst_offset(it)
         return out
 
-    def render_dot(self, g, node_offset: int, bcmap: "BlockMap"):
+    def render_dot(self, g, node_offset: int, bcmap: Dict[int, dis.Instruction]):
         instlist = self.get_instructions(bcmap)
         body = "\l".join(
             [f"{inst.offset:3}: {inst.opname}" for inst in instlist] + [""]
@@ -151,7 +166,7 @@ class RegionBlock(Block):
     """The subgraph excluding the headers
     """
 
-    def render_dot(self, g, node_offset: int, bbmap: "BlockMap"):
+    def render_dot(self, g, node_offset: int, bcmap: Dict[int, dis.Instruction]):
         # render subgraph
         graph = self.get_full_graph()
         with g.subgraph(name=f"cluster_{node_offset}") as subg:
@@ -160,12 +175,9 @@ class RegionBlock(Block):
                 color = 'green'
             subg.attr(color=color, label=self.kind)
             for k, node in graph.items():
-                node.render_dot(subg, k, bbmap)
+                node.render_dot(subg, k, bcmap)
         # render edges within this region
-        for k, node in graph.items():
-            for dst in node.jump_targets:
-                if dst in graph:
-                    g.edge(hex(k), hex(dst))
+        render_edges(g, graph)
 
     def get_full_graph(self):
         graph = ChainMap(self.subregion.graph, self.headers)
@@ -241,10 +253,18 @@ def render_dot(bc: dis.Bytecode, bbmap: BlockMap):
     for k, node in bbmap.graph.items():
         node.render_dot(g, k, bcmap)
     # render edges
-    for k, node in bbmap.graph.items():
-        for dst in node.jump_targets:
-            g.edge(hex(k), hex(dst))
+    render_edges(g, bbmap.graph)
     return g
+
+
+def render_edges(g, nodes: Dict[int, Block]):
+    for k, node in nodes.items():
+        for dst in node.jump_targets:
+            if dst in nodes:
+                g.edge(hex(k), hex(dst))
+        for dst in node.backedges:
+            assert dst in nodes
+            g.edge(hex(k), hex(dst), style="dashed", color="grey", constraint="0")
 
 
 def restructure_loop(bbmap: BlockMap):
@@ -256,7 +276,7 @@ def restructure_loop(bbmap: BlockMap):
     _logger.debug("restructure_loop found %d loops in %s",
                   len(loops), bbmap.graph.keys())
 
-    node: Block
+    node: int
     # extract loop
     for loop in loops:
         _logger.debug("loop nodes %s", loop)
@@ -282,20 +302,30 @@ def restructure_loop(bbmap: BlockMap):
 
         assert len(headers) == 1, headers  # TODO join entries and exits
         [loop_head] = headers
+        loop_body = {node.begin: _replace_backedge(node, loop_head)
+                     for node in insiders if node.begin not in headers}
         blk = RegionBlock(
             begin=loop_head,
             end=_next_inst_offset(loop_head),
             fallthrough=False,
             jump_targets=tuple(exits),
+            backedges=(),
             kind="loop",
-            subregion=BlockMap({node.begin: node for node in insiders
-                                   if node.begin not in headers}),
+            subregion=BlockMap(loop_body),
             headers={node.begin: node for node in insiders
                      if node.begin in headers},
         )
         # process subregions
         restructure_loop(blk.subregion)
         bbmap.graph[loop_head] = blk
+
+
+def _replace_backedge(node: Block, loop_head: int):
+    if loop_head in node.jump_targets:
+        assert len(node.jump_targets) == 1
+        assert not node.backedges
+        return replace(node, jump_targets=(), backedges=(loop_head,))
+    return node
 
 
 def restructure_branch(bbmap: BlockMap):
@@ -313,14 +343,14 @@ def restructure_branch(bbmap: BlockMap):
         # partition the branches
         branch_regions = []
         for bra_start in bbmap.graph[begin].jump_targets:
-            subregion = set()
-            branch_regions.append((bra_start, subregion))
+            sub_keys: Set[int]  = set()
+            branch_regions.append((bra_start, sub_keys))
             # a node is part of the branch if
             # - the start of the branch is a dominator; and,
             # - the tail of the branch is not a dominator
             for k, kdom in doms.items():
                 if bra_start in kdom and end not in kdom:
-                    subregion.add(k)
+                    sub_keys.add(k)
 
         # extract the subregion
         for bra_start, inner_nodes in branch_regions:
@@ -334,8 +364,9 @@ def restructure_branch(bbmap: BlockMap):
                     end=end,
                     fallthrough=False,
                     jump_targets=(end,),
+                    backedges=(),
                     kind="branch",
-                    headers=(),
+                    headers={},
                     subregion=subgraph,
                 )
                 for k in inner_nodes:
@@ -353,9 +384,10 @@ def _iter_branch_regions(bbmap: BlockMap,
     for begin, node in bbmap.graph.items():
         if len(node.jump_targets) > 1:
             # found branch
-            end = postimmdoms[begin]
-            if immdoms[end] == begin:
-                yield begin, end
+            if begin in postimmdoms:
+                end = postimmdoms[begin]
+                if immdoms[end] == begin:
+                    yield begin, end
 
 
 def _imm_doms(doms: Dict[int, Set[int]]) -> Dict[int, int]:

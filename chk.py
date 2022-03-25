@@ -13,6 +13,18 @@ def foo(n):
             break
     return c
 
+def foo(n):
+    c = 0
+    for i in range(n):
+        c += i
+        if i % 2 == 0:
+            c += i
+            for j in c:
+                c += j
+        else:
+            c <<= 1
+        c += 1
+    return c
 
 # def foo(n):
 #     c = 0
@@ -27,19 +39,19 @@ def foo(n):
 #     return c
 
 
-def foo(i):
-    c = 0
+# def foo(i):
+#     c = 0
 
 
-    if i % 2 == 0:
-        c += i
-        if i % 2 == 0:
-            c += i
-    else:
-        c <<= 1
+#     if i % 2 == 0:
+#         c += i
+#         if i % 2 == 0:
+#             c += i
+#     else:
+#         c <<= 1
 
-    c /= 10
-    return c
+#     c /= 10
+#     return c
 
 
 flow = parse_bytecode(foo)
@@ -48,8 +60,5 @@ flow.render_dot().view()
 assert False
 """
 Next steps:
-
-- add artificial ctrlflow nodes
-    - avoid backedges
-    - avoid conditional-branch head pointing from the start of branch subregion
+- Fix up control flow by adding controlpoints for loop backedge and if-else
 """
