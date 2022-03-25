@@ -1,6 +1,6 @@
 import dis
 from collections import deque, ChainMap, defaultdict
-from typing import Optional, Set, Tuple, Dict, List
+from typing import Optional, Set, Tuple, Dict, List, Sequence
 from pprint import pprint
 from dataclasses import dataclass, field, replace
 import logging
@@ -15,6 +15,7 @@ class _LogWrap:
     def __str__(self):
         return self._fn()
 
+
 @dataclass(frozen=True)
 class ByteFlow:
     bc: dis.Bytecode
@@ -24,11 +25,21 @@ class ByteFlow:
         return render_dot(self.bc, self.bbmap)
 
 
+@dataclass(frozen=True, order=True)
+class Label:
+    ...
+
+
+@dataclass(frozen=True, order=True)
+class BCLabel(Label):
+    offset: int
+
+
 def parse_bytecode(code) -> ByteFlow:
     bc = dis.Bytecode(code)
     _logger.debug("Bytecode\n%s", _LogWrap(lambda: bc.dis()))
 
-    end_offset = _next_inst_offset([inst.offset for inst in bc][-1])
+    end_offset = _next_inst_offset(BCLabel([inst.offset for inst in bc][-1]))
     flowinfo = build_flowinfo(bc)
     bbmap = build_basicblocks(flowinfo, end_offset)
     # handle loop
@@ -59,16 +70,16 @@ def build_flowinfo(bc: dis.Bytecode) -> "FlowInfo":
     for inst in bc:
         # Handle jump-target instruction
         if inst.offset == 0 or inst.is_jump_target:
-            flowinfo.block_offsets.add(inst.offset)
+            flowinfo.block_offsets.add(BCLabel(inst.offset))
         # Handle by op
         if is_conditional_jump(inst.opname):
             flowinfo.add_jump_inst(
-                inst.offset, (inst.argval, _next_inst_offset(inst.offset)),
+                BCLabel(inst.offset), (BCLabel(inst.argval), _next_inst_offset(BCLabel(inst.offset))),
             )
         elif is_unconditional_jump(inst.opname):
-            flowinfo.add_jump_inst(inst.offset, (inst.argval,))
+            flowinfo.add_jump_inst(BCLabel(inst.offset), (BCLabel(inst.argval),))
         elif is_exiting(inst.opname):
-            flowinfo.add_jump_inst(inst.offset, ())
+            flowinfo.add_jump_inst(BCLabel(inst.offset), ())
     return flowinfo
 
 
@@ -79,7 +90,7 @@ def build_basicblocks(flowinfo: "FlowInfo", end_offset) -> "BlockMap":
     offsets = sorted(flowinfo.block_offsets)
     bbmap = BlockMap()
     for begin, end in zip(offsets, [*offsets[1:], end_offset]):
-        targets : Tuple[int, ...]
+        targets : Tuple[Label, ...]
         term_offset = _prev_inst_offset(end)
         if term_offset not in flowinfo.jump_insts:
             # implicit jump
@@ -98,27 +109,28 @@ def build_basicblocks(flowinfo: "FlowInfo", end_offset) -> "BlockMap":
 
 @dataclass(frozen=True)
 class FlowInfo:
-    block_offsets: Set[int] = field(default_factory=set)
+    block_offsets: Set[Label] = field(default_factory=set)
     """Marks starting offset of basic-block
     """
 
-    jump_insts: Dict[int, Tuple[int, ...]] = field(default_factory=dict)
+    jump_insts: Dict[Label, Tuple[Label, ...]] = field(default_factory=dict)
     """Contains jump instructions and their target offsets.
     """
 
-    def add_jump_inst(self, offset, targets):
+    def add_jump_inst(self, offset: Label, targets: Sequence[Label]):
         for off in targets:
+            assert isinstance(off, Label)
             self.block_offsets.add(off)
         self.jump_insts[offset] = tuple(targets)
 
 
 @dataclass(frozen=True)
 class Block:
-    begin: int
+    begin: Label
     """The starting bytecode offset.
     """
 
-    end: int
+    end: Label
     """The bytecode offset immediate after the last bytecode of the block.
     """
 
@@ -127,17 +139,17 @@ class Block:
     fallthrough to the next block.
     """
 
-    jump_targets: Tuple[int, ...]
+    jump_targets: Tuple[Label, ...]
     """The destination block offsets."""
 
-    backedges: Tuple[int, ...]
+    backedges: Tuple[Label, ...]
     """Backedges offsets"""
 
     def is_exiting(self) -> bool:
         return not self.jump_targets
 
     def get_instructions(
-        self, bcmap: Dict[int, dis.Instruction]
+        self, bcmap: Dict[Label, dis.Instruction]
     ) -> List[dis.Instruction]:
         begin = self.begin
         end = self.end
@@ -149,24 +161,24 @@ class Block:
             it = _next_inst_offset(it)
         return out
 
-    def render_dot(self, g, node_offset: int, bcmap: Dict[int, dis.Instruction]):
+    def render_dot(self, g, node_offset: Label, bcmap: Dict[Label, dis.Instruction]):
         instlist = self.get_instructions(bcmap)
         body = "\l".join(
             [f"{inst.offset:3}: {inst.opname}" for inst in instlist] + [""]
         )
-        g.node(hex(node_offset), shape="rect", label=body)
+        g.node(str(node_offset), shape="rect", label=body)
 
 
 @dataclass(frozen=True)
 class RegionBlock(Block):
     kind: str
-    headers: Dict[int, Block]
+    headers: Dict[Label, Block]
     """The header of the region"""
     subregion: "BlockMap"
     """The subgraph excluding the headers
     """
 
-    def render_dot(self, g, node_offset: int, bcmap: Dict[int, dis.Instruction]):
+    def render_dot(self, g, node_offset: Label, bcmap: Dict[Label, dis.Instruction]):
         # render subgraph
         graph = self.get_full_graph()
         with g.subgraph(name=f"cluster_{node_offset}") as subg:
@@ -185,7 +197,7 @@ class RegionBlock(Block):
 
 @dataclass(frozen=True)
 class BlockMap:
-    graph: Dict[int, Block] = field(default_factory=dict)
+    graph: Dict[Label, Block] = field(default_factory=dict)
 
     def add_node(self, bb: Block):
         self.graph[bb.begin] = bb
@@ -212,17 +224,19 @@ def is_exiting(opname: str) -> bool:
     return opname in _terminating
 
 
-def _next_inst_offset(offset: int) -> int:
+def _next_inst_offset(offset: Label) -> BCLabel:
     # Fix offset
-    return offset + 2
+    assert isinstance(offset, BCLabel)
+    return BCLabel(offset.offset + 2)
 
 
-def _prev_inst_offset(offset: int) -> int:
+def _prev_inst_offset(offset: Label) -> BCLabel:
     # Fix offset
-    return offset - 2
+    assert isinstance(offset, BCLabel)
+    return BCLabel(offset.offset - 2)
 
 
-def compute_scc(bbmap: BlockMap) -> List[Set[int]]:
+def compute_scc(bbmap: BlockMap) -> List[Set[Label]]:
     """
     Strongly-connected component for detecting loops.
     """
@@ -246,7 +260,7 @@ def compute_scc(bbmap: BlockMap) -> List[Set[int]]:
 def render_dot(bc: dis.Bytecode, bbmap: BlockMap):
     from graphviz import Digraph
 
-    bcmap = {inst.offset: inst for inst in bc}
+    bcmap: Dict[Label, dis.Instruction] = {BCLabel(inst.offset): inst for inst in bc}
 
     g = Digraph()
     # render nodes
@@ -257,14 +271,14 @@ def render_dot(bc: dis.Bytecode, bbmap: BlockMap):
     return g
 
 
-def render_edges(g, nodes: Dict[int, Block]):
+def render_edges(g, nodes: Dict[Label, Block]):
     for k, node in nodes.items():
         for dst in node.jump_targets:
             if dst in nodes:
-                g.edge(hex(k), hex(dst))
+                g.edge(str(k), str(dst))
         for dst in node.backedges:
             assert dst in nodes
-            g.edge(hex(k), hex(dst), style="dashed", color="grey", constraint="0")
+            g.edge(str(k), str(dst), style="dashed", color="grey", constraint="0")
 
 
 def restructure_loop(bbmap: BlockMap):
@@ -276,7 +290,7 @@ def restructure_loop(bbmap: BlockMap):
     _logger.debug("restructure_loop found %d loops in %s",
                   len(loops), bbmap.graph.keys())
 
-    node: int
+    node: Label
     # extract loop
     for loop in loops:
         _logger.debug("loop nodes %s", loop)
@@ -320,7 +334,7 @@ def restructure_loop(bbmap: BlockMap):
         bbmap.graph[loop_head] = blk
 
 
-def _replace_backedge(node: Block, loop_head: int):
+def _replace_backedge(node: Block, loop_head: Label):
     if loop_head in node.jump_targets:
         assert len(node.jump_targets) == 1
         assert not node.backedges
@@ -379,8 +393,8 @@ def restructure_branch(bbmap: BlockMap):
         break
 
 def _iter_branch_regions(bbmap: BlockMap,
-                         immdoms: Dict[int, int],
-                         postimmdoms: Dict[int, int]):
+                         immdoms: Dict[Label, Label],
+                         postimmdoms: Dict[Label, Label]):
     for begin, node in bbmap.graph.items():
         if len(node.jump_targets) > 1:
             # found branch
@@ -390,7 +404,7 @@ def _iter_branch_regions(bbmap: BlockMap,
                     yield begin, end
 
 
-def _imm_doms(doms: Dict[int, Set[int]]) -> Dict[int, int]:
+def _imm_doms(doms: Dict[Label, Set[Label]]) -> Dict[Label, Label]:
     idoms = {k: v - {k} for k, v in doms.items()}
     changed = True
     while changed:
