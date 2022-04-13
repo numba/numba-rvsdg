@@ -285,8 +285,12 @@ def restructure_loop(bbmap: BlockMap):
     """Inplace restructuring of the given graph to extract loops using
     strongly-connected components
     """
-    scc = compute_scc(bbmap)
-    loops = [nodes for nodes in scc if len(nodes) > 1]
+    # obtain a List of Sets of Labels, where all labels in each set are strongly
+    # connected, i.e. all reachable from one another by traversing the subset
+    scc: List[Set[Label]] = compute_scc(bbmap)
+    # loops are defined as strongly connected subsets who have more than a
+    # single label
+    loops: List[Set[Label]] = [nodes for nodes in scc if len(nodes) > 1]
     _logger.debug("restructure_loop found %d loops in %s",
                   len(loops), bbmap.graph.keys())
 
@@ -294,9 +298,14 @@ def restructure_loop(bbmap: BlockMap):
     # extract loop
     for loop in loops:
         _logger.debug("loop nodes %s", loop)
-        # find entries
-        entries = set()
-        headers = set()
+        # find entries and headers
+        # entries are nodes outside the loop that have an edge pointing to the
+        # loop header
+        # headers are nodes that are part of the strongly connected subset,
+        # that have incoming edges from outside the loop
+        # entries point to headers and headers are pointed to by entries
+        entries: Set[Label] = set()
+        headers: Set[Label] = set()
 
         for node in _exclude_nodes(bbmap.graph, loop):
             nodes_jump_in_loop = set(bbmap.graph[node].jump_targets) & loop
@@ -305,19 +314,26 @@ def restructure_loop(bbmap: BlockMap):
                 entries.add(node)
 
         # find exits
+        # exits are nodes outside the loop that have incoming edges from
+        # within the loop
         exits = set()
         for node in loop:
             for outside in _exclude_nodes(bbmap.graph, loop):
                 if outside in bbmap.graph[node].jump_targets:
                     exits.add(outside)
 
-        # remove loop nodes
-        insiders = {bbmap.graph.pop(k) for k in loop}
+        # remove loop nodes from cfg/bbmap
+        # use the set of labels to remove/pop Blocks into a set of blocks
+        insiders: Set[Block] = {bbmap.graph.pop(k) for k in loop}
 
         assert len(headers) == 1, headers  # TODO join entries and exits
-        [loop_head] = headers
-        loop_body = {node.begin: _replace_backedge(node, loop_head)
-                     for node in insiders if node.begin not in headers}
+        # turn singleton set into single element
+        loop_head: Label = next(iter(headers))
+        # construct the loop body, identifying backedges as we go
+        loop_body: Dict[Label, Block] = {
+            node.begin: _replace_backedge(node, loop_head)
+            for node in insiders if node.begin not in headers}
+        # create a subregion
         blk = RegionBlock(
             begin=loop_head,
             end=_next_inst_offset(loop_head),
@@ -331,10 +347,11 @@ def restructure_loop(bbmap: BlockMap):
         )
         # process subregions
         restructure_loop(blk.subregion)
+        # insert subregion back into original
         bbmap.graph[loop_head] = blk
 
 
-def _replace_backedge(node: Block, loop_head: Label):
+def _replace_backedge(node: Block, loop_head: Label) -> Block:
     if loop_head in node.jump_targets:
         assert len(node.jump_targets) == 1
         assert not node.backedges
