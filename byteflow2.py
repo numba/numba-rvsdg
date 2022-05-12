@@ -61,10 +61,13 @@ class FlowInfo:
             # Handle by op
             if is_conditional_jump(inst.opname):
                 flowinfo.add_jump_inst(
-                    BCLabel(inst.offset), (BCLabel(inst.argval), _next_inst_offset(BCLabel(inst.offset))),
+                    BCLabel(inst.offset),
+                    (BCLabel(inst.argval),
+                     _next_inst_offset(BCLabel(inst.offset))),
                 )
             elif is_unconditional_jump(inst.opname):
-                flowinfo.add_jump_inst(BCLabel(inst.offset), (BCLabel(inst.argval),))
+                flowinfo.add_jump_inst(BCLabel(inst.offset),
+                                       (BCLabel(inst.argval),))
             elif is_exiting(inst.opname):
                 flowinfo.add_jump_inst(BCLabel(inst.offset), ())
 
