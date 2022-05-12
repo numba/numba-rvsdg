@@ -77,7 +77,7 @@ class FlowInfo:
         """
         offsets = sorted(self.block_offsets)
         if end_offset is None:
-            end_offset = BCLabel(self.last_offset)
+            end_offset = _next_inst_offset(BCLabel(self.last_offset))
         bbmap = BlockMap()
         for begin, end in zip(offsets, [*offsets[1:], end_offset]):
             targets: Tuple[Label, ...]
@@ -112,9 +112,8 @@ def parse_bytecode(code) -> ByteFlow:
     bc = dis.Bytecode(code)
     _logger.debug("Bytecode\n%s", _LogWrap(lambda: bc.dis()))
 
-    end_offset = _next_inst_offset(BCLabel([inst.offset for inst in bc][-1]))
     flowinfo = FlowInfo.from_bytecode(bc)
-    bbmap = build_basicblocks(flowinfo, end_offset)
+    bbmap = flowinfo.build_basicblocks()
     # handle loop
     restructure_loop(bbmap)
     # handle branch

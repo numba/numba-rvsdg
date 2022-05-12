@@ -33,9 +33,9 @@ class TestFlowInfo(unittest.TestCase):
     def test_build_basic_blocks(self):
         expected = BlockMap(graph={
             BCLabel(offset=0): Block(begin=BCLabel(offset=0),
-                                     end=BCLabel(offset=6),
-                                     fallthrough=True,
-                                     jump_targets=(BCLabel(offset=6),),
+                                     end=BCLabel(offset=8),
+                                     fallthrough=False,
+                                     jump_targets=(),
                                      backedges=()
                                      )
                                   }
