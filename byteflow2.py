@@ -16,15 +16,6 @@ class _LogWrap:
         return self._fn()
 
 
-@dataclass(frozen=True)
-class ByteFlow:
-    bc: dis.Bytecode
-    bbmap: "BlockMap"
-
-    def render_dot(self):
-        return render_dot(self.bc, self.bbmap)
-
-
 @dataclass(frozen=True, order=True)
 class Label:
     ...
@@ -33,6 +24,32 @@ class Label:
 @dataclass(frozen=True, order=True)
 class BCLabel(Label):
     offset: int
+
+
+@dataclass(frozen=True)
+class FlowInfo:
+    block_offsets: Set[Label] = field(default_factory=set)
+    """Marks starting offset of basic-block
+    """
+
+    jump_insts: Dict[Label, Tuple[Label, ...]] = field(default_factory=dict)
+    """Contains jump instructions and their target offsets.
+    """
+
+    def add_jump_inst(self, offset: Label, targets: Sequence[Label]):
+        for off in targets:
+            assert isinstance(off, Label)
+            self.block_offsets.add(off)
+        self.jump_insts[offset] = tuple(targets)
+
+
+@dataclass(frozen=True)
+class ByteFlow:
+    bc: dis.Bytecode
+    bbmap: "BlockMap"
+
+    def render_dot(self):
+        return render_dot(self.bc, self.bbmap)
 
 
 def parse_bytecode(code) -> ByteFlow:
@@ -107,21 +124,6 @@ def build_basicblocks(flowinfo: "FlowInfo", end_offset) -> "BlockMap":
     return bbmap
 
 
-@dataclass(frozen=True)
-class FlowInfo:
-    block_offsets: Set[Label] = field(default_factory=set)
-    """Marks starting offset of basic-block
-    """
-
-    jump_insts: Dict[Label, Tuple[Label, ...]] = field(default_factory=dict)
-    """Contains jump instructions and their target offsets.
-    """
-
-    def add_jump_inst(self, offset: Label, targets: Sequence[Label]):
-        for off in targets:
-            assert isinstance(off, Label)
-            self.block_offsets.add(off)
-        self.jump_insts[offset] = tuple(targets)
 
 
 @dataclass(frozen=True)
