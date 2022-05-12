@@ -40,7 +40,8 @@ class FlowInfo:
     """Offset of the last bytecode instruction.
     """
 
-    def add_jump_inst(self, offset: Label, targets: Sequence[Label]):
+    def _add_jump_inst(self, offset: Label, targets: Sequence[Label]):
+        """Add jump instruction to FlowInfo."""
         for off in targets:
             assert isinstance(off, Label)
             self.block_offsets.add(off)
@@ -60,16 +61,16 @@ class FlowInfo:
                 flowinfo.block_offsets.add(BCLabel(inst.offset))
             # Handle by op
             if is_conditional_jump(inst.opname):
-                flowinfo.add_jump_inst(
+                flowinfo._add_jump_inst(
                     BCLabel(inst.offset),
                     (BCLabel(inst.argval),
                      _next_inst_offset(BCLabel(inst.offset))),
                 )
             elif is_unconditional_jump(inst.opname):
-                flowinfo.add_jump_inst(BCLabel(inst.offset),
-                                       (BCLabel(inst.argval),))
+                flowinfo._add_jump_inst(BCLabel(inst.offset),
+                                        (BCLabel(inst.argval),))
             elif is_exiting(inst.opname):
-                flowinfo.add_jump_inst(BCLabel(inst.offset), ())
+                flowinfo._add_jump_inst(BCLabel(inst.offset), ())
 
         flowinfo.last_offset = inst.offset
         return flowinfo
