@@ -1,7 +1,7 @@
 import dis
 
 import unittest
-from byteflow2 import FlowInfo, BCLabel, Block, BlockMap, _next_inst_offset
+from byteflow2 import FlowInfo, BCLabel, Block, BlockMap
 
 
 def fun():
