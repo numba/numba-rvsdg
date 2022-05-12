@@ -26,7 +26,7 @@ class BCLabel(Label):
     offset: int
 
 
-@dataclass(frozen=True)
+@dataclass()
 class FlowInfo:
     block_offsets: Set[Label] = field(default_factory=set)
     """Marks starting offset of basic-block
@@ -34,6 +34,10 @@ class FlowInfo:
 
     jump_insts: Dict[Label, Tuple[Label, ...]] = field(default_factory=dict)
     """Contains jump instructions and their target offsets.
+    """
+
+    last_offset: int = field(default=0)
+    """Offset of the last bytecode instruction.
     """
 
     def add_jump_inst(self, offset: Label, targets: Sequence[Label]):
@@ -63,7 +67,36 @@ class FlowInfo:
                 flowinfo.add_jump_inst(BCLabel(inst.offset), (BCLabel(inst.argval),))
             elif is_exiting(inst.opname):
                 flowinfo.add_jump_inst(BCLabel(inst.offset), ())
+
+        flowinfo.last_offset = inst.offset
         return flowinfo
+
+    def build_basicblocks(self: "FlowInfo", end_offset=None) -> "BlockMap":
+        """
+        Build a graph of basic-blocks
+        """
+        offsets = sorted(self.block_offsets)
+        if end_offset is None:
+            end_offset = BCLabel(self.last_offset)
+        bbmap = BlockMap()
+        for begin, end in zip(offsets, [*offsets[1:], end_offset]):
+            targets: Tuple[Label, ...]
+            term_offset = _prev_inst_offset(end)
+            if term_offset not in self.jump_insts:
+                # implicit jump
+                targets = (end,)
+                fallthrough = True
+            else:
+                targets = self.jump_insts[term_offset]
+                fallthrough = False
+            bb = Block(begin=begin,
+                       end=end,
+                       jump_targets=targets,
+                       fallthrough=fallthrough,
+                       backedges=(),
+                       )
+            bbmap.add_node(bb)
+        return bbmap
 
 
 @dataclass(frozen=True)
@@ -102,28 +135,6 @@ def _iter_subregions(bbmap: "BlockMap"):
 
 
 
-def build_basicblocks(flowinfo: "FlowInfo", end_offset) -> "BlockMap":
-    """
-    Build a graph of basic-blocks
-    """
-    offsets = sorted(flowinfo.block_offsets)
-    bbmap = BlockMap()
-    for begin, end in zip(offsets, [*offsets[1:], end_offset]):
-        targets : Tuple[Label, ...]
-        term_offset = _prev_inst_offset(end)
-        if term_offset not in flowinfo.jump_insts:
-            # implicit jump
-            targets = (end,)
-            fallthrough = True
-        else:
-            targets = flowinfo.jump_insts[term_offset]
-            fallthrough = False
-        bb = Block(
-            begin=begin, end=end, jump_targets=targets, fallthrough=fallthrough,
-            backedges=(),
-        )
-        bbmap.add_node(bb)
-    return bbmap
 
 
 
