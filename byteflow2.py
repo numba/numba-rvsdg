@@ -42,6 +42,29 @@ class FlowInfo:
             self.block_offsets.add(off)
         self.jump_insts[offset] = tuple(targets)
 
+    @staticmethod
+    def from_bytecode(bc: dis.Bytecode) -> "FlowInfo":
+        """
+        Build control-flow information that marks start of basic-blocks and
+        jump instructions.
+        """
+        flowinfo = FlowInfo()
+
+        for inst in bc:
+            # Handle jump-target instruction
+            if inst.offset == 0 or inst.is_jump_target:
+                flowinfo.block_offsets.add(BCLabel(inst.offset))
+            # Handle by op
+            if is_conditional_jump(inst.opname):
+                flowinfo.add_jump_inst(
+                    BCLabel(inst.offset), (BCLabel(inst.argval), _next_inst_offset(BCLabel(inst.offset))),
+                )
+            elif is_unconditional_jump(inst.opname):
+                flowinfo.add_jump_inst(BCLabel(inst.offset), (BCLabel(inst.argval),))
+            elif is_exiting(inst.opname):
+                flowinfo.add_jump_inst(BCLabel(inst.offset), ())
+        return flowinfo
+
 
 @dataclass(frozen=True)
 class ByteFlow:
@@ -57,7 +80,7 @@ def parse_bytecode(code) -> ByteFlow:
     _logger.debug("Bytecode\n%s", _LogWrap(lambda: bc.dis()))
 
     end_offset = _next_inst_offset(BCLabel([inst.offset for inst in bc][-1]))
-    flowinfo = build_flowinfo(bc)
+    flowinfo = FlowInfo.from_bytecode(bc)
     bbmap = build_basicblocks(flowinfo, end_offset)
     # handle loop
     restructure_loop(bbmap)
@@ -77,27 +100,6 @@ def _iter_subregions(bbmap: "BlockMap"):
             yield from _iter_subregions(node.subregion)
 
 
-def build_flowinfo(bc: dis.Bytecode) -> "FlowInfo":
-    """
-    Build control-flow information that marks start of basic-blocks and jump
-    instructions.
-    """
-    flowinfo = FlowInfo()
-
-    for inst in bc:
-        # Handle jump-target instruction
-        if inst.offset == 0 or inst.is_jump_target:
-            flowinfo.block_offsets.add(BCLabel(inst.offset))
-        # Handle by op
-        if is_conditional_jump(inst.opname):
-            flowinfo.add_jump_inst(
-                BCLabel(inst.offset), (BCLabel(inst.argval), _next_inst_offset(BCLabel(inst.offset))),
-            )
-        elif is_unconditional_jump(inst.opname):
-            flowinfo.add_jump_inst(BCLabel(inst.offset), (BCLabel(inst.argval),))
-        elif is_exiting(inst.opname):
-            flowinfo.add_jump_inst(BCLabel(inst.offset), ())
-    return flowinfo
 
 
 def build_basicblocks(flowinfo: "FlowInfo", end_offset) -> "BlockMap":
