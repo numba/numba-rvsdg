@@ -5,7 +5,7 @@
 
 import logging
 from pprint import pprint
-from byteflow2 import parse_bytecode
+from byteflow2 import ByteFlow
 
 
 logging.basicConfig(level=logging.DEBUG)

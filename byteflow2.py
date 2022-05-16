@@ -1,4 +1,5 @@
 import dis
+from copy import deepcopy
 from collections import deque, ChainMap, defaultdict
 from typing import Optional, Set, Tuple, Dict, List, Sequence
 from pprint import pprint
@@ -111,22 +112,24 @@ class ByteFlow:
     def render_dot(self):
         return render_dot(self.bc, self.bbmap)
 
+    @staticmethod
+    def from_bytecode(code) -> "ByteFlow":
+        bc = dis.Bytecode(code)
+        _logger.debug("Bytecode\n%s", _LogWrap(lambda: bc.dis()))
 
-def parse_bytecode(code) -> ByteFlow:
-    bc = dis.Bytecode(code)
-    _logger.debug("Bytecode\n%s", _LogWrap(lambda: bc.dis()))
+        flowinfo = FlowInfo.from_bytecode(bc)
+        bbmap = flowinfo.build_basicblocks()
+        return ByteFlow(bc=bc, bbmap=bbmap)
 
-    flowinfo = FlowInfo.from_bytecode(bc)
-    bbmap = flowinfo.build_basicblocks()
-    # handle loop
-    restructure_loop(bbmap)
-    # handle branch
-    restructure_branch(bbmap)
-    for region in _iter_subregions(bbmap):
-        restructure_branch(region.subregion)
-
-    # render
-    return ByteFlow(bc=bc, bbmap=bbmap)
+    def restructure(self):
+        bbmap = deepcopy(self.bbmap)
+        # handle loop
+        restructure_loop(bbmap)
+        # handle branch
+        restructure_branch(bbmap)
+        for region in _iter_subregions(bbmap):
+            restructure_branch(region.subregion)
+        return ByteFlow(bc=self.bc, bbmap=bbmap)
 
 
 def _iter_subregions(bbmap: "BlockMap"):
@@ -134,12 +137,6 @@ def _iter_subregions(bbmap: "BlockMap"):
         if isinstance(node, RegionBlock):
             yield node
             yield from _iter_subregions(node.subregion)
-
-
-
-
-
-
 
 
 @dataclass(frozen=True)

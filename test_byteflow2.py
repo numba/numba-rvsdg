@@ -1,7 +1,7 @@
 import dis
 
 import unittest
-from byteflow2 import FlowInfo, BCLabel, Block, BlockMap
+from byteflow2 import FlowInfo, BCLabel, Block, BlockMap, ByteFlow
 
 
 def fun():
@@ -41,6 +41,28 @@ class TestFlowInfo(unittest.TestCase):
                            )
         received = FlowInfo.from_bytecode(bytecode).build_basicblocks()
         self.assertEqual(expected, received)
+
+
+class TestByteFlow(unittest.TestCase):
+
+    def test_constructor(self):
+        byteflow = ByteFlow([], [])
+        self.assertEqual(len(byteflow.bc), 0)
+        self.assertEqual(len(byteflow.bbmap), 0)
+
+    def test_from_bytecode(self):
+        bbmap = BlockMap(graph={
+            BCLabel(offset=0): Block(begin=BCLabel(offset=0),
+                                     end=BCLabel(offset=8),
+                                     fallthrough=False,
+                                     jump_targets=(),
+                                     backedges=()
+                                     )
+                                  }
+                           )
+        expected = ByteFlow(bc=bytecode, bbmap=bbmap)
+        received = ByteFlow.from_bytecode(fun)
+        self.assertEqual(expected.bbmap, received.bbmap)
 
 
 if __name__ == '__main__':
