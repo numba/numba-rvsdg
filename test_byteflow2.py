@@ -21,7 +21,6 @@ class TestFlowInfo(unittest.TestCase):
 
     def test_from_bytecode(self):
 
-        print("\n".join([str(b) for b in bytecode]))
         expected = FlowInfo(block_offsets={BCLabel(offset=0)},
                             jump_insts={BCLabel(offset=6): ()},
                             last_offset=6
