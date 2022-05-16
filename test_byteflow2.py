@@ -84,7 +84,27 @@ class TestBlock(unittest.TestCase):
         self.assertFalse(block.is_exiting())
 
     def test_get_instructions(self):
-        pass
+        block = Block(
+            begin=BCLabel(offset=0),
+            end=BCLabel(offset=8),
+            fallthrough=False,
+            jump_targets=(),
+            backedges=()
+        )
+        expected = [dis.Instruction(
+            opname='LOAD_CONST', opcode=100, arg=1, argval=1,
+            argrepr='1', offset=0, starts_line=9, is_jump_target=False),
+                    dis.Instruction(
+            opname='STORE_FAST', opcode=125, arg=0, argval='x',
+            argrepr='x', offset=2, starts_line=None, is_jump_target=False),
+                    dis.Instruction(
+            opname='LOAD_FAST', opcode=124, arg=0, argval='x',
+            argrepr='x', offset=4, starts_line=10, is_jump_target=False),
+                    dis.Instruction(
+            opname='RETURN_VALUE', opcode=83, arg=None, argval=None,
+            argrepr='', offset=6, starts_line=None, is_jump_target=False)]
+        received = block.get_instructions(bcmap_from_bytecode(bytecode))
+        self.assertEqual(expected, received)
 
 
 class TestFlowInfo(unittest.TestCase):
