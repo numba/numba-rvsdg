@@ -1,7 +1,8 @@
 import dis
 
 import unittest
-from byteflow2 import FlowInfo, BCLabel, Block, BlockMap, ByteFlow
+from byteflow2 import (FlowInfo, BCLabel, Block, BlockMap, ByteFlow,
+                       bcmap_from_bytecode)
 
 
 def fun():
@@ -10,6 +11,80 @@ def fun():
 
 
 bytecode = dis.Bytecode(fun)
+
+
+class TestBCMapFromBytecode(unittest.TestCase):
+
+    def test(self):
+        expected = {BCLabel(offset=0): dis.Instruction(
+                        opname='LOAD_CONST',
+                        opcode=100,
+                        arg=1,
+                        argval=1,
+                        argrepr='1',
+                        offset=0,
+                        starts_line=9,
+                        is_jump_target=False),
+                    BCLabel(offset=2): dis.Instruction(
+                        opname='STORE_FAST',
+                        opcode=125,
+                        arg=0, argval='x',
+                        argrepr='x',
+                        offset=2,
+                        starts_line=None,
+                        is_jump_target=False),
+                    BCLabel(offset=4): dis.Instruction(
+                        opname='LOAD_FAST',
+                        opcode=124,
+                        arg=0,
+                        argval='x',
+                        argrepr='x',
+                        offset=4,
+                        starts_line=10,
+                        is_jump_target=False),
+                    BCLabel(offset=6): dis.Instruction(
+                        opname='RETURN_VALUE',
+                        opcode=83,
+                        arg=None,
+                        argval=None,
+                        argrepr='',
+                        offset=6,
+                        starts_line=None,
+                        is_jump_target=False)}
+        received = bcmap_from_bytecode(bytecode)
+        self.assertEqual(expected, received)
+
+
+class TestBlock(unittest.TestCase):
+
+    def test_constructor(self):
+        block = Block(
+            begin=BCLabel(offset=0),
+            end=BCLabel(offset=8),
+            fallthrough=False,
+            jump_targets=(),
+            backedges=()
+        )
+        self.assertEqual(block.begin, BCLabel(offset=0))
+        self.assertEqual(block.end, BCLabel(offset=8))
+        self.assertEqual(block.fallthrough, False)
+        self.assertEqual(block.jump_targets, ())
+        self.assertEqual(block.backedges, ())
+        self.assertTrue(block.is_exiting())
+
+    def test_is_jump_target(self):
+        block = Block(
+            begin=BCLabel(offset=0),
+            end=BCLabel(offset=8),
+            fallthrough=False,
+            jump_targets=(BCLabel(10)),
+            backedges=()
+        )
+        self.assertEqual(block.jump_targets, (BCLabel(10)))
+        self.assertFalse(block.is_exiting())
+
+    def test_get_instructions(self):
+        pass
 
 
 class TestFlowInfo(unittest.TestCase):

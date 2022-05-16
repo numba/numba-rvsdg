@@ -27,6 +27,62 @@ class BCLabel(Label):
     offset: int
 
 
+def bcmap_from_bytecode(bc: dis.Bytecode) -> Dict[Label, dis.Instruction]:
+    bcmap: Dict[Label, dis.Instruction] = {BCLabel(inst.offset): inst
+                                           for inst in bc}
+    return bcmap
+
+
+@dataclass(frozen=True)
+class Block:
+    begin: Label
+    """The starting bytecode offset.
+    """
+
+    end: Label
+    """The bytecode offset immediate after the last bytecode of the block.
+    """
+
+    fallthrough: bool
+    """Set to True when the block has no terminator. The control should just
+    fallthrough to the next block.
+    """
+
+    jump_targets: Tuple[Label, ...]
+    """The destination block offsets."""
+
+    backedges: Tuple[Label, ...]
+    """Backedges offsets"""
+
+    def is_exiting(self) -> bool:
+        return not self.jump_targets
+
+    def get_instructions(
+        self, bcmap: Dict[Label, dis.Instruction]
+    ) -> List[dis.Instruction]:
+        begin = self.begin
+        end = self.end
+        it = begin
+        out = []
+        while it < end:
+            out.append(bcmap[it])
+            # increment
+            it = _next_inst_offset(it)
+        return out
+
+    def render_dot(self,
+                   g,
+                   node_offset: Label,
+                   bcmap: Dict[Label, dis.Instruction]):
+        instlist = self.get_instructions(bcmap)
+        body = "\l".join(
+            [f"{inst.offset:3}: {inst.opname}" for inst in instlist] + [""]
+        )
+        g.node(str(node_offset), shape="rect", label=body)
+
+
+
+
 @dataclass()
 class FlowInfo:
     block_offsets: Set[Label] = field(default_factory=set)
@@ -139,49 +195,6 @@ def _iter_subregions(bbmap: "BlockMap"):
             yield from _iter_subregions(node.subregion)
 
 
-@dataclass(frozen=True)
-class Block:
-    begin: Label
-    """The starting bytecode offset.
-    """
-
-    end: Label
-    """The bytecode offset immediate after the last bytecode of the block.
-    """
-
-    fallthrough: bool
-    """Set to True when the block has no terminator. The control should just
-    fallthrough to the next block.
-    """
-
-    jump_targets: Tuple[Label, ...]
-    """The destination block offsets."""
-
-    backedges: Tuple[Label, ...]
-    """Backedges offsets"""
-
-    def is_exiting(self) -> bool:
-        return not self.jump_targets
-
-    def get_instructions(
-        self, bcmap: Dict[Label, dis.Instruction]
-    ) -> List[dis.Instruction]:
-        begin = self.begin
-        end = self.end
-        it = begin
-        out = []
-        while it < end:
-            out.append(bcmap[it])
-            # increment
-            it = _next_inst_offset(it)
-        return out
-
-    def render_dot(self, g, node_offset: Label, bcmap: Dict[Label, dis.Instruction]):
-        instlist = self.get_instructions(bcmap)
-        body = "\l".join(
-            [f"{inst.offset:3}: {inst.opname}" for inst in instlist] + [""]
-        )
-        g.node(str(node_offset), shape="rect", label=body)
 
 
 @dataclass(frozen=True)
