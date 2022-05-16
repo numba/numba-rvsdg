@@ -81,8 +81,6 @@ class Block:
         g.node(str(node_offset), shape="rect", label=body)
 
 
-
-
 @dataclass()
 class FlowInfo:
     block_offsets: Set[Label] = field(default_factory=set)
