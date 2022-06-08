@@ -211,6 +211,9 @@ class RegionBlock(Block):
     subregion: "BlockMap"
     """The subgraph excluding the headers
     """
+    exit: Label
+    """The exit node.
+    """
 
     def render_dot(self, g, node_offset: Label, bcmap: Dict[Label, dis.Instruction]):
         # render subgraph
@@ -228,6 +231,7 @@ class RegionBlock(Block):
     def get_full_graph(self):
         graph = ChainMap(self.subregion.graph, self.headers)
         return graph
+
 
 @dataclass(frozen=True)
 class BlockMap:
@@ -309,7 +313,10 @@ def render_edges(g, nodes: Dict[Label, Block]):
     for k, node in nodes.items():
         for dst in node.jump_targets:
             if dst in nodes:
-                g.edge(str(k), str(dst))
+                if isinstance(node, RegionBlock):
+                    g.edge(str(node.exit), str(dst))
+                else:
+                    g.edge(str(k), str(dst))
         for dst in node.backedges:
             assert dst in nodes
             g.edge(str(k), str(dst), style="dashed", color="grey", constraint="0")
@@ -356,6 +363,34 @@ def restructure_loop(bbmap: BlockMap):
                 if outside in bbmap.graph[node].jump_targets:
                     exits.add(outside)
 
+        if len(exits) != 1:
+            # create a single exit label and add it to the loop
+            solo_exit_label = BCLabel(66)
+            loop.add(solo_exit_label)
+            # create the exit block and add it to the block map
+            solo_exit_block = Block(begin=solo_exit_label,
+                                    end=BCLabel(68),
+                                    fallthrough=False,
+                                    jump_targets=tuple(exits),
+                                    backedges=tuple()
+                                    )
+            bbmap.add_node(solo_exit_block)
+            # for all exits, find the nodes that jump to this exit
+            # this is effectively finding the exit vertices
+            for exit_node in exits:
+                for loop_node in loop:
+                    if loop_node == solo_exit_label:
+                        continue
+                    if exit_node in bbmap.graph[loop_node].jump_targets:
+                        # update the jump_targets to point to the new exitnode
+                        # by replacing the original node with updates
+                        new_jump_targets = tuple(
+                            [t for t in bbmap.graph[loop_node].jump_targets
+                             if t != exit_node]
+                            + [solo_exit_label])
+                        bbmap.add_node(replace(bbmap.graph.pop(loop_node),
+                                               jump_targets=new_jump_targets))
+
         # remove loop nodes from cfg/bbmap
         # use the set of labels to remove/pop Blocks into a set of blocks
         insiders: Set[Block] = {bbmap.graph.pop(k) for k in loop}
@@ -378,6 +413,7 @@ def restructure_loop(bbmap: BlockMap):
             subregion=BlockMap(loop_body),
             headers={node.begin: node for node in insiders
                      if node.begin in headers},
+            exit=solo_exit_label
         )
         # process subregions
         restructure_loop(blk.subregion)
