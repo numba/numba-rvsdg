@@ -74,10 +74,18 @@ class Block:
                    g,
                    node_offset: Label,
                    bcmap: Dict[Label, dis.Instruction]):
-        instlist = self.get_instructions(bcmap)
-        body = "\l".join(
-            [f"{inst.offset:3}: {inst.opname}" for inst in instlist] + [""]
-        )
+        # The node may not have instructions, insert a synthetic string instead
+        # if that is the case.
+        try:
+            instlist = self.get_instructions(bcmap)
+        except KeyError:
+            instlist = []
+        if instlist:
+            body = "\l".join(
+                [f"{inst.offset:3}: {inst.opname}" for inst in instlist] + [""]
+            )
+        else:
+            body = "SYNTHETIC"
         g.node(str(node_offset), shape="rect", label=body)
 
 
