@@ -188,9 +188,9 @@ class ByteFlow:
         # handle loop
         restructure_loop(bbmap)
         # handle branch
-        restructure_branch(bbmap)
-        for region in _iter_subregions(bbmap):
-            restructure_branch(region.subregion)
+        #restructure_branch(bbmap)
+        #for region in _iter_subregions(bbmap):
+        #    restructure_branch(region.subregion)
         return ByteFlow(bc=self.bc, bbmap=bbmap)
 
 
