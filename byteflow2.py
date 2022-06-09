@@ -320,6 +320,43 @@ def render_edges(g, nodes: Dict[Label, Block]):
             g.edge(str(k), str(dst), style="dashed", color="grey", constraint="0")
 
 
+def find_headers_and_entries(loop: Set[Label], bbmap: BlockMap):
+    """Find entried and headers in a given loop.
+
+    Entries are nodes outside the loop that have an edge pointing to the loop
+    header headers are nodes that are part of the strongly connected subset,
+    that have incoming edges from outside the loop entries point to headers and
+    headers are pointed to by entries.
+
+    """
+    node: Label
+    entries: Set[Label] = set()
+    headers: Set[Label] = set()
+
+    for node in _exclude_nodes(bbmap.graph, loop):
+        nodes_jump_in_loop = set(bbmap.graph[node].jump_targets) & loop
+        headers |= nodes_jump_in_loop
+        if nodes_jump_in_loop:
+            entries.add(node)
+
+    return headers, entries
+
+
+def find_exits(loop: Set[Label], bbmap: BlockMap):
+    """Find exits in a given loop.
+
+    Exits are nodes outside the loop that have incoming edges from within the
+    loop.
+    """
+    node: Label
+    exits: Set[Label] = set()
+    for node in loop:
+        for outside in _exclude_nodes(bbmap.graph, loop):
+            if outside in bbmap.graph[node].jump_targets:
+                exits.add(outside)
+    return exits
+
+
 def restructure_loop(bbmap: BlockMap):
     """Inplace restructuring of the given graph to extract loops using
     strongly-connected components
@@ -333,33 +370,12 @@ def restructure_loop(bbmap: BlockMap):
     _logger.debug("restructure_loop found %d loops in %s",
                   len(loops), bbmap.graph.keys())
 
-    node: Label
     # extract loop
     for loop in loops:
         _logger.debug("loop nodes %s", loop)
-        # find entries and headers
-        # entries are nodes outside the loop that have an edge pointing to the
-        # loop header
-        # headers are nodes that are part of the strongly connected subset,
-        # that have incoming edges from outside the loop
-        # entries point to headers and headers are pointed to by entries
-        entries: Set[Label] = set()
-        headers: Set[Label] = set()
 
-        for node in _exclude_nodes(bbmap.graph, loop):
-            nodes_jump_in_loop = set(bbmap.graph[node].jump_targets) & loop
-            headers |= nodes_jump_in_loop
-            if nodes_jump_in_loop:
-                entries.add(node)
-
-        # find exits
-        # exits are nodes outside the loop that have incoming edges from
-        # within the loop
-        exits = set()
-        for node in loop:
-            for outside in _exclude_nodes(bbmap.graph, loop):
-                if outside in bbmap.graph[node].jump_targets:
-                    exits.add(outside)
+        headers, entries = find_headers_and_entries(loop, bbmap)
+        exits = find_exits(loop, bbmap)
 
         if len(exits) != 1:
             # create a single exit label and add it to the loop
