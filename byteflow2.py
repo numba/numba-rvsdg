@@ -27,6 +27,11 @@ class BCLabel(Label):
     offset: int
 
 
+@dataclass(frozen=True, order=True)
+class ControlLabel(Label):
+    index: int
+
+
 def bcmap_from_bytecode(bc: dis.Bytecode) -> Dict[Label, dis.Instruction]:
     bcmap: Dict[Label, dis.Instruction] = {BCLabel(inst.offset): inst
                                            for inst in bc}
@@ -74,18 +79,13 @@ class Block:
                    g,
                    node_offset: Label,
                    bcmap: Dict[Label, dis.Instruction]):
-        # The node may not have instructions, insert a synthetic string instead
-        # if that is the case.
-        try:
+        if isinstance(node_offset, BCLabel):
             instlist = self.get_instructions(bcmap)
-        except KeyError:
-            instlist = []
-        if instlist:
             body = "\l".join(
                 [f"{inst.offset:3}: {inst.opname}" for inst in instlist] + [""]
             )
-        else:
-            body = "SYNTHETIC"
+        elif isinstance(node_offset, ControlLabel):
+            body = "Control Label: " + str(node_offset.index)
         g.node(str(node_offset), shape="rect", label=body)
 
 
@@ -199,8 +199,6 @@ def _iter_subregions(bbmap: "BlockMap"):
         if isinstance(node, RegionBlock):
             yield node
             yield from _iter_subregions(node.subregion)
-
-
 
 
 @dataclass(frozen=True)
@@ -365,21 +363,29 @@ def restructure_loop(bbmap: BlockMap):
 
         if len(exits) != 1:
             # create a single exit label and add it to the loop
-            solo_exit_label = BCLabel(66)
-            loop.add(solo_exit_label)
+            pre_exit_label = ControlLabel(1)
+            post_exit_label = ControlLabel(2)
+            loop.add(pre_exit_label)
             # create the exit block and add it to the block map
-            solo_exit_block = Block(begin=solo_exit_label,
-                                    end=BCLabel(68),
+            post_exit_block = Block(begin=post_exit_label,
+                                    end=ControlLabel(3),
                                     fallthrough=False,
                                     jump_targets=tuple(exits),
                                     backedges=tuple()
                                     )
-            bbmap.add_node(solo_exit_block)
+            pre_exit_block = Block(begin=pre_exit_label,
+                                   end=ControlLabel(4),
+                                   fallthrough=False,
+                                   jump_targets=(post_exit_label,),
+                                   backedges=tuple()
+                                   )
+            bbmap.add_node(pre_exit_block)
+            bbmap.add_node(post_exit_block)
             # for all exits, find the nodes that jump to this exit
             # this is effectively finding the exit vertices
             for exit_node in exits:
                 for loop_node in loop:
-                    if loop_node == solo_exit_label:
+                    if loop_node == pre_exit_label:
                         continue
                     if exit_node in bbmap.graph[loop_node].jump_targets:
                         # update the jump_targets to point to the new exitnode
@@ -387,7 +393,7 @@ def restructure_loop(bbmap: BlockMap):
                         new_jump_targets = tuple(
                             [t for t in bbmap.graph[loop_node].jump_targets
                              if t != exit_node]
-                            + [solo_exit_label])
+                            + [pre_exit_label])
                         bbmap.add_node(replace(bbmap.graph.pop(loop_node),
                                                jump_targets=new_jump_targets))
 
@@ -407,13 +413,13 @@ def restructure_loop(bbmap: BlockMap):
             begin=loop_head,
             end=_next_inst_offset(loop_head),
             fallthrough=False,
-            jump_targets=tuple(exits),
+            jump_targets=(post_exit_label,),
             backedges=(),
             kind="loop",
             subregion=BlockMap(loop_body),
             headers={node.begin: node for node in insiders
                      if node.begin in headers},
-            exit=solo_exit_label
+            exit=pre_exit_label
         )
         # process subregions
         restructure_loop(blk.subregion)
