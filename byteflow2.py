@@ -121,6 +121,8 @@ class RegionBlock(Block):
 
 @dataclass()
 class FlowInfo:
+    """ FlowInfo converts Bytecode into a ByteFlow object (CFG). """
+
     block_offsets: Set[Label] = field(default_factory=set)
     """Marks starting offset of basic-block
     """
@@ -198,6 +200,7 @@ class FlowInfo:
 
 @dataclass(frozen=True)
 class BlockMap:
+    """ Map of Labels to Blocks. """
     graph: Dict[Label, Block] = field(default_factory=dict)
 
     def add_node(self, bb: Block):
