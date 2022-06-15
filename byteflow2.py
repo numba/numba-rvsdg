@@ -239,6 +239,12 @@ class BlockMap:
     def add_node(self, bb: Block):
         self.graph[bb.begin] = bb
 
+    def exclude_nodes(self, exclude_nodes: Set[Label]):
+        """Iterator over all nodes not in exclude_nodes. """
+        for node in self.graph:
+            if node not in exclude_nodes:
+                yield node
+
 
 @dataclass(frozen=True)
 class ByteFlow:
@@ -336,7 +342,7 @@ def find_headers_and_entries(loop: Set[Label], bbmap: BlockMap):
     entries: Set[Label] = set()
     headers: Set[Label] = set()
 
-    for node in _exclude_nodes(bbmap.graph, loop):
+    for node in bbmap.exclude_nodes(loop):
         nodes_jump_in_loop = set(bbmap.graph[node].jump_targets) & loop
         headers |= nodes_jump_in_loop
         if nodes_jump_in_loop:
@@ -355,7 +361,7 @@ def find_exits(loop: Set[Label], bbmap: BlockMap):
     pre_exits: Set[Label] = set()
     post_exits: Set[Label] = set()
     for node in loop:
-        for outside in _exclude_nodes(bbmap.graph, loop):
+        for outside in bbmap.exclude_nodes(loop):
             if outside in bbmap.graph[node].jump_targets:
                 pre_exits.add(node)
                 post_exits.add(outside)
@@ -652,7 +658,3 @@ def _find_dominators_internal(entries, nodes, preds_table, succs_table):
 
 
 
-def _exclude_nodes(iter, nodeset: Set):
-    for it in iter:
-        if it not in nodeset:
-            yield it
