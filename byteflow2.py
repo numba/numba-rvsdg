@@ -357,6 +357,44 @@ def find_exits(loop: Set[Label], bbmap: BlockMap):
     return exits
 
 
+def join_exits(loop: Set[Label], bbmap: BlockMap, exits: Set[Label]):
+    # create a single exit label and add it to the loop
+    pre_exit_label = ControlLabel(1)
+    post_exit_label = ControlLabel(2)
+    loop.add(pre_exit_label)
+    # create the exit block and add it to the block map
+    post_exit_block = Block(begin=post_exit_label,
+                            end=ControlLabel(3),
+                            fallthrough=False,
+                            jump_targets=tuple(exits),
+                            backedges=tuple()
+                            )
+    pre_exit_block = Block(begin=pre_exit_label,
+                           end=ControlLabel(4),
+                           fallthrough=False,
+                           jump_targets=(post_exit_label,),
+                           backedges=tuple()
+                           )
+    bbmap.add_node(pre_exit_block)
+    bbmap.add_node(post_exit_block)
+    # for all exits, find the nodes that jump to this exit
+    # this is effectively finding the exit vertices
+    for exit_node in exits:
+        for loop_node in loop:
+            if loop_node == pre_exit_label:
+                continue
+            if exit_node in bbmap.graph[loop_node].jump_targets:
+                # update the jump_targets to point to the new exitnode
+                # by replacing the original node with updates
+                new_jump_targets = tuple(
+                    [t for t in bbmap.graph[loop_node].jump_targets
+                     if t != exit_node]
+                    + [pre_exit_label])
+                bbmap.add_node(replace(bbmap.graph.pop(loop_node),
+                                       jump_targets=new_jump_targets))
+    return pre_exit_label, post_exit_label
+
+
 def restructure_loop(bbmap: BlockMap):
     """Inplace restructuring of the given graph to extract loops using
     strongly-connected components
@@ -375,49 +413,23 @@ def restructure_loop(bbmap: BlockMap):
         _logger.debug("loop nodes %s", loop)
 
         headers, entries = find_headers_and_entries(loop, bbmap)
+        _logger.debug("loop headers %s", headers)
+        _logger.debug("loop entries %s", entries)
+
         exits = find_exits(loop, bbmap)
+        _logger.debug("loop exits %s", exits)
 
         if len(exits) != 1:
-            # create a single exit label and add it to the loop
-            pre_exit_label = ControlLabel(1)
-            post_exit_label = ControlLabel(2)
-            loop.add(pre_exit_label)
-            # create the exit block and add it to the block map
-            post_exit_block = Block(begin=post_exit_label,
-                                    end=ControlLabel(3),
-                                    fallthrough=False,
-                                    jump_targets=tuple(exits),
-                                    backedges=tuple()
-                                    )
-            pre_exit_block = Block(begin=pre_exit_label,
-                                   end=ControlLabel(4),
-                                   fallthrough=False,
-                                   jump_targets=(post_exit_label,),
-                                   backedges=tuple()
-                                   )
-            bbmap.add_node(pre_exit_block)
-            bbmap.add_node(post_exit_block)
-            # for all exits, find the nodes that jump to this exit
-            # this is effectively finding the exit vertices
-            for exit_node in exits:
-                for loop_node in loop:
-                    if loop_node == pre_exit_label:
-                        continue
-                    if exit_node in bbmap.graph[loop_node].jump_targets:
-                        # update the jump_targets to point to the new exitnode
-                        # by replacing the original node with updates
-                        new_jump_targets = tuple(
-                            [t for t in bbmap.graph[loop_node].jump_targets
-                             if t != exit_node]
-                            + [pre_exit_label])
-                        bbmap.add_node(replace(bbmap.graph.pop(loop_node),
-                                               jump_targets=new_jump_targets))
+            pre_exit_label, post_exit_label = join_exits(loop, bbmap, exits)
+            _logger.debug("loop pre_exit_label %s", pre_exit_label)
+            _logger.debug("loop post_exit_label %s", post_exit_label)
 
         # remove loop nodes from cfg/bbmap
         # use the set of labels to remove/pop Blocks into a set of blocks
         insiders: Set[Block] = {bbmap.graph.pop(k) for k in loop}
 
-        assert len(headers) == 1, headers  # TODO join entries and exits
+        assert len(headers) == 1, headers  # TODO join entries
+
         # turn singleton set into single element
         loop_head: Label = next(iter(headers))
         # construct the loop body, identifying backedges as we go
