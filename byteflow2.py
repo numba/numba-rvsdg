@@ -349,12 +349,14 @@ def find_exits(loop: Set[Label], bbmap: BlockMap):
     loop.
     """
     node: Label
-    exits: Set[Label] = set()
+    pre_exits: Set[Label] = set()
+    post_exits: Set[Label] = set()
     for node in loop:
         for outside in _exclude_nodes(bbmap.graph, loop):
             if outside in bbmap.graph[node].jump_targets:
-                exits.add(outside)
-    return exits
+                pre_exits.add(node)
+                post_exits.add(outside)
+    return pre_exits, post_exits
 
 
 def join_exits(loop: Set[Label], bbmap: BlockMap, exits: Set[Label]):
@@ -416,13 +418,21 @@ def restructure_loop(bbmap: BlockMap):
         _logger.debug("loop headers %s", headers)
         _logger.debug("loop entries %s", entries)
 
-        exits = find_exits(loop, bbmap)
-        _logger.debug("loop exits %s", exits)
+        pre_exits, post_exits = find_exits(loop, bbmap)
+        _logger.debug("loop pre exits %s", pre_exits)
+        _logger.debug("loop post exits %s", post_exits)
 
-        if len(exits) != 1:
-            pre_exit_label, post_exit_label = join_exits(loop, bbmap, exits)
-            _logger.debug("loop pre_exit_label %s", pre_exit_label)
-            _logger.debug("loop post_exit_label %s", post_exit_label)
+        if len(post_exits) != 1:
+            pre_exit_label, post_exit_label = join_exits(loop,
+                                                         bbmap,
+                                                         post_exits)
+        elif len(pre_exits) != 1:
+            Exception("unreachable?")
+        else:
+            pre_exit_label, post_exit_label = (next(iter(pre_exits)),
+                                               next(iter(post_exits)))
+        _logger.debug("loop pre_exit_label %s", pre_exit_label)
+        _logger.debug("loop post_exit_label %s", post_exit_label)
 
         # remove loop nodes from cfg/bbmap
         # use the set of labels to remove/pop Blocks into a set of blocks
