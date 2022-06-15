@@ -395,8 +395,9 @@ def join_exits(loop: Set[Label], bbmap: BlockMap, exits: Set[Label]):
                     [t for t in bbmap.graph[loop_node].jump_targets
                      if t != exit_node]
                     + [pre_exit_label])
-                bbmap.add_node(replace(bbmap.graph.pop(loop_node),
-                                       jump_targets=new_jump_targets))
+                bbmap.add_node(
+                    _replace_jump_targets(bbmap.graph.pop(loop_node),
+                                          jump_targets=new_jump_targets))
     return pre_exit_label, post_exit_label
 
 
@@ -474,6 +475,10 @@ def _replace_backedge(node: Block, loop_head: Label) -> Block:
         assert not node.backedges
         return replace(node, jump_targets=(), backedges=(loop_head,))
     return node
+
+
+def _replace_jump_targets(node: Block, jump_targets: tuple):
+    return replace(node, jump_targets=jump_targets)
 
 
 def restructure_branch(bbmap: BlockMap):
