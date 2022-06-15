@@ -88,6 +88,16 @@ class Block:
             body = "Control Label: " + str(node_offset.index)
         g.node(str(node_offset), shape="rect", label=body)
 
+    def replace_backedge(self, loop_head: Label) -> "Block":
+        if loop_head in self.jump_targets:
+            assert len(self.jump_targets) == 1
+            assert not self.backedges
+            return replace(self, jump_targets=(), backedges=(loop_head,))
+        return self
+
+    def replace_jump_targets(self, jump_targets: Tuple) -> "Block":
+        return replace(self, jump_targets=jump_targets)
+
 
 @dataclass(frozen=True)
 class RegionBlock(Block):
@@ -402,8 +412,8 @@ def join_exits(loop: Set[Label], bbmap: BlockMap, exits: Set[Label]):
                      if t != exit_node]
                     + [pre_exit_label])
                 bbmap.add_node(
-                    _replace_jump_targets(bbmap.graph.pop(loop_node),
-                                          jump_targets=new_jump_targets))
+                    bbmap.graph.pop(loop_node).replace_jump_targets(
+                        jump_targets=new_jump_targets))
     return pre_exit_label, post_exit_label
 
 
@@ -454,7 +464,7 @@ def restructure_loop(bbmap: BlockMap):
         loop_head: Label = next(iter(headers))
         # construct the loop body, identifying backedges as we go
         loop_body: Dict[Label, Block] = {
-            node.begin: _replace_backedge(node, loop_head)
+            node.begin: node.replace_backedge(loop_head)
             for node in insiders if node.begin not in headers}
         # create a subregion
         blk = RegionBlock(
@@ -473,18 +483,6 @@ def restructure_loop(bbmap: BlockMap):
         restructure_loop(blk.subregion)
         # insert subregion back into original
         bbmap.graph[loop_head] = blk
-
-
-def _replace_backedge(node: Block, loop_head: Label) -> Block:
-    if loop_head in node.jump_targets:
-        assert len(node.jump_targets) == 1
-        assert not node.backedges
-        return replace(node, jump_targets=(), backedges=(loop_head,))
-    return node
-
-
-def _replace_jump_targets(node: Block, jump_targets: tuple):
-    return replace(node, jump_targets=jump_targets)
 
 
 def restructure_branch(bbmap: BlockMap):
