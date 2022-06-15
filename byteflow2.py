@@ -119,6 +119,39 @@ class RegionBlock(Block):
         return graph
 
 
+_cond_jump = {
+    "FOR_ITER",
+    "POP_JUMP_IF_FALSE",
+    "POP_JUMP_IF_TRUE",
+}
+_uncond_jump = {"JUMP_ABSOLUTE", "JUMP_FORWARD"}
+_terminating = {"RETURN_VALUE"}
+
+
+def is_conditional_jump(opname: str) -> bool:
+    return opname in _cond_jump
+
+
+def is_unconditional_jump(opname: str) -> bool:
+    return opname in _uncond_jump
+
+
+def is_exiting(opname: str) -> bool:
+    return opname in _terminating
+
+
+def _next_inst_offset(offset: Label) -> BCLabel:
+    # Fix offset
+    assert isinstance(offset, BCLabel)
+    return BCLabel(offset.offset + 2)
+
+
+def _prev_inst_offset(offset: Label) -> BCLabel:
+    # Fix offset
+    assert isinstance(offset, BCLabel)
+    return BCLabel(offset.offset - 2)
+
+
 @dataclass()
 class FlowInfo:
     """ FlowInfo converts Bytecode into a ByteFlow object (CFG). """
@@ -240,39 +273,6 @@ def _iter_subregions(bbmap: "BlockMap"):
         if isinstance(node, RegionBlock):
             yield node
             yield from _iter_subregions(node.subregion)
-
-
-_cond_jump = {
-    "FOR_ITER",
-    "POP_JUMP_IF_FALSE",
-    "POP_JUMP_IF_TRUE",
-}
-_uncond_jump = {"JUMP_ABSOLUTE", "JUMP_FORWARD"}
-_terminating = {"RETURN_VALUE"}
-
-
-def is_conditional_jump(opname: str) -> bool:
-    return opname in _cond_jump
-
-
-def is_unconditional_jump(opname: str) -> bool:
-    return opname in _uncond_jump
-
-
-def is_exiting(opname: str) -> bool:
-    return opname in _terminating
-
-
-def _next_inst_offset(offset: Label) -> BCLabel:
-    # Fix offset
-    assert isinstance(offset, BCLabel)
-    return BCLabel(offset.offset + 2)
-
-
-def _prev_inst_offset(offset: Label) -> BCLabel:
-    # Fix offset
-    assert isinstance(offset, BCLabel)
-    return BCLabel(offset.offset - 2)
 
 
 def compute_scc(bbmap: BlockMap) -> List[Set[Label]]:
