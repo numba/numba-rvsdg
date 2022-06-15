@@ -89,6 +89,36 @@ class Block:
         g.node(str(node_offset), shape="rect", label=body)
 
 
+@dataclass(frozen=True)
+class RegionBlock(Block):
+    kind: str
+    headers: Dict[Label, Block]
+    """The header of the region"""
+    subregion: "BlockMap"
+    """The subgraph excluding the headers
+    """
+    exit: Label
+    """The exit node.
+    """
+
+    def render_dot(self, g, node_offset: Label, bcmap: Dict[Label, dis.Instruction]):
+        # render subgraph
+        graph = self.get_full_graph()
+        with g.subgraph(name=f"cluster_{node_offset}") as subg:
+            color = 'blue'
+            if self.kind == 'branch':
+                color = 'green'
+            subg.attr(color=color, label=self.kind)
+            for k, node in graph.items():
+                node.render_dot(subg, k, bcmap)
+        # render edges within this region
+        render_edges(g, graph)
+
+    def get_full_graph(self):
+        graph = ChainMap(self.subregion.graph, self.headers)
+        return graph
+
+
 @dataclass()
 class FlowInfo:
     block_offsets: Set[Label] = field(default_factory=set)
@@ -167,6 +197,14 @@ class FlowInfo:
 
 
 @dataclass(frozen=True)
+class BlockMap:
+    graph: Dict[Label, Block] = field(default_factory=dict)
+
+    def add_node(self, bb: Block):
+        self.graph[bb.begin] = bb
+
+
+@dataclass(frozen=True)
 class ByteFlow:
     bc: dis.Bytecode
     bbmap: "BlockMap"
@@ -199,44 +237,6 @@ def _iter_subregions(bbmap: "BlockMap"):
         if isinstance(node, RegionBlock):
             yield node
             yield from _iter_subregions(node.subregion)
-
-
-@dataclass(frozen=True)
-class RegionBlock(Block):
-    kind: str
-    headers: Dict[Label, Block]
-    """The header of the region"""
-    subregion: "BlockMap"
-    """The subgraph excluding the headers
-    """
-    exit: Label
-    """The exit node.
-    """
-
-    def render_dot(self, g, node_offset: Label, bcmap: Dict[Label, dis.Instruction]):
-        # render subgraph
-        graph = self.get_full_graph()
-        with g.subgraph(name=f"cluster_{node_offset}") as subg:
-            color = 'blue'
-            if self.kind == 'branch':
-                color = 'green'
-            subg.attr(color=color, label=self.kind)
-            for k, node in graph.items():
-                node.render_dot(subg, k, bcmap)
-        # render edges within this region
-        render_edges(g, graph)
-
-    def get_full_graph(self):
-        graph = ChainMap(self.subregion.graph, self.headers)
-        return graph
-
-
-@dataclass(frozen=True)
-class BlockMap:
-    graph: Dict[Label, Block] = field(default_factory=dict)
-
-    def add_node(self, bb: Block):
-        self.graph[bb.begin] = bb
 
 
 _cond_jump = {
