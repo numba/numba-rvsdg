@@ -32,14 +32,8 @@ class ControlLabel(Label):
     index: int
 
 
-def bcmap_from_bytecode(bc: dis.Bytecode) -> Dict[Label, dis.Instruction]:
-    bcmap: Dict[Label, dis.Instruction] = {BCLabel(inst.offset): inst
-                                           for inst in bc}
-    return bcmap
-
-
 @dataclass(frozen=True)
-class Block:
+class BasicBlock:
     begin: Label
     """The starting bytecode offset.
     """
@@ -75,34 +69,21 @@ class Block:
             it = _next_inst_offset(it)
         return out
 
-    def render_dot(self,
-                   g,
-                   node_offset: Label,
-                   bcmap: Dict[Label, dis.Instruction]):
-        if isinstance(node_offset, BCLabel):
-            instlist = self.get_instructions(bcmap)
-            body = "\l".join(
-                [f"{inst.offset:3}: {inst.opname}" for inst in instlist] + [""]
-            )
-        elif isinstance(node_offset, ControlLabel):
-            body = "Control Label: " + str(node_offset.index)
-        g.node(str(node_offset), shape="rect", label=body)
-
-    def replace_backedge(self, loop_head: Label) -> "Block":
+    def replace_backedge(self, loop_head: Label) -> "BasicBlock":
         if loop_head in self.jump_targets:
             assert len(self.jump_targets) == 1
             assert not self.backedges
             return replace(self, jump_targets=(), backedges=(loop_head,))
         return self
 
-    def replace_jump_targets(self, jump_targets: Tuple) -> "Block":
+    def replace_jump_targets(self, jump_targets: Tuple) -> "BasicBlock":
         return replace(self, jump_targets=jump_targets)
 
 
 @dataclass(frozen=True)
-class RegionBlock(Block):
+class RegionBlock(BasicBlock):
     kind: str
-    headers: Dict[Label, Block]
+    headers: Dict[Label, BasicBlock]
     """The header of the region"""
     subregion: "BlockMap"
     """The subgraph excluding the headers
@@ -110,19 +91,6 @@ class RegionBlock(Block):
     exit: Label
     """The exit node.
     """
-
-    def render_dot(self, g, node_offset: Label, bcmap: Dict[Label, dis.Instruction]):
-        # render subgraph
-        graph = self.get_full_graph()
-        with g.subgraph(name=f"cluster_{node_offset}") as subg:
-            color = 'blue'
-            if self.kind == 'branch':
-                color = 'green'
-            subg.attr(color=color, label=self.kind)
-            for k, node in graph.items():
-                node.render_dot(subg, k, bcmap)
-        # render edges within this region
-        render_edges(g, graph)
 
     def get_full_graph(self):
         graph = ChainMap(self.subregion.graph, self.headers)
@@ -231,12 +199,12 @@ class FlowInfo:
             else:
                 targets = self.jump_insts[term_offset]
                 fallthrough = False
-            bb = Block(begin=begin,
-                       end=end,
-                       jump_targets=targets,
-                       fallthrough=fallthrough,
-                       backedges=(),
-                       )
+            bb = BasicBlock(begin=begin,
+                            end=end,
+                            jump_targets=targets,
+                            fallthrough=fallthrough,
+                            backedges=(),
+                            )
             bbmap.add_node(bb)
         return bbmap
 
@@ -244,10 +212,10 @@ class FlowInfo:
 @dataclass(frozen=True)
 class BlockMap:
     """ Map of Labels to Blocks. """
-    graph: Dict[Label, Block] = field(default_factory=dict)
+    graph: Dict[Label, BasicBlock] = field(default_factory=dict)
 
-    def add_node(self, bb: Block):
-        self.graph[bb.begin] = bb
+    def add_node(self, basicblock: BasicBlock):
+        self.graph[basicblock.begin] = basicblock
 
     def exclude_nodes(self, exclude_nodes: Set[Label]):
         """Iterator over all nodes not in exclude_nodes. """
@@ -260,9 +228,6 @@ class BlockMap:
 class ByteFlow:
     bc: dis.Bytecode
     bbmap: "BlockMap"
-
-    def render_dot(self):
-        return render_dot(self.bc, self.bbmap)
 
     @staticmethod
     def from_bytecode(code) -> "ByteFlow":
@@ -312,31 +277,6 @@ def compute_scc(bbmap: BlockMap) -> List[Set[Label]]:
     return list(scc(GraphWrap(bbmap.graph)))
 
 
-def render_dot(bc: dis.Bytecode, bbmap: BlockMap):
-    from graphviz import Digraph
-
-    bcmap: Dict[Label, dis.Instruction] = {BCLabel(inst.offset): inst for inst in bc}
-
-    g = Digraph()
-    # render nodes
-    for k, node in bbmap.graph.items():
-        node.render_dot(g, k, bcmap)
-    # render edges
-    render_edges(g, bbmap.graph)
-    return g
-
-
-def render_edges(g, nodes: Dict[Label, Block]):
-    for k, node in nodes.items():
-        for dst in node.jump_targets:
-            if dst in nodes:
-                if isinstance(node, RegionBlock):
-                    g.edge(str(node.exit), str(dst))
-                else:
-                    g.edge(str(k), str(dst))
-        for dst in node.backedges:
-            assert dst in nodes
-            g.edge(str(k), str(dst), style="dashed", color="grey", constraint="0")
 
 
 def find_headers_and_entries(loop: Set[Label], bbmap: BlockMap):
@@ -384,18 +324,18 @@ def join_exits(loop: Set[Label], bbmap: BlockMap, exits: Set[Label]):
     post_exit_label = ControlLabel(2)
     loop.add(pre_exit_label)
     # create the exit block and add it to the block map
-    post_exit_block = Block(begin=post_exit_label,
-                            end=ControlLabel(3),
-                            fallthrough=False,
-                            jump_targets=tuple(exits),
-                            backedges=tuple()
-                            )
-    pre_exit_block = Block(begin=pre_exit_label,
-                           end=ControlLabel(4),
-                           fallthrough=False,
-                           jump_targets=(post_exit_label,),
-                           backedges=tuple()
-                           )
+    post_exit_block = BasicBlock(begin=post_exit_label,
+                                 end=ControlLabel(3),
+                                 fallthrough=False,
+                                 jump_targets=tuple(exits),
+                                 backedges=tuple()
+                                 )
+    pre_exit_block = BasicBlock(begin=pre_exit_label,
+                                end=ControlLabel(4),
+                                fallthrough=False,
+                                jump_targets=(post_exit_label,),
+                                backedges=tuple()
+                                )
     bbmap.add_node(pre_exit_block)
     bbmap.add_node(post_exit_block)
     # for all exits, find the nodes that jump to this exit
@@ -456,7 +396,7 @@ def restructure_loop(bbmap: BlockMap):
 
         # remove loop nodes from cfg/bbmap
         # use the set of labels to remove/pop Blocks into a set of blocks
-        insiders: Set[Block] = {bbmap.graph.pop(k) for k in loop}
+        insiders: Set[BasicBlock] = {bbmap.graph.pop(k) for k in loop}
 
         assert len(headers) == 1, headers  # TODO join entries
 
@@ -535,6 +475,7 @@ def restructure_branch(bbmap: BlockMap):
                     restructure_branch(subregion.subregion)
         break
 
+
 def _iter_branch_regions(bbmap: BlockMap,
                          immdoms: Dict[Label, Label],
                          postimmdoms: Dict[Label, Label]):
@@ -573,7 +514,7 @@ def _doms(bbmap: BlockMap):
     preds_table = defaultdict(set)
     succs_table = defaultdict(set)
 
-    node : Block
+    node: BasicBlock
     for src, node in bbmap.graph.items():
         for dst in node.jump_targets:
             # check dst is in subgraph
@@ -597,7 +538,7 @@ def _post_doms(bbmap: BlockMap):
     preds_table = defaultdict(set)
     succs_table = defaultdict(set)
 
-    node : Block
+    node: BasicBlock
     for src, node in bbmap.graph.items():
         for dst in node.jump_targets:
             # check dst is in subgraph
@@ -606,6 +547,7 @@ def _post_doms(bbmap: BlockMap):
                 succs_table[dst].add(src)
 
     return _find_dominators_internal(entries, list(bbmap.graph.keys()), preds_table, succs_table)
+
 
 def _find_dominators_internal(entries, nodes, preds_table, succs_table):
     # From NUMBA
@@ -627,7 +569,7 @@ def _find_dominators_internal(entries, nodes, preds_table, succs_table):
 
     if not entries:
         raise RuntimeError("no entry points: dominator algorithm "
-                            "cannot be seeded")
+                           "cannot be seeded")
 
     doms = {}
     for e in entries:
@@ -647,7 +589,7 @@ def _find_dominators_internal(entries, nodes, preds_table, succs_table):
         preds = preds_table[n]
         if preds:
             new_doms |= functools.reduce(set.intersection,
-                                            [doms[p] for p in preds])
+                                         [doms[p] for p in preds])
         if new_doms != doms[n]:
             assert len(new_doms) < len(doms[n])
             doms[n] = new_doms
@@ -655,4 +597,67 @@ def _find_dominators_internal(entries, nodes, preds_table, succs_table):
     return doms
 
 
+class ByteFlowRenderer(object):
 
+    def __init__(self):
+        from graphviz import Digraph
+        self.g = Digraph()
+
+    def render_region_block(self, digraph: "Digraph", label: Label, regionblock: RegionBlock):
+        # render subgraph
+        graph = regionblock.get_full_graph()
+        with digraph.subgraph(name=f"cluster_{label}") as subg:
+            color = 'blue'
+            if regionblock.kind == 'branch':
+                color = 'green'
+            subg.attr(color=color, label=regionblock.kind)
+            for label, block in graph.items():
+                self.render_block(subg, label, block)
+        # render edges within this region
+        self.render_edges(graph)
+
+    def render_basic_block(self, digraph: "Digraph", label: Label, block: BasicBlock):
+        if isinstance(label, BCLabel):
+            instlist = block.get_instructions(self.bcmap)
+            body = "\l".join(
+                [f"{inst.offset:3}: {inst.opname}" for inst in instlist] + [""]
+            )
+        elif isinstance(label, ControlLabel):
+            body = "Control Label: " + str(label.index)
+        digraph.node(str(label), shape="rect", label=body)
+
+    def render_block(self, digraph: "Digraph", label: Label, block: BasicBlock):
+        if type(block) == BasicBlock:
+            self.render_basic_block(digraph, label, block)
+        elif type(block) == RegionBlock:
+            self.render_region_block(digraph, label, block)
+        else:
+            raise Exception("unreachable")
+
+    def render_edges(self, blocks: Dict[Label, BasicBlock]):
+        for label, block in blocks.items():
+            for dst in block.jump_targets:
+                if dst in blocks:
+                    if type(block) == BasicBlock:
+                        self.g.edge(str(label), str(dst))
+                    elif type(block) == RegionBlock:
+                        self.g.edge(str(block.exit), str(dst))
+                    else:
+                        raise Exception("unreachable")
+            for dst in block.backedges:
+                assert dst in blocks
+                self.g.edge(str(label), str(dst),
+                            style="dashed", color="grey", constraint="0")
+
+    def render_byteflow(self, byteflow: ByteFlow):
+        self.bcmap_from_bytecode(byteflow.bc)
+
+        # render nodes
+        for label, block in byteflow.bbmap.graph.items():
+            self.render_block(self.g, label, block)
+        self.render_edges(byteflow.bbmap.graph)
+        return self.g
+
+    def bcmap_from_bytecode(self, bc: dis.Bytecode):
+        self.bcmap: Dict[Label, dis.Instruction] = {BCLabel(inst.offset): inst
+                                                    for inst in bc}
