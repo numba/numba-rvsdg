@@ -409,6 +409,26 @@ def join_exits(loop: Set[Label], bbmap: BlockMap, exits: Set[Label]):
     return pre_exit_label, post_exit_label
 
 
+def is_reachable_dfs(bbmap, begin, end):
+    """Is end reachable from begin. """
+    seen = set()
+    to_vist = list(bbmap.graph[begin].jump_targets)
+    while True:
+        if to_vist:
+            block = to_vist.pop()
+        else:
+            return False
+
+        if block in seen:
+            continue
+        elif block == end:
+            return True
+        elif block not in seen:
+            seen.add(block)
+            if block in bbmap.graph:
+                to_vist.extend(bbmap.graph[block].jump_targets)
+
+
 def restructure_loop(bbmap: BlockMap):
     """Inplace restructuring of the given graph to extract loops using
     strongly-connected components
