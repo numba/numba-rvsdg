@@ -238,12 +238,29 @@ class ByteFlow:
         bbmap = flowinfo.build_basicblocks()
         return ByteFlow(bc=bc, bbmap=bbmap)
 
+    def _join_returns(self):
+        bbmap = deepcopy(self.bbmap)
+        join_returns(bbmap)
+        return ByteFlow(bc=self.bc, bbmap=bbmap)
+
+    def _restructure_loop(self):
+        bbmap = deepcopy(self.bbmap)
+        restructure_loop(bbmap)
+        return ByteFlow(bc=self.bc, bbmap=bbmap)
+
+    def _restructure_branch(self):
+        bbmap = deepcopy(self.bbmap)
+        restructure_branch(bbmap)
+        return ByteFlow(bc=self.bc, bbmap=bbmap)
+
     def restructure(self):
         bbmap = deepcopy(self.bbmap)
+        # close
+        join_returns(bbmap)
         # handle loop
         restructure_loop(bbmap)
         # handle branch
-        #restructure_branch(bbmap)
+        restructure_branch(bbmap)
         #for region in _iter_subregions(bbmap):
         #    restructure_branch(region.subregion)
         return ByteFlow(bc=self.bc, bbmap=bbmap)
@@ -277,13 +294,35 @@ def compute_scc(bbmap: BlockMap) -> List[Set[Label]]:
     return list(scc(GraphWrap(bbmap.graph)))
 
 
+def join_returns(bbmap: BlockMap):
+    """ Close the CFG.
+
+    A closed CFG is a CFG with a unique entry and exit node that have no
+    predescessors and no successors respectively.
+    """
+
+    return_nodes = [node for node in bbmap.graph
+                    if bbmap.graph[node].is_exiting()]
+    if len(return_nodes) > 1:
+        return_solo_label = ControlLabel(clg.new_index())
+        return_solo_block = BasicBlock(
+            begin=return_solo_label,
+            end=ControlLabel(clg.new_index()),
+            fallthrough=False,
+            jump_targets=tuple(),
+            backedges=tuple()
+            )
+        bbmap.add_node(return_solo_block)
+        for rnode in return_nodes:
+            bbmap.add_node(bbmap.graph.pop(rnode).replace_jump_targets(
+                        jump_targets=(return_solo_label,)))
 
 
 def find_headers_and_entries(loop: Set[Label], bbmap: BlockMap):
     """Find entried and headers in a given loop.
 
     Entries are nodes outside the loop that have an edge pointing to the loop
-    header headers are nodes that are part of the strongly connected subset,
+    header. Headers are nodes that are part of the strongly connected subset,
     that have incoming edges from outside the loop entries point to headers and
     headers are pointed to by entries.
 
