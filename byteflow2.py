@@ -32,6 +32,19 @@ class ControlLabel(Label):
     index: int
 
 
+class ControlLabelGenerator():
+
+    def __init__(self):
+        self.index = 0
+
+    def new_index(self):
+        ret = self.index
+        self.index += 1
+        return ret
+
+clg = ControlLabelGenerator()
+
+
 @dataclass(frozen=True)
 class BasicBlock:
     begin: Label
@@ -359,18 +372,18 @@ def find_exits(loop: Set[Label], bbmap: BlockMap):
 
 def join_exits(loop: Set[Label], bbmap: BlockMap, exits: Set[Label]):
     # create a single exit label and add it to the loop
-    pre_exit_label = ControlLabel(1)
-    post_exit_label = ControlLabel(2)
+    pre_exit_label = ControlLabel(clg.new_index())
+    post_exit_label = ControlLabel(clg.new_index())
     loop.add(pre_exit_label)
     # create the exit block and add it to the block map
     post_exit_block = BasicBlock(begin=post_exit_label,
-                                 end=ControlLabel(3),
+                                 end=ControlLabel(clg.new_index()),
                                  fallthrough=False,
                                  jump_targets=tuple(exits),
                                  backedges=tuple()
                                  )
     pre_exit_block = BasicBlock(begin=pre_exit_label,
-                                end=ControlLabel(4),
+                                end=ControlLabel(clg.new_index()),
                                 fallthrough=False,
                                 jump_targets=(post_exit_label,),
                                 backedges=tuple()
