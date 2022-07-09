@@ -362,11 +362,15 @@ def find_exits(loop: Set[Label], bbmap: BlockMap):
     node: Label
     pre_exits: Set[Label] = set()
     post_exits: Set[Label] = set()
-    for node in loop:
-        for outside in bbmap.exclude_nodes(loop):
-            if outside in bbmap.graph[node].jump_targets:
-                pre_exits.add(node)
-                post_exits.add(outside)
+    for inside in loop:
+        # any node inside that points outside the loop
+        for jt in bbmap.graph[inside].jump_targets:
+            if jt not in loop:
+                pre_exits.add(inside)
+                post_exits.add(jt)
+        # any returns
+        if bbmap.graph[inside].is_exiting():
+            pre_exits.add(inside)
     return pre_exits, post_exits
 
 
@@ -407,6 +411,45 @@ def join_exits(loop: Set[Label], bbmap: BlockMap, exits: Set[Label]):
                     bbmap.graph.pop(loop_node).replace_jump_targets(
                         jump_targets=new_jump_targets))
     return pre_exit_label, post_exit_label
+
+
+def join_pre_exits(exits: Set[Label], post_exit: Label,
+                   inner_nodes: Set[Label], bbmap: BlockMap, ):
+    pre_exit_label = ControlLabel(clg.new_index())
+    # create the exit block and add it to the block map
+    pre_exit_block = BasicBlock(begin=pre_exit_label,
+                                end=ControlLabel(clg.new_index()),
+                                fallthrough=False,
+                                jump_targets=(post_exit,),
+                                backedges=tuple()
+                                )
+    bbmap.add_node(pre_exit_block)
+    inner_nodes.add(pre_exit_label)
+    # for all exits, find the nodes that jump to this exit
+    # this is effectively finding the exit vertices
+    for exit_node in exits:
+        bbmap.add_node(
+            bbmap.graph.pop(exit_node).replace_jump_targets(
+                jump_targets=(pre_exit_label,)))
+    return pre_exit_label
+
+
+def join_headers(headers, entries, bbmap):
+    assert len(headers) > 1
+    # create the synthetic entry block
+    synth_entry_label = ControlLabel(clg.new_index())
+    synth_entry_block = BasicBlock(begin=synth_entry_label,
+                                   end=ControlLabel(clg.new_index()),
+                                   fallthrough=False,
+                                   jump_targets=tuple(headers),
+                                   backedges=tuple()
+                                   )
+    bbmap.add_node(synth_entry_block)
+    # rewire headers
+    for block in entries:
+        bbmap.add_node(bbmap.graph.pop(block).replace_jump_targets(
+                        jump_targets=(synth_entry_label,)))
+    return synth_entry_label, synth_entry_block
 
 
 def is_reachable_dfs(bbmap, begin, end):
@@ -475,7 +518,7 @@ def restructure_loop(bbmap: BlockMap):
         # turn singleton set into single element
         loop_head: Label = next(iter(headers))
         # construct the loop body, identifying backedges as we go
-        loop_body: Dict[Label, Block] = {
+        loop_body: Dict[Label, BasicBlock] = {
             node.begin: node.replace_backedge(loop_head)
             for node in insiders if node.begin not in headers}
         # create a subregion
@@ -497,22 +540,65 @@ def restructure_loop(bbmap: BlockMap):
         bbmap.graph[loop_head] = blk
 
 
+
 def restructure_branch(bbmap: BlockMap):
     print("restructure_branch", bbmap.graph)
     doms = _doms(bbmap)
     postdoms = _post_doms(bbmap)
     postimmdoms = _imm_doms(postdoms)
     immdoms = _imm_doms(doms)
+    recursive_subregions = []
     for begin, end in _iter_branch_regions(bbmap, immdoms, postimmdoms):
         _logger.debug("branch region: %s -> %s", begin, end)
         # find exiting nodes from branch
         # exits = {k for k, node in bbmap.graph.items()
         #          if begin <= k < end and end in node.jump_targets}
-
         # partition the branches
+
+        # insert synthetic branch blocks in case of empty branch regions
+        jump_targets = list(bbmap.graph[begin].jump_targets)
+        new_jump_targets = []
+        jump_targets_changed = False
+        for a in jump_targets:
+            for b in jump_targets:
+                if a == b:
+                    continue
+                elif is_reachable_dfs(bbmap, a, b):
+                    # If one of the jump targets is reachable from the other,
+                    # it means a branch region is empty and the reachable jump
+                    # target becoms part of the tail. In this case,
+                    # create a new snythtic block to fill the empty branch
+                    # region and rewire the jump targets.
+                    synthetic_branch_block_label = ControlLabel(clg.new_index())
+                    synthetic_branch_block_block = BasicBlock(
+                            begin=synthetic_branch_block_label,
+                            end=ControlLabel(clg.new_index()),
+                            jump_targets=(b,),
+                            fallthrough=True,
+                            backedges=(),
+                            )
+                    bbmap.add_node(synthetic_branch_block_block)
+                    new_jump_targets.append(synthetic_branch_block_label)
+                    jump_targets_changed = True
+                else:
+                    # otherwise just re-use the existing block
+                    new_jump_targets.append(b)
+
+        # update the begin block with new jump_targets
+        if jump_targets_changed:
+            bbmap.add_node(
+                bbmap.graph.pop(begin).replace_jump_targets(
+                    jump_targets=new_jump_targets))
+            # and recompute doms
+            doms = _doms(bbmap)
+            postdoms = _post_doms(bbmap)
+            postimmdoms = _imm_doms(postdoms)
+            immdoms = _imm_doms(doms)
+
+        # identify branch regions
         branch_regions = []
         for bra_start in bbmap.graph[begin].jump_targets:
-            sub_keys: Set[int]  = set()
+            sub_keys: Set[BCLabel] = set()
             branch_regions.append((bra_start, sub_keys))
             # a node is part of the branch if
             # - the start of the branch is a dominator; and,
@@ -521,9 +607,75 @@ def restructure_branch(bbmap: BlockMap):
                 if bra_start in kdom and end not in kdom:
                     sub_keys.add(k)
 
+        # identify and close tail
+        #
+        # find all nodes that are left
+        tail_subregion = set((b for b in bbmap.graph.keys()))
+        for b, sub in branch_regions:
+            tail_subregion.discard(b)
+            for s in sub:
+                tail_subregion.discard(s)
+        tail_subregion.discard(begin)
+
+        headers, entries = find_headers_and_entries(tail_subregion, bbmap)
+        exits, _ = find_exits(tail_subregion, bbmap)
+        #if len(returns) == 0:
+        #    returns = set([block for block in tail_subregion if bbmap.graph[block].])
+
+        #assert len(returns) == 1
+
+        if len(headers) > 1:
+            entry_label, entry_block = join_headers(
+                headers, entries, bbmap)
+            tail_subregion.add(entry_label)
+        else:
+            entry_label = next(iter(headers))
+
+        # end of the graph
+        #assert len(pre_exits) == 1
+        #assert len(post_exits) == 0
+
+        subgraph = BlockMap()
+        for block in tail_subregion:
+            subgraph.add_node(bbmap.graph[block])
+        subregion = RegionBlock(
+            begin=entry_label,
+            end=next(iter(exits)),
+            fallthrough=False,
+            jump_targets=(),
+            backedges=(),
+            kind="tail",
+            headers=headers,
+            subregion=subgraph,
+            exit=None,
+        )
+        for block in tail_subregion:
+            del bbmap.graph[block]
+        bbmap.graph[entry_label] = subregion
+
+        if subregion.subregion.graph:
+            recursive_subregions.append(subregion.subregion)
+
         # extract the subregion
         for bra_start, inner_nodes in branch_regions:
-            if inner_nodes:
+            if inner_nodes:  # and len(inner_nodes) > 1:
+                pre_exits, post_exits = find_exits(inner_nodes, bbmap)
+                if len(pre_exits) != 1 and len(post_exits) == 1:
+                    post_exit_label = next(iter(post_exits))
+                    pre_exit_label = join_pre_exits(
+                        pre_exits,
+                        post_exit_label,
+                        inner_nodes,
+                        bbmap)
+                elif len(pre_exits) != 1 and len(post_exits) > 1:
+                    pre_exit_label, post_exit_label = join_exits(
+                        inner_nodes,
+                        bbmap,
+                        post_exits)
+                else:
+                    pre_exit_label = next(iter(pre_exits))
+                    post_exit_label = bbmap.graph[pre_exit_label].jump_targets[0]
+
                 subgraph = BlockMap()
                 for k in inner_nodes:
                     subgraph.add_node(bbmap.graph[k])
@@ -532,26 +684,29 @@ def restructure_branch(bbmap: BlockMap):
                     begin=bra_start,
                     end=end,
                     fallthrough=False,
-                    jump_targets=(end,),
+                    jump_targets=(post_exit_label,),
                     backedges=(),
                     kind="branch",
                     headers={},
                     subregion=subgraph,
+                    exit=pre_exit_label,
                 )
                 for k in inner_nodes:
                     del bbmap.graph[k]
                 bbmap.graph[bra_start] = subregion
 
-                # recursive
                 if subregion.subregion.graph:
-                    restructure_branch(subregion.subregion)
-        break
+                    recursive_subregions.append(subregion.subregion)
+
+    # recurse into subregions as necessary
+    for region in recursive_subregions:
+        restructure_branch(region)
 
 
 def _iter_branch_regions(bbmap: BlockMap,
                          immdoms: Dict[Label, Label],
                          postimmdoms: Dict[Label, Label]):
-    for begin, node in bbmap.graph.items():
+    for begin, node in [i for i in bbmap.graph.items()]:
         if len(node.jump_targets) > 1:
             # found branch
             if begin in postimmdoms:
@@ -682,6 +837,8 @@ class ByteFlowRenderer(object):
             color = 'blue'
             if regionblock.kind == 'branch':
                 color = 'green'
+            if regionblock.kind == 'tail':
+                color = 'purple'
             subg.attr(color=color, label=regionblock.kind)
             for label, block in graph.items():
                 self.render_block(subg, label, block)
