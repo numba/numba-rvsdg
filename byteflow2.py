@@ -236,6 +236,14 @@ class BlockMap:
             if node not in exclude_nodes:
                 yield node
 
+    def find_head(self):
+        heads = set(self.graph.keys())
+        for block in self.graph.keys():
+            for jt in self.graph[block].jump_targets:
+                heads.discard(jt)
+        assert len(heads) == 1
+        return next(iter(heads))
+
 
 @dataclass(frozen=True)
 class ByteFlow:
@@ -548,12 +556,42 @@ def restructure_branch(bbmap: BlockMap):
     postimmdoms = _imm_doms(postdoms)
     immdoms = _imm_doms(doms)
     recursive_subregions = []
+    # find head block and check that it is unique
     for begin, end in _iter_branch_regions(bbmap, immdoms, postimmdoms):
         _logger.debug("branch region: %s -> %s", begin, end)
         # find exiting nodes from branch
         # exits = {k for k, node in bbmap.graph.items()
         #          if begin <= k < end and end in node.jump_targets}
         # partition the branches
+
+        # partition head
+        head = bbmap.find_head()
+        head_subregion = []
+        current_block = head
+        while True:
+            head_subregion.append(current_block)
+            if current_block == begin:
+                break
+            else:
+                current_block = bbmap.graph[current_block].jump_targets[0]
+
+        subgraph = BlockMap()
+        for block in head_subregion:
+            subgraph.add_node(bbmap.graph[block])
+        subregion = RegionBlock(
+            begin=head,
+            end=begin,
+            fallthrough=False,
+            jump_targets=bbmap.graph[begin].jump_targets,
+            backedges=(),
+            kind="head",
+            headers=(head,),
+            subregion=subgraph,
+            exit=None,
+        )
+        for block in head_subregion:
+            del bbmap.graph[block]
+        bbmap.graph[begin] = subregion
 
         # insert synthetic branch blocks in case of empty branch regions
         jump_targets = list(bbmap.graph[begin].jump_targets)
@@ -615,6 +653,7 @@ def restructure_branch(bbmap: BlockMap):
             tail_subregion.discard(b)
             for s in sub:
                 tail_subregion.discard(s)
+        # exclude parents
         tail_subregion.discard(begin)
 
         headers, entries = find_headers_and_entries(tail_subregion, bbmap)
@@ -839,6 +878,8 @@ class ByteFlowRenderer(object):
                 color = 'green'
             if regionblock.kind == 'tail':
                 color = 'purple'
+            if regionblock.kind == 'head':
+                color = 'red'
             subg.attr(color=color, label=regionblock.kind)
             for label, block in graph.items():
                 self.render_block(subg, label, block)
@@ -870,7 +911,10 @@ class ByteFlowRenderer(object):
                     if type(block) == BasicBlock:
                         self.g.edge(str(label), str(dst))
                     elif type(block) == RegionBlock:
-                        self.g.edge(str(block.exit), str(dst))
+                        if block.exit is not None:
+                            self.g.edge(str(block.exit), str(dst))
+                        else:
+                            self.g.edge(str(label), str(dst))
                     else:
                         raise Exception("unreachable")
             for dst in block.backedges:
