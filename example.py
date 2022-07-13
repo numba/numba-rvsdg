@@ -74,18 +74,31 @@ logging.basicConfig(level=logging.DEBUG)
 #        return b
 
 
+#def foo(x, y):
+#    a = y > 0
+#    if a:
+#        b = x > 0
+#        if b:
+#            for i in range(42):
+#                x = x + y
+#            return x
+#        else:
+#            x = x - y
+#    x = x * x
+#    return x
+#
+# Andre's example
+
 def foo(x, y):
-    a = y > 0
-    if a:
-        b = x > 0
-        if b:
-            for i in range(42):
-                x = x + y
-            return x
-        else:
-            x = x - y
-    x = x * x
-    return x
+    for i in range(100):
+        y += 1
+    if x == 0:
+        return y + 3
+    elif x > 0:
+        return y + 2
+    else:
+        return y + 1
+
 
 flow = ByteFlow.from_bytecode(foo)
 ByteFlowRenderer().render_byteflow(flow).view("before")
