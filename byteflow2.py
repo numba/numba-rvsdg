@@ -519,35 +519,33 @@ def restructure_loop(bbmap: BlockMap):
         _logger.debug("loop pre_exit_label %s", pre_exit_label)
         _logger.debug("loop post_exit_label %s", post_exit_label)
 
-        # remove loop nodes from cfg/bbmap
-        # use the set of labels to remove/pop Blocks into a set of blocks
-        insiders: Set[BasicBlock] = {bbmap.graph.pop(k) for k in loop}
-
         assert len(headers) == 1, headers  # TODO join entries
 
         # turn singleton set into single element
         loop_head: Label = next(iter(headers))
-        # construct the loop body, identifying backedges as we go
-        loop_body: Dict[Label, BasicBlock] = {
-            node.begin: node.replace_backedge(loop_head)
-            for node in insiders if node.begin not in headers}
+        # construct the loop subregion, identifying backedges as we go
+        loop_subregion = BlockMap({
+            label: bbmap.graph[label].replace_backedge(loop_head)
+            for label in loop if label not in headers})
         # create a subregion
         blk = RegionBlock(
             begin=loop_head,
-            end=_next_inst_offset(loop_head),
+            end=clg.new_index(),
             fallthrough=False,
             jump_targets=(post_exit_label,),
             backedges=(),
             kind="loop",
-            subregion=BlockMap(loop_body),
-            headers={node.begin: node for node in insiders
-                     if node.begin in headers},
+            subregion=loop_subregion,
+            headers={header: bbmap.graph[header] for header in headers},
             exit=pre_exit_label
         )
-        # process subregions
-        restructure_loop(blk.subregion)
+        # Remove the nodes in the subregion
+        for block in loop:
+            del bbmap.graph[block]
         # insert subregion back into original
         bbmap.graph[loop_head] = blk
+        # process subregions
+        restructure_loop(blk.subregion)
 
 
 def restructure_branch(bbmap: BlockMap):
