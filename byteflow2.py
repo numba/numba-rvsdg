@@ -231,6 +231,10 @@ class BlockMap:
     def add_node(self, basicblock: BasicBlock):
         self.graph[basicblock.begin] = basicblock
 
+    def remove_blocks(self, labels: Set[Label]):
+        for label in labels:
+            del self.graph[label]
+
     def exclude_nodes(self, exclude_nodes: Set[Label]):
         """Iterator over all nodes not in exclude_nodes. """
         for node in self.graph:
@@ -540,8 +544,7 @@ def restructure_loop(bbmap: BlockMap):
             exit=pre_exit_label
         )
         # Remove the nodes in the subregion
-        for block in loop:
-            del bbmap.graph[block]
+        bbmap.remove_blocks(loop)
         # insert subregion back into original
         bbmap.graph[loop_head] = blk
         # process subregions
@@ -592,8 +595,7 @@ def restructure_branch(bbmap: BlockMap):
             subregion=head_subgraph,
             exit=None,
         )
-        for block in head_region_blocks:
-            del bbmap.graph[block]
+        bbmap.remove_blocks(head_region_blocks)
         bbmap.graph[begin] = head_subregion
 
         # insert synthetic branch blocks in case of empty branch regions
@@ -692,8 +694,7 @@ def restructure_branch(bbmap: BlockMap):
             subregion=subgraph,
             exit=None,
         )
-        for block in tail_subregion:
-            del bbmap.graph[block]
+        bbmap.remove_blocks(tail_subregion)
         bbmap.graph[entry_label] = subregion
 
         if subregion.subregion.graph:
@@ -734,8 +735,7 @@ def restructure_branch(bbmap: BlockMap):
                     subregion=subgraph,
                     exit=pre_exit_label,
                 )
-                for k in inner_nodes:
-                    del bbmap.graph[k]
+                bbmap.remove_blocks(inner_nodes)
                 bbmap.graph[bra_start] = subregion
 
                 if subregion.subregion.graph:
