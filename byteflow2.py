@@ -566,12 +566,12 @@ def restructure_branch(bbmap: BlockMap):
 
         # partition head subregion
         head = bbmap.find_head()
-        head_subregion = []
+        head_region_blocks = []
         current_block = head
         # Start at the head block and traverse the graph linearly until
         # reaching the begin block.
         while True:
-            head_subregion.append(current_block)
+            head_region_blocks.append(current_block)
             if current_block == begin:
                 break
             else:
@@ -579,10 +579,9 @@ def restructure_branch(bbmap: BlockMap):
                 assert len(jt) == 1
                 current_block = jt[0]
         # Extract the head subregion
-        subgraph = BlockMap()
-        for block in head_subregion:
-            subgraph.add_node(bbmap.graph[block])
-        subregion = RegionBlock(
+        head_subgraph = BlockMap({block: bbmap.graph[block]
+                                  for block in head_region_blocks})
+        head_subregion = RegionBlock(
             begin=head,
             end=begin,
             fallthrough=False,
@@ -590,12 +589,12 @@ def restructure_branch(bbmap: BlockMap):
             backedges=(),
             kind="head",
             headers=(head,),
-            subregion=subgraph,
+            subregion=head_subgraph,
             exit=None,
         )
-        for block in head_subregion:
+        for block in head_region_blocks:
             del bbmap.graph[block]
-        bbmap.graph[begin] = subregion
+        bbmap.graph[begin] = head_subregion
 
         # insert synthetic branch blocks in case of empty branch regions
         jump_targets = list(bbmap.graph[begin].jump_targets)
