@@ -309,6 +309,47 @@ class BlockMap:
                 self.add_node(self.graph.pop(rnode).replace_jump_targets(
                             jump_targets=(return_solo_label,)))
 
+    def find_exits(self, subgraph: Set[Label]):
+        """Find pre-exits and post-exits in a given subgraph.
+
+        Pre-exits are nodes inside the subgraph that have edges to nodes
+        outside of the subgraph. Post-exits are nodes  outside the subgraph
+        that have incoming edges from within the subgraph.
+
+        """
+        node: Label
+        pre_exits: Set[Label] = set()
+        post_exits: Set[Label] = set()
+        for inside in subgraph:
+            # any node inside that points outside the loop
+            for jt in self.graph[inside].jump_targets:
+                if jt not in subgraph:
+                    pre_exits.add(inside)
+                    post_exits.add(jt)
+            # any returns
+            if self.graph[inside].is_exiting():
+                pre_exits.add(inside)
+        return pre_exits, post_exits
+
+    def is_reachable_dfs(self, begin, end):
+        """Is end reachable from begin. """
+        seen = set()
+        to_vist = list(self.graph[begin].jump_targets)
+        while True:
+            if to_vist:
+                block = to_vist.pop()
+            else:
+                return False
+
+            if block in seen:
+                continue
+            elif block == end:
+                return True
+            elif block not in seen:
+                seen.add(block)
+                if block in self.graph:
+                    to_vist.extend(self.graph[block].jump_targets)
+
 
 @dataclass(frozen=True)
 class ByteFlow:
@@ -326,7 +367,7 @@ class ByteFlow:
 
     def _join_returns(self):
         bbmap = deepcopy(self.bbmap)
-        self.bbmap.join_returns()
+        bbmap.join_returns()
         return ByteFlow(bc=self.bc, bbmap=bbmap)
 
     def _restructure_loop(self):
@@ -342,7 +383,7 @@ class ByteFlow:
     def restructure(self):
         bbmap = deepcopy(self.bbmap)
         # close
-        self.bbmap.join_returns()
+        bbmap.join_returns()
         # handle loop
         restructure_loop(bbmap)
         # handle branch
@@ -359,25 +400,6 @@ def _iter_subregions(bbmap: "BlockMap"):
             yield from _iter_subregions(node.subregion)
 
 
-def find_exits(loop: Set[Label], bbmap: BlockMap):
-    """Find exits in a given loop.
-
-    Exits are nodes outside the loop that have incoming edges from within the
-    loop.
-    """
-    node: Label
-    pre_exits: Set[Label] = set()
-    post_exits: Set[Label] = set()
-    for inside in loop:
-        # any node inside that points outside the loop
-        for jt in bbmap.graph[inside].jump_targets:
-            if jt not in loop:
-                pre_exits.add(inside)
-                post_exits.add(jt)
-        # any returns
-        if bbmap.graph[inside].is_exiting():
-            pre_exits.add(inside)
-    return pre_exits, post_exits
 
 
 def join_exits(loop: Set[Label], bbmap: BlockMap, exits: Set[Label]):
@@ -458,24 +480,6 @@ def join_headers(headers, entries, bbmap):
     return synth_entry_label, synth_entry_block
 
 
-def is_reachable_dfs(bbmap, begin, end):
-    """Is end reachable from begin. """
-    seen = set()
-    to_vist = list(bbmap.graph[begin].jump_targets)
-    while True:
-        if to_vist:
-            block = to_vist.pop()
-        else:
-            return False
-
-        if block in seen:
-            continue
-        elif block == end:
-            return True
-        elif block not in seen:
-            seen.add(block)
-            if block in bbmap.graph:
-                to_vist.extend(bbmap.graph[block].jump_targets)
 
 
 def restructure_loop(bbmap: BlockMap):
@@ -499,7 +503,7 @@ def restructure_loop(bbmap: BlockMap):
         _logger.debug("loop headers %s", headers)
         _logger.debug("loop entries %s", entries)
 
-        pre_exits, post_exits = find_exits(loop, bbmap)
+        pre_exits, post_exits = bbmap.find_exits(loop)
         _logger.debug("loop pre exits %s", pre_exits)
         _logger.debug("loop post exits %s", post_exits)
 
@@ -598,7 +602,7 @@ def restructure_branch(bbmap: BlockMap):
             for b in jump_targets:
                 if a == b:
                     continue
-                elif is_reachable_dfs(bbmap, a, b):
+                elif bbmap.is_reachable_dfs(a, b):
                     # If one of the jump targets is reachable from the other,
                     # it means a branch region is empty and the reachable jump
                     # target becoms part of the tail. In this case,
@@ -654,7 +658,7 @@ def restructure_branch(bbmap: BlockMap):
         tail_subregion.discard(begin)
 
         headers, entries = bbmap.find_headers_and_entries(tail_subregion)
-        exits, _ = find_exits(tail_subregion, bbmap)
+        exits, _ = bbmap.find_exits(tail_subregion)
         #if len(returns) == 0:
         #    returns = set([block for block in tail_subregion if bbmap.graph[block].])
 
@@ -695,7 +699,7 @@ def restructure_branch(bbmap: BlockMap):
         # extract the subregion
         for bra_start, inner_nodes in branch_regions:
             if inner_nodes:  # and len(inner_nodes) > 1:
-                pre_exits, post_exits = find_exits(inner_nodes, bbmap)
+                pre_exits, post_exits = bbmap.find_exits(inner_nodes)
                 if len(pre_exits) != 1 and len(post_exits) == 1:
                     post_exit_label = next(iter(post_exits))
                     pre_exit_label = join_pre_exits(
