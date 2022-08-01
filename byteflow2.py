@@ -293,9 +293,12 @@ class BlockMap:
         predescessors and no successors respectively.
         """
 
+        # for all nodes that contain a return
         return_nodes = [node for node in self.graph
                         if self.graph[node].is_exiting()]
+        # if there is more than one, we may need to close it
         if len(return_nodes) > 1:
+            # create label and block and add to graph
             return_solo_label = ControlLabel(clg.new_index())
             return_solo_block = BasicBlock(
                 begin=return_solo_label,
@@ -305,6 +308,7 @@ class BlockMap:
                 backedges=tuple()
                 )
             self.add_node(return_solo_block)
+            # re-wire all previous exit nodes to the synthetic one
             for rnode in return_nodes:
                 self.add_node(self.graph.pop(rnode).replace_jump_targets(
                             jump_targets=(return_solo_label,)))
@@ -400,8 +404,6 @@ def _iter_subregions(bbmap: "BlockMap"):
             yield from _iter_subregions(node.subregion)
 
 
-
-
 def join_exits(loop: Set[Label], bbmap: BlockMap, exits: Set[Label]):
     # create a single exit label and add it to the loop
     pre_exit_label = ControlLabel(clg.new_index())
@@ -480,8 +482,6 @@ def join_headers(headers, entries, bbmap):
     return synth_entry_label, synth_entry_block
 
 
-
-
 def restructure_loop(bbmap: BlockMap):
     """Inplace restructuring of the given graph to extract loops using
     strongly-connected components
@@ -557,7 +557,8 @@ def restructure_branch(bbmap: BlockMap):
     postimmdoms = _imm_doms(postdoms)
     immdoms = _imm_doms(doms)
     recursive_subregions = []
-    # find head block and check that it is unique
+    # TODO what are begin and end exactly? The assumtion is that they are
+    # unique, is this true?
     for begin, end in _iter_branch_regions(bbmap, immdoms, postimmdoms):
         _logger.debug("branch region: %s -> %s", begin, end)
         # find exiting nodes from branch
@@ -565,17 +566,21 @@ def restructure_branch(bbmap: BlockMap):
         #          if begin <= k < end and end in node.jump_targets}
         # partition the branches
 
-        # partition head
+        # partition head subregion
         head = bbmap.find_head()
         head_subregion = []
         current_block = head
+        # Start at the head block and traverse the graph linearly until
+        # reaching the begin block.
         while True:
             head_subregion.append(current_block)
             if current_block == begin:
                 break
             else:
-                current_block = bbmap.graph[current_block].jump_targets[0]
-
+                jt = bbmap.graph[current_block].jump_targets
+                assert len(jt) == 1
+                current_block = jt[0]
+        # Extract the head subregion
         subgraph = BlockMap()
         for block in head_subregion:
             subgraph.add_node(bbmap.graph[block])
@@ -649,6 +654,7 @@ def restructure_branch(bbmap: BlockMap):
         # identify and close tail
         #
         # find all nodes that are left
+        # TODO this could be a set operation
         tail_subregion = set((b for b in bbmap.graph.keys()))
         for b, sub in branch_regions:
             tail_subregion.discard(b)
