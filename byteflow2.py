@@ -42,6 +42,7 @@ class ControlLabelGenerator():
         self.index += 1
         return ret
 
+
 clg = ControlLabelGenerator()
 
 
@@ -244,6 +245,70 @@ class BlockMap:
         assert len(heads) == 1
         return next(iter(heads))
 
+    def compute_scc(self) -> List[Set[Label]]:
+        """
+        Strongly-connected component for detecting loops.
+        """
+        from scc import scc
+
+        class GraphWrap:
+            def __init__(self, graph):
+                self.graph = graph
+
+            def __getitem__(self, vertex):
+                out = self.graph[vertex].jump_targets
+                # Exclude node outside of the subgraph
+                return [k for k in out if k in self.graph]
+
+            def __iter__(self):
+                return iter(self.graph.keys())
+
+        return list(scc(GraphWrap(self.graph)))
+
+    def find_headers_and_entries(self, loop: Set[Label]):
+        """Find entried and headers in a given loop.
+
+        Entries are nodes outside the loop that have an edge pointing to the
+        loop header. Headers are nodes that are part of the strongly connected
+        subset, that have incoming edges from outside the loop entries point to
+        headers and headers are pointed to by entries.
+
+        """
+        node: Label
+        entries: Set[Label] = set()
+        headers: Set[Label] = set()
+
+        for node in self.exclude_nodes(loop):
+            nodes_jump_in_loop = set(self.graph[node].jump_targets) & loop
+            headers |= nodes_jump_in_loop
+            if nodes_jump_in_loop:
+                entries.add(node)
+
+        return headers, entries
+
+    def join_returns(self):
+        """ Close the CFG.
+
+        A closed CFG is a CFG with a unique entry and exit node that have no
+        predescessors and no successors respectively.
+        """
+
+        return_nodes = [node for node in self.graph
+                        if self.graph[node].is_exiting()]
+        if len(return_nodes) > 1:
+            return_solo_label = ControlLabel(clg.new_index())
+            return_solo_block = BasicBlock(
+                begin=return_solo_label,
+                end=ControlLabel(clg.new_index()),
+                fallthrough=False,
+                jump_targets=tuple(),
+                backedges=tuple()
+                )
+            self.add_node(return_solo_block)
+            for rnode in return_nodes:
+                self.add_node(self.graph.pop(rnode).replace_jump_targets(
+                            jump_targets=(return_solo_label,)))
+
 
 @dataclass(frozen=True)
 class ByteFlow:
@@ -261,7 +326,7 @@ class ByteFlow:
 
     def _join_returns(self):
         bbmap = deepcopy(self.bbmap)
-        join_returns(bbmap)
+        self.bbmap.join_returns()
         return ByteFlow(bc=self.bc, bbmap=bbmap)
 
     def _restructure_loop(self):
@@ -277,7 +342,7 @@ class ByteFlow:
     def restructure(self):
         bbmap = deepcopy(self.bbmap)
         # close
-        join_returns(bbmap)
+        self.bbmap.join_returns()
         # handle loop
         restructure_loop(bbmap)
         # handle branch
@@ -292,73 +357,6 @@ def _iter_subregions(bbmap: "BlockMap"):
         if isinstance(node, RegionBlock):
             yield node
             yield from _iter_subregions(node.subregion)
-
-
-def compute_scc(bbmap: BlockMap) -> List[Set[Label]]:
-    """
-    Strongly-connected component for detecting loops.
-    """
-    from scc import scc
-
-    class GraphWrap:
-        def __init__(self, graph):
-            self.graph = graph
-
-        def __getitem__(self, vertex):
-            out = self.graph[vertex].jump_targets
-            # Exclude node outside of the subgraph
-            return [k for k in out if k in self.graph]
-
-        def __iter__(self):
-            return iter(self.graph.keys())
-
-    return list(scc(GraphWrap(bbmap.graph)))
-
-
-def join_returns(bbmap: BlockMap):
-    """ Close the CFG.
-
-    A closed CFG is a CFG with a unique entry and exit node that have no
-    predescessors and no successors respectively.
-    """
-
-    return_nodes = [node for node in bbmap.graph
-                    if bbmap.graph[node].is_exiting()]
-    if len(return_nodes) > 1:
-        return_solo_label = ControlLabel(clg.new_index())
-        return_solo_block = BasicBlock(
-            begin=return_solo_label,
-            end=ControlLabel(clg.new_index()),
-            fallthrough=False,
-            jump_targets=tuple(),
-            backedges=tuple()
-            )
-        bbmap.add_node(return_solo_block)
-        for rnode in return_nodes:
-            bbmap.add_node(bbmap.graph.pop(rnode).replace_jump_targets(
-                        jump_targets=(return_solo_label,)))
-
-
-def find_headers_and_entries(loop: Set[Label], bbmap: BlockMap):
-    """Find entried and headers in a given loop.
-
-    Entries are nodes outside the loop that have an edge pointing to the loop
-    header. Headers are nodes that are part of the strongly connected subset,
-    that have incoming edges from outside the loop entries point to headers and
-    headers are pointed to by entries.
-
-    """
-    node: Label
-    entries: Set[Label] = set()
-    headers: Set[Label] = set()
-
-    for node in bbmap.exclude_nodes(loop):
-        nodes_jump_in_loop = set(bbmap.graph[node].jump_targets) & loop
-        headers |= nodes_jump_in_loop
-        if nodes_jump_in_loop:
-            entries.add(node)
-
-    return headers, entries
 
 
 def find_exits(loop: Set[Label], bbmap: BlockMap):
@@ -486,7 +484,7 @@ def restructure_loop(bbmap: BlockMap):
     """
     # obtain a List of Sets of Labels, where all labels in each set are strongly
     # connected, i.e. all reachable from one another by traversing the subset
-    scc: List[Set[Label]] = compute_scc(bbmap)
+    scc: List[Set[Label]] = bbmap.compute_scc()
     # loops are defined as strongly connected subsets who have more than a
     # single label
     loops: List[Set[Label]] = [nodes for nodes in scc if len(nodes) > 1]
@@ -497,7 +495,7 @@ def restructure_loop(bbmap: BlockMap):
     for loop in loops:
         _logger.debug("loop nodes %s", loop)
 
-        headers, entries = find_headers_and_entries(loop, bbmap)
+        headers, entries = bbmap.find_headers_and_entries(loop)
         _logger.debug("loop headers %s", headers)
         _logger.debug("loop entries %s", entries)
 
@@ -546,7 +544,6 @@ def restructure_loop(bbmap: BlockMap):
         restructure_loop(blk.subregion)
         # insert subregion back into original
         bbmap.graph[loop_head] = blk
-
 
 
 def restructure_branch(bbmap: BlockMap):
@@ -656,7 +653,7 @@ def restructure_branch(bbmap: BlockMap):
         # exclude parents
         tail_subregion.discard(begin)
 
-        headers, entries = find_headers_and_entries(tail_subregion, bbmap)
+        headers, entries = bbmap.find_headers_and_entries(tail_subregion)
         exits, _ = find_exits(tail_subregion, bbmap)
         #if len(returns) == 0:
         #    returns = set([block for block in tail_subregion if bbmap.graph[block].])
