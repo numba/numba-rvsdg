@@ -10,7 +10,7 @@ from byteflow2 import ByteFlow, ByteFlowRenderer
 
 logging.basicConfig(level=logging.DEBUG)
 
-# ## Example 1: For-loop
+# ## Example: For-loop
 
 #def foo(n):
 #    c = 0
@@ -22,24 +22,9 @@ logging.basicConfig(level=logging.DEBUG)
 #            c <<= 1
 #            break
 #    return c
-
-
-# Parse function
-
-#flow = ByteFlow.from_bytecode(foo)
-#flow.render_dot().view("before")
 #
-#rflow =  flow.restructure()
-#rflow.render_dot().view("after")
-
+# ## Example: For-loop in for loop
 #
-## `flow.bbmap.graph` shows a nested structure
-#
-#pprint(flow.bbmap.graph)
-#
-#
-# ## Example 2: For-loop 2 level
-
 #def foo(n):
 #    c = 0
 #    for j in range(n):
@@ -52,13 +37,8 @@ logging.basicConfig(level=logging.DEBUG)
 #                break
 #    return c
 #
+# ## Example: For-loop in for loop with more conditions
 #
-#flow = ByteFlow.from_bytecode(foo)
-#ByteFlowRenderer().render_byteflow(flow).view("before")
-#
-#rflow = flow.restructure()
-#ByteFlowRenderer().render_byteflow(rflow).view("after")
-
 #def foo(a, b):
 #    if a == 1:
 #        for i in range(100):
@@ -73,6 +53,7 @@ logging.basicConfig(level=logging.DEBUG)
 #    elif b == 1:
 #        return b
 
+# ## Example: For-loop in a nested condition
 
 #def foo(x, y):
 #    a = y > 0
@@ -86,19 +67,24 @@ logging.basicConfig(level=logging.DEBUG)
 #            x = x - y
 #    x = x * x
 #    return x
+# 
+# ## Example: Andre's example
 #
-# Andre's example
-
-def foo(x, y):
-    for i in range(100):
-        y += 1
-    if x == 0:
-        return y + 3
-    elif x > 0:
-        return y + 2
-    else:
-        return y + 1
-
+#def foo(x, y):
+#    for i in range(100):
+#        y += 1
+#    if x == 0:
+#        return y + 3
+#    elif x > 0:
+#        return y + 2
+#    else:
+#        return y + 1
+#
+# ## Example: Simple loop
+#
+#def foo():
+#    for i in range(100):
+#        print(i)
 
 flow = ByteFlow.from_bytecode(foo)
 ByteFlowRenderer().render_byteflow(flow).view("before")
