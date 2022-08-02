@@ -235,6 +235,9 @@ class BlockMap:
         for label in labels:
             del self.graph[label]
 
+    def __getitem__(self, index):
+        return self.graph[index]
+
     def exclude_nodes(self, exclude_nodes: Set[Label]):
         """Iterator over all nodes not in exclude_nodes. """
         for node in self.graph:
@@ -270,7 +273,7 @@ class BlockMap:
         return list(scc(GraphWrap(self.graph)))
 
     def find_headers_and_entries(self, loop: Set[Label]):
-        """Find entried and headers in a given loop.
+        """Find entries and headers in a given loop.
 
         Entries are nodes outside the loop that have an edge pointing to the
         loop header. Headers are nodes that are part of the strongly connected
@@ -501,36 +504,58 @@ def restructure_loop(bbmap: BlockMap):
 
     # extract loop
     for loop in loops:
-        _logger.debug("loop nodes %s", loop)
+        headers, entries = bbmap.find_headers_and_entries(loop)
+        pre_exits, post_exits = bbmap.find_exits(loop)
+
+        # restructure from for loop into do while loop.
+
+        # find the loop head
+        breakpoint()
+        assert len(headers) == 1  # TODO join entries
+        loop_head: Label = next(iter(headers))
+
+        # the loop head should have two jump targets
+        loop_head_jt = bbmap[loop_head].jump_targets
+        assert len(loop_head_jt) == 2
+        if loop_head_jt[0] in loop:
+            loop_body_start = loop_head_jt[0]
+            loop_head_exit = loop_head_jt[1]
+        else:
+            loop_body_start = loop_head_jt[1]
+            loop_head_exit = loop_head_jt[0]
+
+        # find the backedge that points to the loop head
+        backedge_blocks = [block for block in loop
+                           if loop_head in bbmap[block].jump_targets]
+        assert len(backedge_blocks) == 1
+        backedge_block = backedge_blocks[0]
+        bbmap.add_node(bbmap.graph.pop(backedge_block).replace_jump_targets(jump_targets=loop_head_jt))
 
         headers, entries = bbmap.find_headers_and_entries(loop)
-        _logger.debug("loop headers %s", headers)
-        _logger.debug("loop entries %s", entries)
-
         pre_exits, post_exits = bbmap.find_exits(loop)
-        _logger.debug("loop pre exits %s", pre_exits)
-        _logger.debug("loop post exits %s", post_exits)
 
         if len(post_exits) != 1:
             pre_exit_label, post_exit_label = join_exits(loop,
                                                          bbmap,
                                                          post_exits)
         elif len(pre_exits) != 1:
-            Exception("unreachable?")
+            #raise Exception("unreachable?")
+            pre_exit_label, post_exit_label = join_exits(loop,
+                                                         bbmap,
+                                                         post_exits)
         else:
             pre_exit_label, post_exit_label = (next(iter(pre_exits)),
                                                next(iter(post_exits)))
-        _logger.debug("loop pre_exit_label %s", pre_exit_label)
-        _logger.debug("loop post_exit_label %s", post_exit_label)
 
-        assert len(headers) == 1, headers  # TODO join entries
 
-        # turn singleton set into single element
-        loop_head: Label = next(iter(headers))
         # construct the loop subregion, identifying backedges as we go
+        #loop_subregion = BlockMap({
+        #    label: bbmap.graph[label].replace_backedge(loop_body_start)
+        #    for label in loop if label not in headers})
+
         loop_subregion = BlockMap({
-            label: bbmap.graph[label].replace_backedge(loop_head)
-            for label in loop if label not in headers})
+            label: bbmap[label] for label in loop if label not in headers})
+
         # create a subregion
         blk = RegionBlock(
             begin=loop_head,
@@ -548,7 +573,7 @@ def restructure_loop(bbmap: BlockMap):
         # insert subregion back into original
         bbmap.graph[loop_head] = blk
         # process subregions
-        restructure_loop(blk.subregion)
+        #restructure_loop(blk.subregion)
 
 
 def restructure_branch(bbmap: BlockMap):
