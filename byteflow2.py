@@ -400,10 +400,13 @@ class BlockMap:
                                          backedges=()
                                          )
             self.add_node(solo_tail_block)
-            # Update the tail blocks to point to the solo tail block
-            for block in tails:
-                self.add_node(self.graph.pop(block).replace_jump_targets(
-                            jump_targets=(solo_tail_label,)))
+            # replace the exit label in all tails blocks with the solo tail label
+            for label in tails:
+                block = self.graph.pop(label)
+                jt = set(block.jump_targets)
+                jt.remove(solo_exit_label)
+                jt.add(solo_tail_label)
+                self.add_node(block.replace_jump_targets(jump_targets=tuple(jt)))
 
             return solo_tail_label, solo_exit_label
 
