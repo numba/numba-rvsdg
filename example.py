@@ -10,8 +10,15 @@ from byteflow2 import ByteFlow, ByteFlowRenderer
 
 logging.basicConfig(level=logging.DEBUG)
 
-# ## Example: For-loop
+# ## Example: for loop with second exit
+def foo(n):
+    c = 0
+    for i in range(n):
+        for j in range(m):
+            c += i
+    return c
 
+# ## Example: for loop with second exit
 #def foo(n):
 #    c = 0
 #    for i in range(n):
@@ -21,6 +28,21 @@ logging.basicConfig(level=logging.DEBUG)
 #        else:
 #            c <<= 1
 #            break
+#    return c
+#
+# ## Example: multiple backedges
+#
+#def foo(n):
+#    c = 0
+#    for i in range(n):
+#        c += i
+#        if i % 2 == 0:
+#            c += i
+#        elif i % 3 == 0:
+#            c += 2
+#        else:
+#            c <<= 1
+#            #break
 #    return c
 #
 # ## Example: For-loop in for loop
