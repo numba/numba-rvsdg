@@ -610,19 +610,22 @@ def restructure_loop(bbmap: BlockMap):
         headers, entries = bbmap.find_headers_and_entries(loop)
         pre_exits, post_exits = bbmap.find_exits(loop)
 
-        if len(post_exits) != 1:
-            pre_exit_label, post_exit_label = join_exits(loop,
-                                                         bbmap,
-                                                         post_exits)
-        elif len(pre_exits) != 1:
-            #raise Exception("unreachable?")
-            pre_exit_label, post_exit_label = join_exits(loop,
-                                                         bbmap,
-                                                         post_exits)
-        else:
-            pre_exit_label, post_exit_label = (next(iter(pre_exits)),
-                                               next(iter(post_exits)))
-
+        #if len(post_exits) != 1:
+        #    pre_exit_label, post_exit_label = join_exits(loop,
+        #                                                 bbmap,
+        #                                                 post_exits)
+        #elif len(pre_exits) != 1:
+        #    #raise Exception("unreachable?")
+        #    pre_exit_label, post_exit_label = join_exits(loop,
+        #                                                 bbmap,
+        #                                                 post_exits)
+        #else:
+        #    pre_exit_label, post_exit_label = (next(iter(pre_exits)),
+        #                                       next(iter(post_exits)))
+        #breakpoint()
+        pre_exit_label, post_exit_label = bbmap.join_tails_and_exits(pre_exits,
+                                                                     post_exits)
+        loop.add(pre_exit_label)
 
         # construct the loop subregion, identifying backedges as we go
         #loop_subregion = BlockMap({
