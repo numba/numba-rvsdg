@@ -633,7 +633,8 @@ def restructure_loop(bbmap: BlockMap):
         #    for label in loop if label not in headers})
 
         loop_subregion = BlockMap({
-            label: bbmap[label] for label in loop if label not in headers})
+            label: bbmap[label].replace_backedge(loop_body_start)
+            for label in loop if label not in headers})
 
         # create a subregion
         blk = RegionBlock(
