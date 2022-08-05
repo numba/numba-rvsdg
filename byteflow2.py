@@ -277,8 +277,8 @@ class BlockMap:
 
         Entries are nodes outside the loop that have an edge pointing to the
         loop header. Headers are nodes that are part of the strongly connected
-        subset, that have incoming edges from outside the loop entries point to
-        headers and headers are pointed to by entries.
+        subset, that have incoming edges from outside the loop. Entries point
+        to headers and headers are pointed to by entries.
 
         """
         node: Label
