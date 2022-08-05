@@ -34,8 +34,8 @@ class ControlLabel(Label):
 
 class ControlLabelGenerator():
 
-    def __init__(self):
-        self.index = 0
+    def __init__(self, index=0):
+        self.index = index
 
     def new_index(self):
         ret = self.index
@@ -227,6 +227,11 @@ class FlowInfo:
 class BlockMap:
     """ Map of Labels to Blocks. """
     graph: Dict[Label, BasicBlock] = field(default_factory=dict)
+    clg: ControlLabelGenerator = field(default_factory=ControlLabelGenerator,
+                                      compare=False)
+
+    def __post_init__(self):
+        self.clg.index = len(self.graph)
 
     def add_node(self, basicblock: BasicBlock):
         self.graph[basicblock.begin] = basicblock
@@ -293,6 +298,29 @@ class BlockMap:
 
         return headers, entries
 
+    def find_exits(self, subgraph: Set[Label]):
+        """Find pre-exits and post-exits in a given subgraph.
+
+        Pre-exits are nodes inside the subgraph that have edges to nodes
+        outside of the subgraph. Post-exits are nodes  outside the subgraph
+        that have incoming edges from within the subgraph.
+
+        """
+        node: Label
+        pre_exits: Set[Label] = set()
+        post_exits: Set[Label] = set()
+        for inside in subgraph:
+            # any node inside that points outside the loop
+            for jt in self.graph[inside].jump_targets:
+                if jt not in subgraph:
+                    pre_exits.add(inside)
+                    post_exits.add(jt)
+            # any returns
+            if self.graph[inside].is_exiting():
+                pre_exits.add(inside)
+        return pre_exits, post_exits
+
+
     def join_returns(self):
         """ Close the CFG.
 
@@ -320,28 +348,6 @@ class BlockMap:
                 self.add_node(self.graph.pop(rnode).replace_jump_targets(
                             jump_targets=(return_solo_label,)))
 
-    def find_exits(self, subgraph: Set[Label]):
-        """Find pre-exits and post-exits in a given subgraph.
-
-        Pre-exits are nodes inside the subgraph that have edges to nodes
-        outside of the subgraph. Post-exits are nodes  outside the subgraph
-        that have incoming edges from within the subgraph.
-
-        """
-        node: Label
-        pre_exits: Set[Label] = set()
-        post_exits: Set[Label] = set()
-        for inside in subgraph:
-            # any node inside that points outside the loop
-            for jt in self.graph[inside].jump_targets:
-                if jt not in subgraph:
-                    pre_exits.add(inside)
-                    post_exits.add(jt)
-            # any returns
-            if self.graph[inside].is_exiting():
-                pre_exits.add(inside)
-        return pre_exits, post_exits
-
     def is_reachable_dfs(self, begin, end):
         """Is end reachable from begin. """
         seen = set()
@@ -360,6 +366,71 @@ class BlockMap:
                 seen.add(block)
                 if block in self.graph:
                     to_vist.extend(self.graph[block].jump_targets)
+
+    def join_tails_and_exits(self, tails: Set[Label], exits: Set[Label]):
+        if len(tails) == 1 and len(exits) == 2:
+            # join only exits
+            solo_tail_label = next(iter(tails))
+            solo_exit_label = ControlLabel(str(self.clg.new_index()))
+            # The solo exit block points to the exits
+            solo_exit_block = BasicBlock(begin=solo_exit_label,
+                                         end=ControlLabel("end"),
+                                         fallthrough=False,
+                                         jump_targets=tuple(exits),
+                                         backedges=()
+                                         )
+            self.add_node(solo_exit_block)
+            # Update the solo tail block to point to the solo exit block
+            self.add_node(self.graph.pop(solo_tail_label).replace_jump_targets(
+                          jump_targets=(solo_exit_label,)))
+
+            return solo_tail_label, solo_exit_label
+
+        if len(tails) == 2 and len(exits) == 1:
+            # join only tails
+            solo_tail_label = ControlLabel(str(self.clg.new_index()))
+            solo_exit_label = next(iter(exits))
+            # The solo tail block points to the solo exit block
+            solo_tail_block = BasicBlock(begin=solo_tail_label,
+                                         end=ControlLabel("end"),
+                                         fallthrough=True,
+                                         jump_targets=(solo_exit_label,),
+                                         backedges=()
+                                         )
+            self.add_node(solo_tail_block)
+            # Update the tail blocks to point to the solo tail block
+            for block in tails:
+                self.add_node(self.graph.pop(block).replace_jump_targets(
+                            jump_targets=(solo_tail_label,)))
+
+            return solo_tail_label, solo_exit_label
+
+        if len(tails) == 2 and len(exits) == 2:
+            # join both tails and exits
+            solo_tail_label = ControlLabel(str(self.clg.new_index()))
+            solo_exit_label = ControlLabel(str(self.clg.new_index()))
+            # The solo tail block points to the solo exit block
+            solo_tail_block = BasicBlock(begin=solo_tail_label,
+                                         end=ControlLabel("end"),
+                                         fallthrough=True,
+                                         jump_targets=(solo_exit_label,),
+                                         backedges=()
+                                         )
+            # The solo exit block points to the exits
+            solo_exit_block = BasicBlock(begin=solo_exit_label,
+                                         end=ControlLabel("end"),
+                                         fallthrough=False,
+                                         jump_targets=tuple(exits),
+                                         backedges=()
+                                         )
+            self.add_node(solo_tail_block)
+            self.add_node(solo_exit_block)
+            # Update the tail blocks to point to the solo tail block
+            for block in tails:
+                self.add_node(self.graph.pop(block).replace_jump_targets(
+                            jump_targets=(solo_tail_label,)))
+
+            return solo_tail_label, solo_exit_label
 
 
 @dataclass(frozen=True)
@@ -923,6 +994,8 @@ class ByteFlowRenderer(object):
             )
         elif isinstance(label, ControlLabel):
             body = "Control Label: " + str(label.index)
+        else:
+            raise Exception("Unknown label type: " + label)
         digraph.node(str(label), shape="rect", label=body)
 
     def render_block(self, digraph: "Digraph", label: Label, block: BasicBlock):
