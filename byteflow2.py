@@ -653,7 +653,7 @@ def restructure_loop(bbmap: BlockMap):
         # insert subregion back into original
         bbmap.graph[loop_head] = blk
         # process subregions
-        #restructure_loop(blk.subregion)
+        restructure_loop(blk.subregion)
 
 
 def restructure_branch(bbmap: BlockMap):
