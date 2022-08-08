@@ -323,33 +323,31 @@ class BlockMap:
                 pre_exits.add(inside)
         return pre_exits, post_exits
 
-
     def join_returns(self):
         """ Close the CFG.
 
         A closed CFG is a CFG with a unique entry and exit node that have no
         predescessors and no successors respectively.
         """
-
         # for all nodes that contain a return
         return_nodes = [node for node in self.graph
                         if self.graph[node].is_exiting()]
         # if there is more than one, we may need to close it
         if len(return_nodes) > 1:
             # create label and block and add to graph
-            return_solo_label = ControlLabel(clg.new_index())
+            return_solo_label = ControlLabel(str(self.clg.new_index()))
             return_solo_block = BasicBlock(
                 begin=return_solo_label,
-                end=ControlLabel(clg.new_index()),
+                end=ControlLabel("end"),
                 fallthrough=False,
-                jump_targets=tuple(),
-                backedges=tuple()
+                jump_targets=set(),
+                backedges=set()
                 )
             self.add_node(return_solo_block)
             # re-wire all previous exit nodes to the synthetic one
             for rnode in return_nodes:
                 self.add_node(self.graph.pop(rnode).replace_jump_targets(
-                            jump_targets=(return_solo_label,)))
+                            jump_targets=set((return_solo_label,))))
 
     def is_reachable_dfs(self, begin, end):
         """Is end reachable from begin. """

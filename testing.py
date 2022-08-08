@@ -25,6 +25,33 @@ def from_yaml(yaml_string):
     return BlockMap(block_map_graph)
 
 
+class TestJoinReturns(TestCase):
+
+    def test_two_returns(self):
+        original = """
+        "0":
+            jt: ["1", "2"]
+        "1":
+            jt: []
+        "2":
+            jt: []
+        """
+        original_block_map = from_yaml(original)
+        expected = """
+        "0":
+            jt: ["1", "2"]
+        "1":
+            jt: ["3"]
+        "2":
+            jt: ["3"]
+        "3":
+            jt: []
+        """
+        expected_block_map = from_yaml(expected)
+        original_block_map.join_returns()
+        self.assertEqual(expected_block_map, original_block_map)
+
+
 class TestJoinTailsAndExits(TestCase):
 
     def test_join_tails_and_exits_case_00(self):
