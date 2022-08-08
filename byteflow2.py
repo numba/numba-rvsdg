@@ -371,6 +371,12 @@ class BlockMap:
                     to_vist.extend(self.graph[block].jump_targets)
 
     def join_tails_and_exits(self, tails: Set[Label], exits: Set[Label]):
+        if len(tails) == 1 and len(exits) == 1:
+            # no-op
+            solo_tail_label = next(iter(tails))
+            solo_exit_label = next(iter(exits))
+            return solo_tail_label, solo_exit_label
+
         if len(tails) == 1 and len(exits) == 2:
             # join only exits
             solo_tail_label = next(iter(tails))
