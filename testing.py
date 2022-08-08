@@ -59,7 +59,6 @@ class TestJoinTailsAndExits(TestCase):
         exits = {ControlLabel(i) for i in ("1", "2")}
         original_block_map.join_tails_and_exits(tails, exits)
         #ByteFlowRenderer().render_byteflow(ByteFlow({}, original_block_map)).view("received")
-        breakpoint()
         self.assertEqual(expected_block_map, original_block_map)
 
     def test_join_tails_and_exits_case_01(self):
