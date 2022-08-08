@@ -27,7 +27,7 @@ def from_yaml(yaml_string):
 
 class TestJoinTailsAndExits(TestCase):
 
-    def test_join_tails_and_exits_case_03(self):
+    def test_join_tails_and_exits_case_01(self):
         original = """
         "0":
             jt: ["1", "2"]
@@ -61,7 +61,7 @@ class TestJoinTailsAndExits(TestCase):
         #ByteFlowRenderer().render_byteflow(ByteFlow({}, original_block_map)).view("received")
         self.assertEqual(expected_block_map, original_block_map)
 
-    def test_join_tails_and_exits_case_01(self):
+    def test_join_tails_and_exits_case_02(self):
         original = """
         "0":
             jt: ["1", "2"]
@@ -93,9 +93,43 @@ class TestJoinTailsAndExits(TestCase):
         exits = {ControlLabel(i) for i in ("3")}
         original_block_map.join_tails_and_exits(tails, exits)
         #ByteFlowRenderer().render_byteflow(ByteFlow({}, original_block_map)).view("received")
-        self.assertEqual(expected_block_map,original_block_map)
+        self.assertEqual(expected_block_map, original_block_map)
 
-    def test_join_tails_and_exits_case_02(self):
+    def test_join_tails_and_exits_case_02_01(self):
+        original = """
+        "0":
+            jt: ["1", "2"]
+        "1":
+            jt: ["3"]
+        "2":
+            jt: ["1", "3"]
+        "3":
+            jt: []
+        """
+        original_block_map = from_yaml(original)
+        # ByteFlowRenderer().render_byteflow(ByteFlow({}, original_block_map)).view("original")
+        expected = """
+        "0":
+            jt: ["1", "2"]
+        "1":
+            jt: ["4"]
+        "2":
+            jt: ["1", "4"]
+        "3":
+            jt: []
+        "4":
+            jt: ["3"]
+        """
+        expected_block_map = from_yaml(expected)
+        #ByteFlowRenderer().render_byteflow(ByteFlow({}, expected_block_map)).view("expected")
+
+        tails = {ControlLabel(i) for i in ("1", "2")}
+        exits = {ControlLabel(i) for i in ("3")}
+        original_block_map.join_tails_and_exits(tails, exits)
+        #ByteFlowRenderer().render_byteflow(ByteFlow({}, original_block_map)).view("received")
+        self.assertEqual(expected_block_map, original_block_map)
+
+    def test_join_tails_and_exits_case_03(self):
 
         original = """
         "0":
@@ -138,7 +172,7 @@ class TestJoinTailsAndExits(TestCase):
         exits = {ControlLabel(i) for i in ("3", "4")}
         original_block_map.join_tails_and_exits(tails, exits)
         #ByteFlowRenderer().render_byteflow(ByteFlow({}, original_block_map)).view("received")
-        self.assertEqual(expected_block_map,original_block_map)
+        self.assertEqual(expected_block_map, original_block_map)
 
 if __name__ == '__main__':
     main()
