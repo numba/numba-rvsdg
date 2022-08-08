@@ -61,10 +61,10 @@ class BasicBlock:
     fallthrough to the next block.
     """
 
-    jump_targets: Tuple[Label, ...]
+    jump_targets: Set[Label]
     """The destination block offsets."""
 
-    backedges: Tuple[Label, ...]
+    backedges: Set[Label]
     """Backedges offsets"""
 
     def is_exiting(self) -> bool:
@@ -93,7 +93,8 @@ class BasicBlock:
         return self
 
     def replace_jump_targets(self, jump_targets: Tuple) -> "BasicBlock":
-        return replace(self, jump_targets=jump_targets)
+        fallthrough = len(jump_targets) == 1
+        return replace(self, fallthrough=fallthrough, jump_targets=jump_targets)
 
 
 @dataclass(frozen=True)
@@ -378,13 +379,13 @@ class BlockMap:
             solo_exit_block = BasicBlock(begin=solo_exit_label,
                                          end=ControlLabel("end"),
                                          fallthrough=False,
-                                         jump_targets=tuple(exits),
-                                         backedges=()
+                                         jump_targets=set(exits),
+                                         backedges=set()
                                          )
             self.add_node(solo_exit_block)
             # Update the solo tail block to point to the solo exit block
             self.add_node(self.graph.pop(solo_tail_label).replace_jump_targets(
-                          jump_targets=(solo_exit_label,)))
+                          jump_targets=set((solo_exit_label,))))
 
             return solo_tail_label, solo_exit_label
 
@@ -396,8 +397,8 @@ class BlockMap:
             solo_tail_block = BasicBlock(begin=solo_tail_label,
                                          end=ControlLabel("end"),
                                          fallthrough=True,
-                                         jump_targets=(solo_exit_label,),
-                                         backedges=()
+                                         jump_targets=set((solo_exit_label,)),
+                                         backedges=set()
                                          )
             self.add_node(solo_tail_block)
             # replace the exit label in all tails blocks with the solo tail label
@@ -406,7 +407,7 @@ class BlockMap:
                 jt = set(block.jump_targets)
                 jt.remove(solo_exit_label)
                 jt.add(solo_tail_label)
-                self.add_node(block.replace_jump_targets(jump_targets=tuple(jt)))
+                self.add_node(block.replace_jump_targets(jump_targets=set(jt)))
 
             return solo_tail_label, solo_exit_label
 
@@ -418,22 +419,22 @@ class BlockMap:
             solo_tail_block = BasicBlock(begin=solo_tail_label,
                                          end=ControlLabel("end"),
                                          fallthrough=True,
-                                         jump_targets=(solo_exit_label,),
-                                         backedges=()
+                                         jump_targets=set((solo_exit_label,)),
+                                         backedges=set()
                                          )
             # The solo exit block points to the exits
             solo_exit_block = BasicBlock(begin=solo_exit_label,
                                          end=ControlLabel("end"),
                                          fallthrough=False,
-                                         jump_targets=tuple(exits),
-                                         backedges=()
+                                         jump_targets=set(exits),
+                                         backedges=set()
                                          )
             self.add_node(solo_tail_block)
             self.add_node(solo_exit_block)
             # Update the tail blocks to point to the solo tail block
             for block in tails:
                 self.add_node(self.graph.pop(block).replace_jump_targets(
-                            jump_targets=(solo_tail_label,)))
+                            jump_targets=set((solo_tail_label,))))
 
             return solo_tail_label, solo_exit_label
 

@@ -18,8 +18,8 @@ def from_yaml(yaml_string):
             begin_label,
             end_label,
             fallthrough=len(jump_targets["jt"]) == 1,
-            backedges=(),
-            jump_targets=tuple([ControlLabel(i) for i in jump_targets["jt"]])
+            backedges=set(),
+            jump_targets=set((ControlLabel(i) for i in jump_targets["jt"]))
         )
         block_map_graph[begin_label] = block
     return BlockMap(block_map_graph)
@@ -59,6 +59,7 @@ class TestJoinTailsAndExits(TestCase):
         exits = {ControlLabel(i) for i in ("1", "2")}
         original_block_map.join_tails_and_exits(tails, exits)
         #ByteFlowRenderer().render_byteflow(ByteFlow({}, original_block_map)).view("received")
+
         self.assertEqual(expected_block_map, original_block_map)
 
     def test_join_tails_and_exits_case_02(self):
