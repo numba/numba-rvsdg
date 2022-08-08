@@ -593,7 +593,6 @@ def restructure_loop(bbmap: BlockMap):
         # restructure from for loop into do while loop.
 
         # find the loop head
-        breakpoint()
         assert len(headers) == 1  # TODO join entries
         loop_head: Label = next(iter(headers))
 
@@ -629,7 +628,6 @@ def restructure_loop(bbmap: BlockMap):
         #else:
         #    pre_exit_label, post_exit_label = (next(iter(pre_exits)),
         #                                       next(iter(post_exits)))
-        #breakpoint()
         pre_exit_label, post_exit_label = bbmap.join_tails_and_exits(pre_exits,
                                                                      post_exits)
         loop.add(pre_exit_label)
