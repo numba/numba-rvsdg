@@ -10,14 +10,22 @@ from byteflow2 import ByteFlow, ByteFlowRenderer
 
 logging.basicConfig(level=logging.DEBUG)
 
-# ## Example: for loop with second exit
-def foo(n):
-    c = 0
-    for i in range(n):
-        for j in range(m):
-            c += i
-    return c
+# ## Example: simple branch
 
+def foo(a):
+    if a == 1:
+        return 1
+    else:
+        return 2
+
+# ## Example: nested for loop
+#def foo(n):
+#    c = 0
+#    for i in range(n):
+#        for j in range(m):
+#            c += i
+#    return c
+#
 # ## Example: for loop with second exit
 #def foo(n):
 #    c = 0
