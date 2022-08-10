@@ -826,7 +826,7 @@ def restructure_branch(bbmap: BlockMap):
                         post_exits)
                 else:
                     pre_exit_label = next(iter(pre_exits))
-                    post_exit_label = bbmap.graph[pre_exit_label].jump_targets[0]
+                    post_exit_label = next(iter(bbmap.graph[pre_exit_label].jump_targets))
 
                 subgraph = BlockMap()
                 for k in inner_nodes:
