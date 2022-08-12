@@ -579,7 +579,7 @@ def loop_rotate(bbmap: BlockMap, loop: Set[Label]):
     pre_exits, post_exits = bbmap.find_exits(loop)
 
     # find the loop head
-    assert len(headers) <= 1  # TODO join entries
+    assert len(headers) == 1  # TODO join entries
     loop_head: Label = next(iter(headers))
 
     # the loop head should have two jump targets
@@ -624,12 +624,19 @@ def loop_rotate(bbmap: BlockMap, loop: Set[Label]):
 
     headers, entries = bbmap.find_headers_and_entries(loop)
     pre_exits, post_exits = bbmap.find_exits(loop)
-    #loop_head = next(iter(headers))
     pre_exit_label = next(iter(pre_exits))
     post_exit_label = next(iter(post_exits))
-    #loop_body_start = next(iter(bbmap[loop_head].jump_targets))
+    loop_head = next(iter(headers))
+
+    # fixup backedges
+    for label in loop:
+        bbmap.add_node(
+            bbmap.graph.pop(label).replace_backedge(loop_head))
+
+    loop_body_start = next(iter(bbmap[loop_head].jump_targets))
 
     return headers, loop_head, loop_body_start, pre_exit_label, post_exit_label
+
 
 def restructure_loop(bbmap: BlockMap):
     """Inplace restructuring of the given graph to extract loops using
@@ -647,10 +654,8 @@ def restructure_loop(bbmap: BlockMap):
     # extract loop
     for loop in loops:
         headers, loop_head, loop_body_start, pre_exit_label, post_exit_label = loop_rotate(bbmap, loop)
-        breakpoint()
         loop_subregion = BlockMap({
-            label: bbmap[label].replace_backedge(loop_body_start)
-            for label in loop if label not in headers})
+            label: bbmap[label] for label in loop})
 
         # create a subregion
         blk = RegionBlock(
