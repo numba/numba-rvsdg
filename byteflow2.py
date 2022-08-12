@@ -570,6 +570,67 @@ def join_headers(headers, entries, bbmap):
     return synth_entry_label, synth_entry_block
 
 
+def loop_rotate(bbmap: BlockMap, loop: Set[Label]):
+    """ Rotate loop.
+
+    This will convert the loop into "loop canonical form".
+    """
+    headers, entries = bbmap.find_headers_and_entries(loop)
+    pre_exits, post_exits = bbmap.find_exits(loop)
+
+    # find the loop head
+    assert len(headers) <= 1  # TODO join entries
+    loop_head: Label = next(iter(headers))
+
+    # the loop head should have two jump targets
+    loop_head_jt = bbmap[loop_head].jump_targets
+    assert len(loop_head_jt) == 2
+    llhjt_list = list(loop_head_jt)
+    if llhjt_list[0] in loop:
+        loop_body_start = llhjt_list[0]
+        loop_head_exit = llhjt_list[1]
+    else:
+        loop_body_start = llhjt_list[1]
+        loop_head_exit = llhjt_list[0]
+
+    # find the backedge that points to the loop head
+    backedge_blocks = [block for block in loop
+                       if loop_head in bbmap[block].jump_targets]
+    assert len(backedge_blocks) == 1
+    backedge_block = backedge_blocks[0]
+    bbmap.add_node(bbmap.graph.pop(backedge_block).replace_jump_targets(
+        jump_targets=loop_head_jt))
+
+    headers, entries = bbmap.find_headers_and_entries(loop)
+    pre_exits, post_exits = bbmap.find_exits(loop)
+    pre_exit_label, post_exit_label = bbmap.join_tails_and_exits(pre_exits,
+                                                                 post_exits)
+    loop.add(pre_exit_label)
+
+    # recompute the scc
+    subgraph_bbmap = BlockMap({label: bbmap[label] for label in loop})
+    new_loops = []
+    for scc in subgraph_bbmap.compute_scc():
+        if len(scc) == 1:
+            solo_block = next(iter(scc))
+            if solo_block in bbmap[solo_block].jump_targets:
+                new_loops.append(scc)
+        else:
+            new_loops.append(scc)
+    assert(len(new_loops) == 1)
+    new_loop = next(iter(new_loops))
+    loop.clear()
+    loop.update(new_loop)
+
+    headers, entries = bbmap.find_headers_and_entries(loop)
+    pre_exits, post_exits = bbmap.find_exits(loop)
+    #loop_head = next(iter(headers))
+    pre_exit_label = next(iter(pre_exits))
+    post_exit_label = next(iter(post_exits))
+    #loop_body_start = next(iter(bbmap[loop_head].jump_targets))
+
+    return headers, loop_head, loop_body_start, pre_exit_label, post_exit_label
+
 def restructure_loop(bbmap: BlockMap):
     """Inplace restructuring of the given graph to extract loops using
     strongly-connected components
@@ -585,56 +646,8 @@ def restructure_loop(bbmap: BlockMap):
 
     # extract loop
     for loop in loops:
-        headers, entries = bbmap.find_headers_and_entries(loop)
-        pre_exits, post_exits = bbmap.find_exits(loop)
-
-        # restructure from for loop into do while loop.
-
-        # find the loop head
-        assert len(headers) == 1  # TODO join entries
-        loop_head: Label = next(iter(headers))
-
-        # the loop head should have two jump targets
-        loop_head_jt = bbmap[loop_head].jump_targets
-        assert len(loop_head_jt) == 2
-        if loop_head_jt[0] in loop:
-            loop_body_start = loop_head_jt[0]
-            loop_head_exit = loop_head_jt[1]
-        else:
-            loop_body_start = loop_head_jt[1]
-            loop_head_exit = loop_head_jt[0]
-
-        # find the backedge that points to the loop head
-        backedge_blocks = [block for block in loop
-                           if loop_head in bbmap[block].jump_targets]
-        assert len(backedge_blocks) == 1
-        backedge_block = backedge_blocks[0]
-        bbmap.add_node(bbmap.graph.pop(backedge_block).replace_jump_targets(jump_targets=loop_head_jt))
-
-        headers, entries = bbmap.find_headers_and_entries(loop)
-        pre_exits, post_exits = bbmap.find_exits(loop)
-
-        #if len(post_exits) != 1:
-        #    pre_exit_label, post_exit_label = join_exits(loop,
-        #                                                 bbmap,
-        #                                                 post_exits)
-        #elif len(pre_exits) != 1:
-        #    #raise Exception("unreachable?")
-        #    pre_exit_label, post_exit_label = join_exits(loop,
-        #                                                 bbmap,
-        #                                                 post_exits)
-        #else:
-        #    pre_exit_label, post_exit_label = (next(iter(pre_exits)),
-        #                                       next(iter(post_exits)))
-        pre_exit_label, post_exit_label = bbmap.join_tails_and_exits(pre_exits,
-                                                                     post_exits)
-        loop.add(pre_exit_label)
-
-        # construct the loop subregion, identifying backedges as we go
-        #loop_subregion = BlockMap({
-        #    label: bbmap.graph[label].replace_backedge(loop_body_start)
-        #    for label in loop if label not in headers})
-
+        headers, loop_head, loop_body_start, pre_exit_label, post_exit_label = loop_rotate(bbmap, loop)
+        breakpoint()
         loop_subregion = BlockMap({
             label: bbmap[label].replace_backedge(loop_body_start)
             for label in loop if label not in headers})
@@ -701,8 +714,9 @@ def restructure_branch(bbmap: BlockMap):
             kind="head",
             headers=(head,),
             subregion=head_subgraph,
-            exit=None,
+            exit=begin,
         )
+        begin = head
         bbmap.remove_blocks(head_region_blocks)
         bbmap.graph[begin] = head_subregion
 
@@ -812,21 +826,25 @@ def restructure_branch(bbmap: BlockMap):
         for bra_start, inner_nodes in branch_regions:
             if inner_nodes:  # and len(inner_nodes) > 1:
                 pre_exits, post_exits = bbmap.find_exits(inner_nodes)
-                if len(pre_exits) != 1 and len(post_exits) == 1:
-                    post_exit_label = next(iter(post_exits))
-                    pre_exit_label = join_pre_exits(
-                        pre_exits,
-                        post_exit_label,
-                        inner_nodes,
-                        bbmap)
-                elif len(pre_exits) != 1 and len(post_exits) > 1:
-                    pre_exit_label, post_exit_label = join_exits(
-                        inner_nodes,
-                        bbmap,
-                        post_exits)
-                else:
-                    pre_exit_label = next(iter(pre_exits))
-                    post_exit_label = next(iter(bbmap.graph[pre_exit_label].jump_targets))
+                #if len(pre_exits) != 1 and len(post_exits) == 1:
+                #    post_exit_label = next(iter(post_exits))
+                #    pre_exit_label = join_pre_exits(
+                #        pre_exits,
+                #        post_exit_label,
+                #        inner_nodes,
+                #        bbmap)
+                #elif len(pre_exits) != 1 and len(post_exits) > 1:
+                #    pre_exit_label, post_exit_label = join_exits(
+                #        inner_nodes,
+                #        bbmap,
+                #        post_exits)
+                #else:
+                #    pre_exit_label = next(iter(pre_exits))
+                #    post_exit_label = next(iter(bbmap.graph[pre_exit_label].jump_targets))
+                pre_exit_label, post_exit_label = bbmap.join_tails_and_exits(pre_exits, post_exits)
+
+                if isinstance(bbmap[pre_exit_label], RegionBlock):
+                    pre_exit_label = bbmap[pre_exit_label].exit
 
                 subgraph = BlockMap()
                 for k in inner_nodes:

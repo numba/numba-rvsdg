@@ -1,7 +1,8 @@
 import yaml
 
 from byteflow2 import (ControlLabel, BasicBlock, BlockMap, ByteFlowRenderer,
-                       ByteFlow, join_pre_exits, ControlLabelGenerator)
+                       ByteFlow, join_pre_exits, ControlLabelGenerator,
+                       loop_rotate)
 
 from unittest import TestCase, main
 
@@ -174,6 +175,8 @@ class TestJoinTailsAndExits(TestCase):
 
         tails = {ControlLabel(i) for i in ("1", "2")}
         exits = {ControlLabel(i) for i in ("3")}
+        ByteFlowRenderer().render_byteflow(ByteFlow({},
+                                                    original_block_map)).view("before")
         solo_tail_label, solo_exit_label = original_block_map.join_tails_and_exits(tails, exits)
         self.assertEqual(expected_block_map, original_block_map)
         self.assertEqual(ControlLabel("4"), solo_tail_label)
@@ -223,6 +226,34 @@ class TestJoinTailsAndExits(TestCase):
         self.assertEqual(ControlLabel("6"), solo_tail_label)
         self.assertEqual(ControlLabel("7"), solo_exit_label)
 
+
+class TestLoopRotate(TestCase):
+
+    def test_basic_for_loop(self):
+
+        original = """
+        "0":
+            jt: ["1"]
+        "1":
+            jt: ["2", "3"]
+        "2":
+            jt: ["1"]
+        "3":
+            jt: []
+        """
+        original_block_map = from_yaml(original)
+        expected = """
+        "0":
+            jt: []
+        """
+        expected_block_map = from_yaml(expected)
+
+        ByteFlowRenderer().render_byteflow(ByteFlow({}, original_block_map)).view("before")
+        loop_rotate(original_block_map, {ControlLabel("1"), ControlLabel("2")})
+        print(original_block_map.compute_scc())
+        ByteFlowRenderer().render_byteflow(ByteFlow({}, original_block_map)).view("original")
+        ByteFlowRenderer().render_byteflow(ByteFlow({}, expected_block_map)).view("expected")
+        self.assertEqual(expected_block_map, original_block_map)
 
 if __name__ == '__main__':
     main()

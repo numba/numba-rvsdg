@@ -43,3 +43,34 @@ def scc(G):
                         yield scc
                     else:
                         scc_queue.append(v)
+
+
+def sccr(G):
+    def visit(v, cnt):
+        root[v] = cnt
+        visited[v] = cnt
+        cnt += 1
+        stack.append(v)
+        for w in G[v]:
+            if w not in visited:
+                yield from visit(w, cnt)
+            if w not in component:
+                root[v] = min(root[v], root[w])
+        if root[v] == visited[v]:
+            component[v] = root[v]
+            tmpc = {v}  # hold nodes in this component
+            while stack[-1] != v:
+                w = stack.pop()
+                component[w] = root[v]
+                tmpc.add(w)
+            stack.remove(v)
+            yield tmpc
+
+    visited = {}
+    component = {}
+    root = {}
+    cnt = 0
+    stack = []
+    for source in G:
+        if source not in visited:
+            yield from visit(source, cnt)

@@ -12,21 +12,33 @@ logging.basicConfig(level=logging.DEBUG)
 
 # ## Example: simple branch
 
-def foo(a):
-    if a == 1:
-        return 1
-    else:
-        return 2
+#def foo(a, b):
+#    if b == 52:
+#        return 5
+#    else:
+#        return 6
 
-# ## Example: nested for loop
+# Example: nested for loop
+def foo(n, m):
+    c = 0
+    for i in range(n):
+        c += i
+        for j in range(m):
+            c += i
+    return c
+
 #def foo(n):
-#    c = 0
 #    for i in range(n):
-#        for j in range(m):
-#            c += i
-#    return c
-#
+#        if i == 42:
+#            c += 1
+#        elif i == 52:
+#            c += 2
+#        else:
+#            c += 1
+#        c += 0
+
 # ## Example: for loop with second exit
+
 #def foo(n):
 #    c = 0
 #    for i in range(n):
@@ -115,6 +127,21 @@ def foo(a):
 #def foo():
 #    for i in range(100):
 #        print(i)
+
+
+# ## Stuart's switch example
+#def foo(a):
+#    b = 0
+#    match a:
+#        case ["quit"]:
+#            b += 1
+#        case ["look"]:
+#            b += 2
+#        case ["get"]:
+#            b += 3
+#        case ["go"]:
+#            b += 4
+#    return b
 
 flow = ByteFlow.from_bytecode(foo)
 ByteFlowRenderer().render_byteflow(flow).view("before")
