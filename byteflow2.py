@@ -470,6 +470,8 @@ class ByteFlow:
     def _restructure_branch(self):
         bbmap = deepcopy(self.bbmap)
         restructure_branch(bbmap)
+        for region in _iter_subregions(bbmap):
+            restructure_branch(region.subregion)
         return ByteFlow(bc=self.bc, bbmap=bbmap)
 
     def restructure(self):
@@ -480,8 +482,8 @@ class ByteFlow:
         restructure_loop(bbmap)
         # handle branch
         restructure_branch(bbmap)
-        #for region in _iter_subregions(bbmap):
-        #    restructure_branch(region.subregion)
+        for region in _iter_subregions(bbmap):
+            restructure_branch(region.subregion)
         return ByteFlow(bc=self.bc, bbmap=bbmap)
 
 
@@ -1055,7 +1057,7 @@ class ByteFlowRenderer(object):
                     else:
                         raise Exception("unreachable")
             for dst in block.backedges:
-                assert dst in blocks
+                #assert dst in blocks
                 self.g.edge(str(label), str(dst),
                             style="dashed", color="grey", constraint="0")
 
