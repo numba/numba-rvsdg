@@ -23,7 +23,7 @@ def from_yaml(yaml_string):
             jump_targets=set((ControlLabel(i) for i in jump_targets["jt"]))
         )
         block_map_graph[begin_label] = block
-    return BlockMap(block_map_graph)
+    return BlockMap(block_map_graph, clg=clg)
 
 
 class TestJoinReturns(TestCase):
@@ -113,7 +113,7 @@ class TestJoinTailsAndExits(TestCase):
         self.assertEqual(ControlLabel("0"), solo_tail_label)
         self.assertEqual(ControlLabel("4"), solo_exit_label)
 
-    def test_join_tails_and_exits_case_02(self):
+    def test_join_tails_and_exits_case_02_01(self):
         original = """
         "0":
             jt: ["1", "2"]
@@ -147,7 +147,7 @@ class TestJoinTailsAndExits(TestCase):
         self.assertEqual(ControlLabel("4"), solo_tail_label)
         self.assertEqual(ControlLabel("3"), solo_exit_label)
 
-    def test_join_tails_and_exits_case_02_01(self):
+    def test_join_tails_and_exits_case_02_02(self):
         original = """
         "0":
             jt: ["1", "2"]
@@ -182,7 +182,7 @@ class TestJoinTailsAndExits(TestCase):
         self.assertEqual(ControlLabel("4"), solo_tail_label)
         self.assertEqual(ControlLabel("3"), solo_exit_label)
 
-    def test_join_tails_and_exits_case_03(self):
+    def test_join_tails_and_exits_case_03_01(self):
 
         original = """
         "0":
@@ -219,6 +219,49 @@ class TestJoinTailsAndExits(TestCase):
         """
         expected_block_map = from_yaml(expected)
 
+        tails = {ControlLabel(i) for i in ("1", "2")}
+        exits = {ControlLabel(i) for i in ("3", "4")}
+        solo_tail_label, solo_exit_label = original_block_map.join_tails_and_exits(tails, exits)
+        self.assertEqual(expected_block_map, original_block_map)
+        self.assertEqual(ControlLabel("6"), solo_tail_label)
+        self.assertEqual(ControlLabel("7"), solo_exit_label)
+
+    def test_join_tails_and_exits_case_03_02(self):
+
+        original = """
+        "0":
+            jt: ["1", "2"]
+        "1":
+            jt: ["3"]
+        "2":
+            jt: ["1", "4"]
+        "3":
+            jt: ["5"]
+        "4":
+            jt: ["5"]
+        "5":
+            jt: []
+        """
+        original_block_map = from_yaml(original)
+        expected = """
+        "0":
+            jt: ["1", "2"]
+        "1":
+            jt: ["6"]
+        "2":
+            jt: ["1", "6"]
+        "3":
+            jt: ["5"]
+        "4":
+            jt: ["5"]
+        "5":
+            jt: []
+        "6":
+            jt: ["7"]
+        "7":
+            jt: ["3", "4"]
+        """
+        expected_block_map = from_yaml(expected)
         tails = {ControlLabel(i) for i in ("1", "2")}
         exits = {ControlLabel(i) for i in ("3", "4")}
         solo_tail_label, solo_exit_label = original_block_map.join_tails_and_exits(tails, exits)
