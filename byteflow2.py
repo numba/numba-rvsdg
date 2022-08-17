@@ -390,7 +390,7 @@ class BlockMap:
 
             return solo_tail_label, solo_exit_label
 
-        if len(tails) == 2 and len(exits) == 1:
+        if len(tails) >= 2 and len(exits) == 1:
             # join only tails
             solo_tail_label = ControlLabel(str(self.clg.new_index()))
             solo_exit_label = next(iter(exits))
@@ -412,7 +412,7 @@ class BlockMap:
 
             return solo_tail_label, solo_exit_label
 
-        if len(tails) == 2 and len(exits) == 2:
+        if len(tails) >= 2 and len(exits) >= 2:
             # join both tails and exits
             solo_tail_label = ControlLabel(str(self.clg.new_index()))
             solo_exit_label = ControlLabel(str(self.clg.new_index()))
@@ -432,10 +432,14 @@ class BlockMap:
                                          )
             self.add_node(solo_tail_block)
             self.add_node(solo_exit_block)
-            # Update the tail blocks to point to the solo tail block
-            for block in tails:
-                self.add_node(self.graph.pop(block).replace_jump_targets(
-                            jump_targets=set((solo_tail_label,))))
+            # Replace all previous jump targets that went outside the loop to
+            # the new tail label.
+            for label in tails:
+                block = self.graph.pop(label)
+                jt = set(block.jump_targets)
+                jt.difference_update(jt.intersection(exits))
+                jt.add(solo_tail_label)
+                self.add_node(block.replace_jump_targets(jump_targets=set(jt)))
 
             return solo_tail_label, solo_exit_label
 
@@ -563,9 +567,13 @@ def join_headers(headers, entries, bbmap):
                                    )
     bbmap.add_node(synth_entry_block)
     # rewire headers
-    for block in entries:
-        bbmap.add_node(bbmap.graph.pop(block).replace_jump_targets(
-                        jump_targets=(synth_entry_label,)))
+    for label in entries:
+        block = bbmap.graph.pop(label)
+        jt = set(block.jump_targets)
+        jt.difference_update(jt.intersection(headers))
+        jt.add(synth_entry_label)
+        bbmap.add_node(block.replace_jump_targets(
+                        jump_targets=jt))
     return synth_entry_label, synth_entry_block
 
 
