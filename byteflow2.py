@@ -231,10 +231,7 @@ class BlockMap:
     """ Map of Labels to Blocks. """
     graph: Dict[Label, BasicBlock] = field(default_factory=dict)
     clg: ControlLabelGenerator = field(default_factory=ControlLabelGenerator,
-                                      compare=False)
-
-    def __post_init__(self):
-        self.clg.index = len(self.graph)
+                                       compare=False)
 
     def add_node(self, basicblock: BasicBlock):
         self.graph[basicblock.begin] = basicblock
@@ -501,13 +498,13 @@ def join_exits(loop: Set[Label], bbmap: BlockMap, exits: Set[Label]):
     loop.add(pre_exit_label)
     # create the exit block and add it to the block map
     post_exit_block = BasicBlock(begin=post_exit_label,
-                                 end=ControlLabel(clg.new_index()),
+                                 end="end",
                                  fallthrough=False,
                                  jump_targets=tuple(exits),
                                  backedges=tuple()
                                  )
     pre_exit_block = BasicBlock(begin=pre_exit_label,
-                                end=ControlLabel(clg.new_index()),
+                                end="end",
                                 fallthrough=False,
                                 jump_targets=(post_exit_label,),
                                 backedges=tuple()
@@ -538,7 +535,7 @@ def join_pre_exits(exits: Set[Label], post_exit: Label,
     pre_exit_label = ControlLabel(clg.new_index())
     # create the exit block and add it to the block map
     pre_exit_block = BasicBlock(begin=pre_exit_label,
-                                end=ControlLabel(clg.new_index()),
+                                end="end",
                                 fallthrough=False,
                                 jump_targets=(post_exit,),
                                 backedges=tuple()
@@ -557,9 +554,9 @@ def join_pre_exits(exits: Set[Label], post_exit: Label,
 def join_headers(headers, entries, bbmap):
     assert len(headers) > 1
     # create the synthetic entry block
-    synth_entry_label = ControlLabel(clg.new_index())
+    synth_entry_label = ControlLabel(bbmap.clg.new_index())
     synth_entry_block = BasicBlock(begin=synth_entry_label,
-                                   end=ControlLabel(clg.new_index()),
+                                   end="end",
                                    fallthrough=False,
                                    jump_targets=tuple(headers),
                                    backedges=tuple()
@@ -657,12 +654,12 @@ def restructure_loop(bbmap: BlockMap):
     for loop in loops:
         headers, loop_head, loop_body_start, pre_exit_label, post_exit_label = loop_rotate(bbmap, loop)
         loop_subregion = BlockMap({
-            label: bbmap[label] for label in loop})
+            label: bbmap[label] for label in loop}, clg=bbmap.clg)
 
         # create a subregion
         blk = RegionBlock(
             begin=loop_head,
-            end=clg.new_index(),
+            end="end",
             fallthrough=False,
             jump_targets=(post_exit_label,),
             backedges=(),
@@ -711,7 +708,8 @@ def restructure_branch(bbmap: BlockMap):
                 current_block = jt[0]
         # Extract the head subregion
         head_subgraph = BlockMap({block: bbmap.graph[block]
-                                  for block in head_region_blocks})
+                                  for block in head_region_blocks},
+                                  clg=bbmap.clg)
         head_subregion = RegionBlock(
             begin=head,
             end=begin,
@@ -736,15 +734,16 @@ def restructure_branch(bbmap: BlockMap):
                 if a == b:
                     continue
                 elif bbmap.is_reachable_dfs(a, b):
+
                     # If one of the jump targets is reachable from the other,
                     # it means a branch region is empty and the reachable jump
                     # target becoms part of the tail. In this case,
                     # create a new snythtic block to fill the empty branch
                     # region and rewire the jump targets.
-                    synthetic_branch_block_label = ControlLabel(clg.new_index())
+                    synthetic_branch_block_label = ControlLabel(bbmap.clg.new_index())
                     synthetic_branch_block_block = BasicBlock(
                             begin=synthetic_branch_block_label,
-                            end=ControlLabel(clg.new_index()),
+                            end="end",
                             jump_targets=(b,),
                             fallthrough=True,
                             backedges=(),
@@ -809,7 +808,7 @@ def restructure_branch(bbmap: BlockMap):
         #assert len(pre_exits) == 1
         #assert len(post_exits) == 0
 
-        subgraph = BlockMap()
+        subgraph = BlockMap(clg=bbmap.clg)
         for block in tail_subregion:
             subgraph.add_node(bbmap.graph[block])
         subregion = RegionBlock(
@@ -853,7 +852,7 @@ def restructure_branch(bbmap: BlockMap):
                 if isinstance(bbmap[pre_exit_label], RegionBlock):
                     pre_exit_label = bbmap[pre_exit_label].exit
 
-                subgraph = BlockMap()
+                subgraph = BlockMap(clg=bbmap.clg)
                 for k in inner_nodes:
                     subgraph.add_node(bbmap.graph[k])
 
