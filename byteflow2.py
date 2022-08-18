@@ -859,6 +859,8 @@ def restructure_branch(bbmap: BlockMap):
                 #    pre_exit_label = next(iter(pre_exits))
                 #    post_exit_label = next(iter(bbmap.graph[pre_exit_label].jump_targets))
                 pre_exit_label, post_exit_label = bbmap.join_tails_and_exits(pre_exits, post_exits)
+                inner_nodes.add(pre_exit_label)
+                #break
 
                 if isinstance(bbmap[pre_exit_label], RegionBlock):
                     pre_exit_label = bbmap[pre_exit_label].exit
