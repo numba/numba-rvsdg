@@ -836,9 +836,9 @@ def restructure_branch(bbmap: BlockMap):
         bbmap.remove_blocks(tail_subregion)
         bbmap.graph[entry_label] = subregion
 
-        if subregion.subregion.graph:
-            recursive_subregions.append(subregion.subregion)
-
+        #if subregion.subregion.graph:
+        #    recursive_subregions.append(subregion.subregion)
+        #break
         # extract the subregion
         for bra_start, inner_nodes in branch_regions:
             if inner_nodes:  # and len(inner_nodes) > 1:
@@ -881,12 +881,13 @@ def restructure_branch(bbmap: BlockMap):
                 bbmap.remove_blocks(inner_nodes)
                 bbmap.graph[bra_start] = subregion
 
-                if subregion.subregion.graph:
-                    recursive_subregions.append(subregion.subregion)
+                #if subregion.subregion.graph:
+                #    recursive_subregions.append(subregion.subregion)
+        #break
 
     # recurse into subregions as necessary
-    for region in recursive_subregions:
-        restructure_branch(region)
+    #for region in recursive_subregions:
+    #    restructure_branch(region)
 
 
 def _iter_branch_regions(bbmap: BlockMap,
