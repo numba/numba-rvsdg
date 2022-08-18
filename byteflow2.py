@@ -43,9 +43,6 @@ class ControlLabelGenerator():
         return ret
 
 
-clg = ControlLabelGenerator()
-
-
 @dataclass(frozen=True)
 class BasicBlock:
     begin: Label
