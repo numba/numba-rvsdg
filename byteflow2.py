@@ -696,13 +696,13 @@ def restructure_branch(bbmap: BlockMap):
     recursive_subregions = []
     # TODO what are begin and end exactly? The assumtion is that they are
     # unique, is this true?
-    for begin, end in _iter_branch_regions(bbmap, immdoms, postimmdoms):
+    regions = [r for r in _iter_branch_regions(bbmap, immdoms, postimmdoms)]
+    for begin, end in regions:
         _logger.debug("branch region: %s -> %s", begin, end)
         # find exiting nodes from branch
         # exits = {k for k, node in bbmap.graph.items()
         #          if begin <= k < end and end in node.jump_targets}
         # partition the branches
-
         # partition head subregion
         head = bbmap.find_head()
         head_region_blocks = []
