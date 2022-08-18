@@ -18,13 +18,24 @@ logging.basicConfig(level=logging.DEBUG)
 #    else:
 #        return 6
 
-# Example: nested for loop
+## Example: nested loop
+#def foo(n, m):
+#    c = 0
+#    for i in range(n):
+#        c += i
+#        for j in range(m):
+#            for k in range(z):
+#                c += i
+#    return c
+
+# Example: for loop with exit
 def foo(n, m):
     c = 0
     for i in range(n):
         c += i
-        for j in range(m):
-            c += i
+        if c > 100:
+            c += 5
+            return c
     return c
 
 #def foo(n):
