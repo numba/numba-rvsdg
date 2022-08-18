@@ -492,66 +492,6 @@ def _iter_subregions(bbmap: "BlockMap"):
             yield from _iter_subregions(node.subregion)
 
 
-def join_exits(loop: Set[Label], bbmap: BlockMap, exits: Set[Label]):
-    # create a single exit label and add it to the loop
-    pre_exit_label = ControlLabel(clg.new_index())
-    post_exit_label = ControlLabel(clg.new_index())
-    loop.add(pre_exit_label)
-    # create the exit block and add it to the block map
-    post_exit_block = BasicBlock(begin=post_exit_label,
-                                 end="end",
-                                 fallthrough=False,
-                                 jump_targets=tuple(exits),
-                                 backedges=tuple()
-                                 )
-    pre_exit_block = BasicBlock(begin=pre_exit_label,
-                                end="end",
-                                fallthrough=False,
-                                jump_targets=(post_exit_label,),
-                                backedges=tuple()
-                                )
-    bbmap.add_node(pre_exit_block)
-    bbmap.add_node(post_exit_block)
-    # for all exits, find the nodes that jump to this exit
-    # this is effectively finding the exit vertices
-    for exit_node in exits:
-        for loop_node in loop:
-            if loop_node == pre_exit_label:
-                continue
-            if exit_node in bbmap.graph[loop_node].jump_targets:
-                # update the jump_targets to point to the new exitnode
-                # by replacing the original node with updates
-                new_jump_targets = tuple(
-                    [t for t in bbmap.graph[loop_node].jump_targets
-                     if t != exit_node]
-                    + [pre_exit_label])
-                bbmap.add_node(
-                    bbmap.graph.pop(loop_node).replace_jump_targets(
-                        jump_targets=new_jump_targets))
-    return pre_exit_label, post_exit_label
-
-
-def join_pre_exits(exits: Set[Label], post_exit: Label,
-                   inner_nodes: Set[Label], bbmap: BlockMap, ):
-    pre_exit_label = ControlLabel(clg.new_index())
-    # create the exit block and add it to the block map
-    pre_exit_block = BasicBlock(begin=pre_exit_label,
-                                end="end",
-                                fallthrough=False,
-                                jump_targets=(post_exit,),
-                                backedges=tuple()
-                                )
-    bbmap.add_node(pre_exit_block)
-    inner_nodes.add(pre_exit_label)
-    # for all exits, find the nodes that jump to this exit
-    # this is effectively finding the exit vertices
-    for exit_node in exits:
-        bbmap.add_node(
-            bbmap.graph.pop(exit_node).replace_jump_targets(
-                jump_targets=(pre_exit_label,)))
-    return pre_exit_label
-
-
 def join_headers(headers, entries, bbmap):
     assert len(headers) > 1
     # create the synthetic entry block
