@@ -32,6 +32,29 @@ class ControlLabel(Label):
     index: int
 
 
+@dataclass(frozen=True, order=True)
+class SyntheticBranch(ControlLabel):
+    index: int
+
+
+@dataclass(frozen=True, order=True)
+class SynthenticTail(ControlLabel):
+    index: int
+
+@dataclass(frozen=True, order=True)
+class SynthenticExit(ControlLabel):
+    index: int
+
+@dataclass(frozen=True, order=True)
+class SynthenticHead(ControlLabel):
+    index: int
+
+
+@dataclass(frozen=True, order=True)
+class SynthenticReturn(ControlLabel):
+    index: int
+
+
 class ControlLabelGenerator():
 
     def __init__(self, index=0):
@@ -329,7 +352,7 @@ class BlockMap:
         # if there is more than one, we may need to close it
         if len(return_nodes) > 1:
             # create label and block and add to graph
-            return_solo_label = ControlLabel(str(self.clg.new_index()))
+            return_solo_label = SynthenticReturn(str(self.clg.new_index()))
             return_solo_block = BasicBlock(
                 begin=return_solo_label,
                 end=ControlLabel("end"),
@@ -372,7 +395,7 @@ class BlockMap:
         if len(tails) == 1 and len(exits) == 2:
             # join only exits
             solo_tail_label = next(iter(tails))
-            solo_exit_label = ControlLabel(str(self.clg.new_index()))
+            solo_exit_label = SynthenticExit(str(self.clg.new_index()))
             # The solo exit block points to the exits
             solo_exit_block = BasicBlock(begin=solo_exit_label,
                                          end=ControlLabel("end"),
@@ -389,7 +412,7 @@ class BlockMap:
 
         if len(tails) >= 2 and len(exits) == 1:
             # join only tails
-            solo_tail_label = ControlLabel(str(self.clg.new_index()))
+            solo_tail_label = SynthenticTail(str(self.clg.new_index()))
             solo_exit_label = next(iter(exits))
             # The solo tail block points to the solo exit block
             solo_tail_block = BasicBlock(begin=solo_tail_label,
@@ -411,8 +434,8 @@ class BlockMap:
 
         if len(tails) >= 2 and len(exits) >= 2:
             # join both tails and exits
-            solo_tail_label = ControlLabel(str(self.clg.new_index()))
-            solo_exit_label = ControlLabel(str(self.clg.new_index()))
+            solo_tail_label = SynthenticTail(str(self.clg.new_index()))
+            solo_exit_label = SynthenticExit(str(self.clg.new_index()))
             # The solo tail block points to the solo exit block
             solo_tail_block = BasicBlock(begin=solo_tail_label,
                                          end=ControlLabel("end"),
@@ -494,8 +517,8 @@ def _iter_subregions(bbmap: "BlockMap"):
 
 def join_headers(headers, entries, bbmap):
     assert len(headers) > 1
-    # create the synthetic entry block
-    synth_entry_label = ControlLabel(bbmap.clg.new_index())
+    # create the synthetic header block
+    synth_entry_label = SynthenticHead(bbmap.clg.new_index())
     synth_entry_block = BasicBlock(begin=synth_entry_label,
                                    end="end",
                                    fallthrough=False,
@@ -688,7 +711,7 @@ def restructure_branch(bbmap: BlockMap):
                     # target becoms part of the tail. In this case,
                     # create a new snythtic block to fill the empty branch
                     # region and rewire the jump targets.
-                    synthetic_branch_block_label = ControlLabel(bbmap.clg.new_index())
+                    synthetic_branch_block_label = SyntheticBranch(bbmap.clg.new_index())
                     synthetic_branch_block_block = BasicBlock(
                             begin=synthetic_branch_block_label,
                             end="end",
@@ -713,7 +736,6 @@ def restructure_branch(bbmap: BlockMap):
             postdoms = _post_doms(bbmap)
             postimmdoms = _imm_doms(postdoms)
             immdoms = _imm_doms(doms)
-
         # identify branch regions
         branch_regions = []
         for bra_start in bbmap.graph[begin].jump_targets:
@@ -980,7 +1002,7 @@ class ByteFlowRenderer(object):
                 [f"{inst.offset:3}: {inst.opname}" for inst in instlist] + [""]
             )
         elif isinstance(label, ControlLabel):
-            body = "Control Label: " + str(label.index)
+            body = label.__class__.__name__ + ": " + str(label.index)
         else:
             raise Exception("Unknown label type: " + label)
         digraph.node(str(label), shape="rect", label=body)
