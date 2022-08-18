@@ -610,9 +610,9 @@ def loop_rotate(bbmap: BlockMap, loop: Set[Label]):
 
     headers, entries = bbmap.find_headers_and_entries(loop)
     pre_exits, post_exits = bbmap.find_exits(loop)
-    pre_exit_label, post_exit_label = bbmap.join_tails_and_exits(pre_exits,
-                                                                 post_exits)
-    loop.add(pre_exit_label)
+    #pre_exit_label, post_exit_label = bbmap.join_tails_and_exits(pre_exits,
+    #                                                             post_exits)
+    #loop.add(pre_exit_label)
 
     # recompute the scc
     subgraph_bbmap = BlockMap({label: bbmap[label] for label in loop})
@@ -631,8 +631,11 @@ def loop_rotate(bbmap: BlockMap, loop: Set[Label]):
 
     headers, entries = bbmap.find_headers_and_entries(loop)
     pre_exits, post_exits = bbmap.find_exits(loop)
-    pre_exit_label = next(iter(pre_exits))
-    post_exit_label = next(iter(post_exits))
+    #pre_exit_label = next(iter(pre_exits))
+    #post_exit_label = next(iter(post_exits))
+    pre_exit_label, post_exit_label = bbmap.join_tails_and_exits(pre_exits,
+                                                                 post_exits)
+    loop.add(pre_exit_label)
     loop_head = next(iter(headers))
 
     # fixup backedges
