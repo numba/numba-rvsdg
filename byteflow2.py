@@ -658,8 +658,8 @@ def restructure_branch(bbmap: BlockMap):
                 current_block = jt[0]
         # Extract the head subregion
         head_subgraph = BlockMap({block: bbmap.graph[block]
-                                  for block in head_region_blocks},
-                                  clg=bbmap.clg)
+                                 for block in head_region_blocks},
+                                 clg=bbmap.clg)
         head_subregion = RegionBlock(
             begin=head,
             end=begin,
@@ -739,7 +739,6 @@ def restructure_branch(bbmap: BlockMap):
         # exclude parents
         tail_subregion.discard(begin)
 
-
         headers, entries = bbmap.find_headers_and_entries(tail_subregion)
         exits, _ = bbmap.find_exits(tail_subregion)
 
@@ -749,8 +748,9 @@ def restructure_branch(bbmap: BlockMap):
             # new block in case the tail subregion has multiple headers.
             synth_head_label = SynthenticHead(bbmap.clg.new_index())
             bbmap.insert_block(synth_head_label, entries, headers)
-            tail_subregion.add(synth_head_label) else: synth_head_label =
-            next(iter(headers))
+            tail_subregion.add(synth_head_label)
+        else:
+            synth_head_label = next(iter(headers))
 
         subgraph = BlockMap(clg=bbmap.clg)
         for block in tail_subregion:
