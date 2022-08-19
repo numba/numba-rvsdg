@@ -249,7 +249,7 @@ class FlowInfo:
                             fallthrough=fallthrough,
                             backedges=(),
                             )
-            bbmap.add_node(bb)
+            bbmap.add_block(bb)
         return bbmap
 
 
@@ -260,7 +260,7 @@ class BlockMap:
     clg: ControlLabelGenerator = field(default_factory=ControlLabelGenerator,
                                        compare=False)
 
-    def add_node(self, basicblock: BasicBlock):
+    def add_block(self, basicblock: BasicBlock):
         self.graph[basicblock.begin] = basicblock
 
     def insert_block(self, new_label: Label,
@@ -274,7 +274,7 @@ class BlockMap:
                                backedges=set()
                                )
         # add block to self
-        self.add_node(new_block)
+        self.add_block(new_block)
         # Replace any arcs from any of predecessors to any of successors with
         # an arc through the inserted block instead.
         for label in predecessors:
@@ -282,7 +282,7 @@ class BlockMap:
             jt = set(block.jump_targets)
             jt.difference_update(jt.intersection(successors))
             jt.add(new_label)
-            self.add_node(block.replace_jump_targets(jump_targets=set(jt)))
+            self.add_block(block.replace_jump_targets(jump_targets=set(jt)))
 
     def remove_blocks(self, labels: Set[Label]):
         for label in labels:
@@ -388,10 +388,10 @@ class BlockMap:
                 jump_targets=set(),
                 backedges=set()
                 )
-            self.add_node(return_solo_block)
+            self.add_block(return_solo_block)
             # re-wire all previous exit nodes to the synthetic one
             for rnode in return_nodes:
-                self.add_node(self.graph.pop(rnode).replace_jump_targets(
+                self.add_block(self.graph.pop(rnode).replace_jump_targets(
                             jump_targets=set((return_solo_label,))))
 
     def is_reachable_dfs(self, begin, end):
@@ -504,14 +504,14 @@ def join_headers(headers, entries, bbmap):
                                    jump_targets=tuple(headers),
                                    backedges=tuple()
                                    )
-    bbmap.add_node(synth_entry_block)
+    bbmap.add_block(synth_entry_block)
     # rewire headers
     for label in entries:
         block = bbmap.graph.pop(label)
         jt = set(block.jump_targets)
         jt.difference_update(jt.intersection(headers))
         jt.add(synth_entry_label)
-        bbmap.add_node(block.replace_jump_targets(
+        bbmap.add_block(block.replace_jump_targets(
                         jump_targets=jt))
     return synth_entry_label, synth_entry_block
 
@@ -545,7 +545,7 @@ def loop_rotate(bbmap: BlockMap, loop: Set[Label]):
     if len(backedge_blocks) == 1:
         backedge_block = backedge_blocks[0]
         # TODO replace jump_target, not overwrite
-        bbmap.add_node(bbmap.graph.pop(backedge_block).replace_jump_targets(
+        bbmap.add_block(bbmap.graph.pop(backedge_block).replace_jump_targets(
             jump_targets=loop_head_jt))
     elif len(backedge_blocks) > 1:
         # create new backedgeblock, that points to the loop_body_start
@@ -556,13 +556,13 @@ def loop_rotate(bbmap: BlockMap, loop: Set[Label]):
                                     jump_targets=set((loop_body_start,loop_head_exit)),
                                     backedges=set()
                                     )
-        bbmap.add_node(synth_backedge_block)
+        bbmap.add_block(synth_backedge_block)
         for label in backedge_blocks:
             block = bbmap.graph.pop(label)
             jt = set(block.jump_targets)
             jt.discard(loop_head)
             jt.add(synth_backedge_label)
-            bbmap.add_node(block.replace_jump_targets(
+            bbmap.add_block(block.replace_jump_targets(
                             jump_targets=jt))
         loop.add(synth_backedge_label)
     else:
@@ -601,7 +601,7 @@ def loop_rotate(bbmap: BlockMap, loop: Set[Label]):
 
     # fixup backedges
     for label in loop:
-        bbmap.add_node(
+        bbmap.add_block(
             bbmap.graph.pop(label).replace_backedge(loop_head))
 
     loop_body_start = next(iter(bbmap[loop_head].jump_targets))
@@ -720,7 +720,7 @@ def restructure_branch(bbmap: BlockMap):
                             fallthrough=True,
                             backedges=(),
                             )
-                    bbmap.add_node(synthetic_branch_block_block)
+                    bbmap.add_block(synthetic_branch_block_block)
                     new_jump_targets.append(synthetic_branch_block_label)
                     jump_targets_changed = True
                 else:
@@ -729,7 +729,7 @@ def restructure_branch(bbmap: BlockMap):
 
         # update the begin block with new jump_targets
         if jump_targets_changed:
-            bbmap.add_node(
+            bbmap.add_block(
                 bbmap.graph.pop(begin).replace_jump_targets(
                     jump_targets=new_jump_targets))
             # and recompute doms
@@ -781,7 +781,7 @@ def restructure_branch(bbmap: BlockMap):
 
         subgraph = BlockMap(clg=bbmap.clg)
         for block in tail_subregion:
-            subgraph.add_node(bbmap.graph[block])
+            subgraph.add_block(bbmap.graph[block])
         subregion = RegionBlock(
             begin=entry_label,
             end=next(iter(exits)),
@@ -827,7 +827,7 @@ def restructure_branch(bbmap: BlockMap):
 
                 subgraph = BlockMap(clg=bbmap.clg)
                 for k in inner_nodes:
-                    subgraph.add_node(bbmap.graph[k])
+                    subgraph.add_block(bbmap.graph[k])
 
                 subregion = RegionBlock(
                     begin=bra_start,
