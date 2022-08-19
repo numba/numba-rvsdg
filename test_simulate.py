@@ -15,6 +15,13 @@ def test_foo():
     rtsflow = flow.restructure()
     pprint(rtsflow.bbmap)
     # ByteFlowRenderer().render_byteflow(rtsflow).view()
-    sim = Simulator(flow, foo.__globals__)
+    # sim = Simulator(flow, foo.__globals__)
+    # ret = sim.run(dict(x=3))
+    # assert ret == foo(x=3)
+
+    sim = Simulator(rtsflow, foo.__globals__)
     ret = sim.run(dict(x=3))
-    print(ret)
+    assert ret == foo(x=3)
+
+if __name__ == "__main__":
+    test_foo()

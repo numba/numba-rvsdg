@@ -291,6 +291,9 @@ class BlockMap:
     def __getitem__(self, index):
         return self.graph[index]
 
+    def __contains__(self, index):
+        return index in self.graph
+
     def exclude_nodes(self, exclude_nodes: Set[Label]):
         """Iterator over all nodes not in exclude_nodes. """
         for node in self.graph:

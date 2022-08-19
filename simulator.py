@@ -1,7 +1,7 @@
 
 from collections import defaultdict, ChainMap
 from dis import Instruction
-from byteflow2 import ByteFlow, BlockMap, BCLabel, BasicBlock
+from byteflow2 import ByteFlow, BlockMap, BCLabel, BasicBlock, RegionBlock
 import builtins
 
 class Simulator:
@@ -20,14 +20,19 @@ class Simulator:
         target = BCLabel(0)
         while True:
             bb = self.flow.bbmap.graph[target]
-            action = self.run_bb(bb)
+            breakpoint()
+            action = self.run_bb(bb, target)
             if "return" in action:
                 return action["return"]
             target = action["jumpto"]
 
-    def run_bb(self, bb: BasicBlock):
-        assert isinstance(bb, BasicBlock)
+    def run_bb(self, bb: BasicBlock, target):
+        print("AT", target)
+        if isinstance(bb, RegionBlock):
+            return self._run_region(bb, target)
+        assert type(bb) is BasicBlock
         pc = bb.begin.offset
+        assert pc == target.offset
         while pc < bb.end.offset:
             inst = self.bcmap[pc]
             self.run_inst(inst)
@@ -40,6 +45,21 @@ class Simulator:
             return {"jumpto": br_true if self.branch else br_false}
         else:
             return {"return": self.return_value}
+
+    def _run_region(self, region: RegionBlock, target):
+        while True:
+            bb = region.subregion[target]
+            action = self.run_bb(bb, target)
+            if "return" in action:
+                return action
+            elif "jumpto" in action:
+                target = action["jumpto"]
+                if target in region.subregion:
+                    continue
+                else:
+                    return action
+            else:
+                assert False, "unreachable"
 
     def run_inst(self, inst: Instruction):
         print('----', inst)
