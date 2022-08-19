@@ -55,6 +55,11 @@ class SynthenticReturn(ControlLabel):
     index: int
 
 
+@dataclass(frozen=True, order=True)
+class SyntheticLatch(ControlLabel):
+    index: int
+
+
 class ControlLabelGenerator():
 
     def __init__(self, index=0):
@@ -563,10 +568,32 @@ def loop_rotate(bbmap: BlockMap, loop: Set[Label]):
     # find the backedge that points to the loop head
     backedge_blocks = [block for block in loop
                        if loop_head in bbmap[block].jump_targets]
-    assert len(backedge_blocks) == 1
-    backedge_block = backedge_blocks[0]
-    bbmap.add_node(bbmap.graph.pop(backedge_block).replace_jump_targets(
-        jump_targets=loop_head_jt))
+    if len(backedge_blocks) == 1:
+        backedge_block = backedge_blocks[0]
+        # TODO replace jump_target, not overwrite
+        bbmap.add_node(bbmap.graph.pop(backedge_block).replace_jump_targets(
+            jump_targets=loop_head_jt))
+    elif len(backedge_blocks) > 1:
+        # create new backedgeblock, that points to the loop_body_start
+        synth_backedge_label = SyntheticLatch(bbmap.clg.new_index())
+        synth_backedge_block = BasicBlock(begin=synth_backedge_label,
+                                    end="end",
+                                    fallthrough=False,
+                                    jump_targets=set((loop_body_start,loop_head_exit)),
+                                    backedges=set()
+                                    )
+        bbmap.add_node(synth_backedge_block)
+        for label in backedge_blocks:
+            block = bbmap.graph.pop(label)
+            jt = set(block.jump_targets)
+            jt.discard(loop_head)
+            jt.add(synth_backedge_label)
+            bbmap.add_node(block.replace_jump_targets(
+                            jump_targets=jt))
+        loop.add(synth_backedge_label)
+    else:
+        raise Exception("unreachable")
+
 
     headers, entries = bbmap.find_headers_and_entries(loop)
     pre_exits, post_exits = bbmap.find_exits(loop)
