@@ -261,6 +261,27 @@ class BlockMap:
     def add_node(self, basicblock: BasicBlock):
         self.graph[basicblock.begin] = basicblock
 
+    def insert_block(self, new_label: Label,
+                     predecessors: Set[Label],
+                     successors: Set[Label]):
+        # initialize new block
+        new_block = BasicBlock(begin=new_label,
+                               end=ControlLabel("end"),
+                               fallthrough=len(successors) <= 1,
+                               jump_targets=successors,
+                               backedges=set()
+                               )
+        # add block to self
+        self.add_node(new_block)
+        # Replace any arcs from any of predecessors to any of successors with
+        # an arc through the inserted block instead.
+        for label in predecessors:
+            block = self.graph.pop(label)
+            jt = set(block.jump_targets)
+            jt.difference_update(jt.intersection(successors))
+            jt.add(new_label)
+            self.add_node(block.replace_jump_targets(jump_targets=set(jt)))
+
     def remove_blocks(self, labels: Set[Label]):
         for label in labels:
             del self.graph[label]
@@ -401,71 +422,22 @@ class BlockMap:
             # join only exits
             solo_tail_label = next(iter(tails))
             solo_exit_label = SynthenticExit(str(self.clg.new_index()))
-            # The solo exit block points to the exits
-            solo_exit_block = BasicBlock(begin=solo_exit_label,
-                                         end=ControlLabel("end"),
-                                         fallthrough=False,
-                                         jump_targets=set(exits),
-                                         backedges=set()
-                                         )
-            self.add_node(solo_exit_block)
-            # Update the solo tail block to point to the solo exit block
-            self.add_node(self.graph.pop(solo_tail_label).replace_jump_targets(
-                          jump_targets=set((solo_exit_label,))))
-
+            self.insert_block(solo_exit_label, tails, exits)
             return solo_tail_label, solo_exit_label
 
         if len(tails) >= 2 and len(exits) == 1:
             # join only tails
             solo_tail_label = SynthenticTail(str(self.clg.new_index()))
             solo_exit_label = next(iter(exits))
-            # The solo tail block points to the solo exit block
-            solo_tail_block = BasicBlock(begin=solo_tail_label,
-                                         end=ControlLabel("end"),
-                                         fallthrough=True,
-                                         jump_targets=set((solo_exit_label,)),
-                                         backedges=set()
-                                         )
-            self.add_node(solo_tail_block)
-            # replace the exit label in all tails blocks with the solo tail label
-            for label in tails:
-                block = self.graph.pop(label)
-                jt = set(block.jump_targets)
-                jt.remove(solo_exit_label)
-                jt.add(solo_tail_label)
-                self.add_node(block.replace_jump_targets(jump_targets=set(jt)))
-
+            self.insert_block(solo_tail_label, tails, exits)
             return solo_tail_label, solo_exit_label
 
         if len(tails) >= 2 and len(exits) >= 2:
             # join both tails and exits
             solo_tail_label = SynthenticTail(str(self.clg.new_index()))
             solo_exit_label = SynthenticExit(str(self.clg.new_index()))
-            # The solo tail block points to the solo exit block
-            solo_tail_block = BasicBlock(begin=solo_tail_label,
-                                         end=ControlLabel("end"),
-                                         fallthrough=True,
-                                         jump_targets=set((solo_exit_label,)),
-                                         backedges=set()
-                                         )
-            # The solo exit block points to the exits
-            solo_exit_block = BasicBlock(begin=solo_exit_label,
-                                         end=ControlLabel("end"),
-                                         fallthrough=False,
-                                         jump_targets=set(exits),
-                                         backedges=set()
-                                         )
-            self.add_node(solo_tail_block)
-            self.add_node(solo_exit_block)
-            # Replace all previous jump targets that went outside the loop to
-            # the new tail label.
-            for label in tails:
-                block = self.graph.pop(label)
-                jt = set(block.jump_targets)
-                jt.difference_update(jt.intersection(exits))
-                jt.add(solo_tail_label)
-                self.add_node(block.replace_jump_targets(jump_targets=set(jt)))
-
+            self.insert_block(solo_tail_label, tails, exits)
+            self.insert_block(solo_exit_label, set((solo_tail_label,)), exits)
             return solo_tail_label, solo_exit_label
 
 
