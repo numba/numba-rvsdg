@@ -41,9 +41,11 @@ class SyntheticBranch(ControlLabel):
 class SynthenticTail(ControlLabel):
     index: int
 
+
 @dataclass(frozen=True, order=True)
 class SynthenticExit(ControlLabel):
     index: int
+
 
 @dataclass(frozen=True, order=True)
 class SynthenticHead(ControlLabel):
