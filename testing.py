@@ -158,6 +158,40 @@ class TestInsertBlock(MapComparator):
                                         self.wrap_id(("3", "4",)))
         self.assertMapEqual(expected_block_map, original_block_map)
 
+    def test_dual_predecessor_and_dual_successor_with_additional_arcs(self):
+        original = """
+        "0":
+            jt: ["1", "2"]
+        "1":
+            jt: ["3"]
+        "2":
+            jt: ["1", "4"]
+        "3":
+            jt: ["0"]
+        "4":
+            jt: []
+        """
+        original_block_map = from_yaml(original)
+        expected = """
+        "0":
+            jt: ["1", "2"]
+        "1":
+            jt: ["5"]
+        "2":
+            jt: ["1", "5"]
+        "3":
+            jt: ["0"]
+        "4":
+            jt: []
+        "5":
+            jt: ["3", "4"]
+        """
+        expected_block_map = from_yaml(expected)
+        original_block_map.insert_block(ControlLabel("5"),
+                                        self.wrap_id(("1", "2")),
+                                        self.wrap_id(("3", "4",)))
+        self.assertMapEqual(expected_block_map, original_block_map)
+
 
 class TestJoinReturns(MapComparator):
 
