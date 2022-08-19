@@ -494,28 +494,6 @@ def _iter_subregions(bbmap: "BlockMap"):
             yield from _iter_subregions(node.subregion)
 
 
-def join_headers(headers, entries, bbmap):
-    assert len(headers) > 1
-    # create the synthetic header block
-    synth_entry_label = SynthenticHead(bbmap.clg.new_index())
-    synth_entry_block = BasicBlock(begin=synth_entry_label,
-                                   end="end",
-                                   fallthrough=False,
-                                   jump_targets=tuple(headers),
-                                   backedges=tuple()
-                                   )
-    bbmap.add_block(synth_entry_block)
-    # rewire headers
-    for label in entries:
-        block = bbmap.graph.pop(label)
-        jt = set(block.jump_targets)
-        jt.difference_update(jt.intersection(headers))
-        jt.add(synth_entry_label)
-        bbmap.add_block(block.replace_jump_targets(
-                        jump_targets=jt))
-    return synth_entry_label, synth_entry_block
-
-
 def loop_rotate(bbmap: BlockMap, loop: Set[Label]):
     """ Rotate loop.
 
@@ -761,30 +739,25 @@ def restructure_branch(bbmap: BlockMap):
         # exclude parents
         tail_subregion.discard(begin)
 
+
         headers, entries = bbmap.find_headers_and_entries(tail_subregion)
         exits, _ = bbmap.find_exits(tail_subregion)
-        #if len(returns) == 0:
-        #    returns = set([block for block in tail_subregion if bbmap.graph[block].])
-
-        #assert len(returns) == 1
 
         if len(headers) > 1:
-            entry_label, entry_block = join_headers(
-                headers, entries, bbmap)
-            tail_subregion.add(entry_label)
-        else:
-            entry_label = next(iter(headers))
-
-        # end of the graph
-        #assert len(pre_exits) == 1
-        #assert len(post_exits) == 0
+            # The tail region will have multiple incoming edges, but these need
+            # to be funnled through a unique header. Hence we simply insert a
+            # new block in case the tail subregion has multiple headers.
+            synth_head_label = SynthenticHead(bbmap.clg.new_index())
+            bbmap.insert_block(synth_head_label, entries, headers)
+            tail_subregion.add(synth_head_label) else: synth_head_label =
+            next(iter(headers))
 
         subgraph = BlockMap(clg=bbmap.clg)
         for block in tail_subregion:
             subgraph.add_block(bbmap.graph[block])
         subregion = RegionBlock(
-            begin=entry_label,
-            end=next(iter(exits)),
+            begin=synth_head_label,
+            end="end",
             fallthrough=False,
             jump_targets=(),
             backedges=(),
@@ -794,7 +767,7 @@ def restructure_branch(bbmap: BlockMap):
             exit=None,
         )
         bbmap.remove_blocks(tail_subregion)
-        bbmap.graph[entry_label] = subregion
+        bbmap.graph[synth_head_label] = subregion
 
         #if subregion.subregion.graph:
         #    recursive_subregions.append(subregion.subregion)
