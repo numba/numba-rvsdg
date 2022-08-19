@@ -40,9 +40,9 @@ class MapComparator(TestCase):
             self.assertEqual(key1.index, key2.index)
             # compare indices of jump_targets
             self.assertEqual(sorted([j.index for j in
-                                     first_map.graph[key1].jump_targets]),
+                                     first_map[key1].jump_targets]),
                              sorted([j.index for j in
-                                     second_map.graph[key2].jump_targets]))
+                                     second_map[key2].jump_targets]))
 
     def wrap_id(self, indices: Set[Label]):
         return set([ControlLabel(i) for i in indices])
