@@ -43,7 +43,7 @@ class SynthenticTail(ControlLabel):
 
 
 @dataclass(frozen=True, order=True)
-class SynthenticExit(ControlLabel):
+class SyntheticExit(ControlLabel):
     index: int
 
 
@@ -62,14 +62,30 @@ class SyntheticLatch(ControlLabel):
     index: int
 
 
+@dataclass(frozen=True, order=True)
+class SyntheticExitingLatch(ControlLabel):
+    index: int
+
+
+@dataclass(frozen=True, order=True)
+class SynthenticAssignment(ControlLabel):
+    index: int
+
+
 class ControlLabelGenerator():
 
-    def __init__(self, index=0):
+    def __init__(self, index=0, variable=97):
         self.index = index
+        self.variable = variable
 
     def new_index(self):
         ret = self.index
         self.index += 1
+        return ret
+
+    def new_variable(self):
+        ret = chr(self.variable)
+        self.variable += 1
         return ret
 
 
@@ -122,6 +138,17 @@ class BasicBlock:
     def replace_jump_targets(self, jump_targets: Tuple) -> "BasicBlock":
         fallthrough = len(jump_targets) == 1
         return replace(self, fallthrough=fallthrough, jump_targets=jump_targets)
+
+
+@dataclass(frozen=True)
+class ControlVariableBlock(BasicBlock):
+    variable_assignment: dict
+
+
+@dataclass(frozen=True)
+class BranchBlock(BasicBlock):
+    variable: str
+    branch_value_table: dict
 
 
 @dataclass(frozen=True)
@@ -284,6 +311,60 @@ class BlockMap:
             jt.add(new_label)
             self.add_block(block.replace_jump_targets(jump_targets=set(jt)))
 
+    def insert_block_and_control_blocks(self, new_label: Label,
+                                        predecessors: Set[Label],
+                                        successors: Set[Label]):
+        # name of the variable for this branching assignment
+        branch_variable = self.clg.new_variable()
+        # initial value of the assignment
+        branch_variable_value = 0
+        # store for the mapping from variable value to label
+        branch_value_table = {}
+        # Replace any arcs from any of predecessors to any of successors with
+        # an arc through the to be inserted block instead.
+        for label in predecessors:
+            block = self.graph[label]
+            jt = set(block.jump_targets)
+            # Need to create synthetic assignments for each arc from a
+            # predecessors to a successor and insert it between the predecessor
+            # and the newly created block
+            for s in jt.intersection(successors):
+                synth_assign = SynthenticAssignment(self.clg.new_index())
+                variable_assignment = {}
+                variable_assignment[branch_variable] = branch_variable_value
+                synth_assign_block = ControlVariableBlock(
+                               begin=synth_assign,
+                               end=ControlLabel("end"),
+                               fallthrough=True,
+                               jump_targets=set((new_label,)),
+                               backedges=set(),
+                               variable_assignment=variable_assignment,
+                )
+                # add block
+                self.add_block(synth_assign_block)
+                # update branching table
+                branch_value_table[branch_variable_value] = s
+                # update branching variable
+                branch_variable_value += 1
+                # remove previous successors
+                jt.discard(s)
+                # add the new assignment block to the jump targets
+                jt.add(synth_assign)
+            # finally, replace the jump_targets
+            self.add_block(
+                self.graph.pop(label).replace_jump_targets(jump_targets=jt))
+        # initialize new block, which will hold the branching table
+        new_block = BranchBlock(begin=new_label,
+                                end=ControlLabel("end"),
+                                fallthrough=len(successors) <= 1,
+                                jump_targets=successors,
+                                backedges=set(),
+                                variable=branch_variable,
+                                branch_value_table=branch_value_table,
+                                )
+        # add block to self
+        self.add_block(new_block)
+
     def remove_blocks(self, labels: Set[Label]):
         for label in labels:
             del self.graph[label]
@@ -324,6 +405,24 @@ class BlockMap:
                 return iter(self.graph.keys())
 
         return list(scc(GraphWrap(self.graph)))
+
+    def compute_scc_subgraph(self, subgraph) -> List[Set[Label]]:
+        from scc import scc
+
+        class GraphWrap:
+            def __init__(self, graph, subgraph):
+                self.graph = graph
+                self.subgraph = subgraph
+
+            def __getitem__(self, vertex):
+                out = self.graph[vertex].jump_targets
+                # Exclude node outside of the subgraph
+                return [k for k in out if k in subgraph]
+
+            def __iter__(self):
+                return iter(self.graph.keys())
+
+        return list(scc(GraphWrap(self.graph, subgraph)))
 
     def find_headers_and_entries(self, loop: Set[Label]):
         """Find entries and headers in a given loop.
@@ -411,7 +510,7 @@ class BlockMap:
         if len(tails) == 1 and len(exits) == 2:
             # join only exits
             solo_tail_label = next(iter(tails))
-            solo_exit_label = SynthenticExit(str(self.clg.new_index()))
+            solo_exit_label = SyntheticExit(str(self.clg.new_index()))
             self.insert_block(solo_exit_label, tails, exits)
             return solo_tail_label, solo_exit_label
 
@@ -425,7 +524,7 @@ class BlockMap:
         if len(tails) >= 2 and len(exits) >= 2:
             # join both tails and exits
             solo_tail_label = SynthenticTail(str(self.clg.new_index()))
-            solo_exit_label = SynthenticExit(str(self.clg.new_index()))
+            solo_exit_label = SyntheticExit(str(self.clg.new_index()))
             self.insert_block(solo_tail_label, tails, exits)
             self.insert_block(solo_exit_label, set((solo_tail_label,)), exits)
             return solo_tail_label, solo_exit_label
@@ -488,91 +587,214 @@ def loop_rotate(bbmap: BlockMap, loop: Set[Label]):
     This will convert the loop into "loop canonical form".
     """
     headers, entries = bbmap.find_headers_and_entries(loop)
-    pre_exits, post_exits = bbmap.find_exits(loop)
-
-    # find the loop head
-    assert len(headers) == 1  # TODO join entries
-    loop_head: Label = next(iter(headers))
-
-    # the loop head should have two jump targets
-    loop_head_jt = bbmap[loop_head].jump_targets
-    assert len(loop_head_jt) == 2
-    llhjt_list = list(loop_head_jt)
-    if llhjt_list[0] in loop:
-        loop_body_start = llhjt_list[0]
-        loop_head_exit = llhjt_list[1]
-    else:
-        loop_body_start = llhjt_list[1]
-        loop_head_exit = llhjt_list[0]
-
-    # find the backedge that points to the loop head
-    backedge_blocks = [block for block in loop
-                       if loop_head in bbmap[block].jump_targets]
-    if len(backedge_blocks) == 1:
-        backedge_block = backedge_blocks[0]
-        # TODO replace jump_target, not overwrite
-        bbmap.add_block(bbmap.graph.pop(backedge_block).replace_jump_targets(
-            jump_targets=loop_head_jt))
-    elif len(backedge_blocks) > 1:
-        # create new backedgeblock, that points to the loop_body_start
-        synth_backedge_label = SyntheticLatch(bbmap.clg.new_index())
-        synth_backedge_block = BasicBlock(begin=synth_backedge_label,
-                                    end="end",
-                                    fallthrough=False,
-                                    jump_targets=set((loop_body_start,loop_head_exit)),
-                                    backedges=set()
-                                    )
-        bbmap.add_block(synth_backedge_block)
-        for label in backedge_blocks:
+    exiting_blocks, exit_blocks = bbmap.find_exits(loop)
+    assert len(entries) == 1
+    if len(headers) > 1:
+        solo_head_label = SynthenticHead(bbmap.clg.new_index())
+        bbmap.insert_block_and_control_blocks(solo_head_label, entries, headers)
+        loop.add(solo_head_label)
+        loop_head: Label = solo_head_label
+        # need to rewire all backedges
+        for label in loop:
+            if label == solo_head_label:
+                continue
             block = bbmap.graph.pop(label)
             jt = set(block.jump_targets)
-            jt.discard(loop_head)
-            jt.add(synth_backedge_label)
+            # remove any existing backedges that point to the headers
+            jt.difference_update(headers)
+            # add a backedge to the new solo header
+            jt.add(solo_head_label)
             bbmap.add_block(block.replace_jump_targets(
                             jump_targets=jt))
-        loop.add(synth_backedge_label)
     else:
-        raise Exception("unreachable")
+        assert len(headers) == 1  # TODO join entries
+        # find the loop head
+        loop_head: Label = next(iter(headers))
+
+    synth_exiting_latch = SyntheticExitingLatch(bbmap.clg.new_index())
+    synth_exit = SyntheticExit(bbmap.clg.new_index())
+    backedge_blocks = [block for block in loop
+                       if loop_head in bbmap[block].jump_targets]
+
+    exit_variable = bbmap.clg.new_variable()
+    backedge_variable = bbmap.clg.new_variable()
+    exit_value_table = dict(((i, j) for i, j in enumerate(exit_blocks)))
+    backedge_value_table = dict((i, j) for i, j in enumerate((loop_head,
+                                                              synth_exit)))
+
+    def reverse_lookup(d, value):
+        for k, v in d.items():
+            if v == value:
+                return v
+        else:
+            Exception("element not found")
+
+    new_blocks = set()
+    for label in loop:
+        if label in exiting_blocks and label in backedge_blocks:
+            new_jt = set()
+            for jt in bbmap[label].jump_targets:
+                if jt in exit_blocks:
+                    synth_assign = SynthenticAssignment(bbmap.clg.new_index())
+                    new_blocks.add(synth_assign)
+                    variable_assignment = dict((
+                        (backedge_variable,
+                         reverse_lookup(backedge_value_table, synth_exit)),
+                        (exit_variable,
+                         reverse_lookup(exit_value_table, jt)
+                         ),
+                    ))
+                    synth_assign_block = ControlVariableBlock(
+                               begin=synth_assign,
+                               end=ControlLabel("end"),
+                               fallthrough=True,
+                               jump_targets=set((synth_exiting_latch,)),
+                               backedges=set(),
+                               variable_assignment=variable_assignment,
+                    )
+                    bbmap.add_block(synth_assign_block)
+                    new_jt.add(synth_assign)
+                elif jt in [loop_head]:
+                    synth_assign = SynthenticAssignment(bbmap.clg.new_index())
+                    new_blocks.add(synth_assign)
+                    variable_assignment = dict((
+                        (backedge_variable,
+                         reverse_lookup(backedge_value_table, loop_head)),
+                        (exit_variable,
+                         reverse_lookup(exit_value_table, -1)
+                         ),
+                    ))
+                    synth_assign_block = ControlVariableBlock(
+                               begin=synth_assign,
+                               end=ControlLabel("end"),
+                               fallthrough=True,
+                               jump_targets=set((synth_exiting_latch,)),
+                               backedges=set(),
+                               variable_assignment=variable_assignment,
+                    )
+                    bbmap.add_block(synth_assign_block)
+                    new_jt.add(synth_assign)
+                else:
+                    new_jt.add(jt)
+            # finally, replace the jump_targets
+            bbmap.add_block(
+                bbmap.graph.pop(label).replace_jump_targets(jump_targets=new_jt))
+
+    loop.update(new_blocks)
+
+    synth_exiting_latch_block = BranchBlock(
+        begin=synth_exiting_latch,
+        end=ControlLabel("end"),
+        fallthrough=False,
+        jump_targets=set((synth_exit,)),
+        backedges=set((loop_head, )),
+        variable=backedge_variable,
+        branch_value_table=backedge_value_table,
+        )
+    loop.add(synth_exiting_latch)
+    bbmap.add_block(synth_exiting_latch_block)
+
+    synth_exit_block = BranchBlock(
+        begin=synth_exit,
+        end=ControlLabel("end"),
+        fallthrough=False,
+        jump_targets=exit_blocks,
+        backedges=set(),
+        variable=exit_variable,
+        branch_value_table=exit_value_table,
+        )
+    bbmap.add_block(synth_exit_block)
+
+    return headers, loop_head, synth_exiting_latch, synth_exit
+
+    # SyntheticExitingLatch
+    # SyntheticExit
+    # Will need multivariable assignment blocks
+    # Make two variables, keep track of their state and iterate
+
+    # THIS IS FOR PYTHON FOR LOOPS
+    ## the loop head should have two jump targets
+    #loop_head_jt = bbmap[loop_head].jump_targets
+    #assert len(loop_head_jt) == 2
+    #llhjt_list = list(loop_head_jt)
+    #if llhjt_list[0] in loop:
+    #    loop_body_start = llhjt_list[0]
+    #    loop_head_exit = llhjt_list[1]
+    #else:
+    #    loop_body_start = llhjt_list[1]
+    #    loop_head_exit = llhjt_list[0]
+
+    #loop_head_jt = bbmap[loop_head].jump_targets
+
+    ## find the backedge that points to the loop head
+    #backedge_blocks = [block for block in loop
+    #                   if loop_head in bbmap[block].jump_targets]
+    #if len(backedge_blocks) == 1:
+    #    backedge_block = backedge_blocks[0]
+    #    # TODO replace jump_target, not overwrite
+    #    bbmap.add_block(bbmap.graph.pop(backedge_block).replace_jump_targets(
+    #        jump_targets=loop_head_jt))
+    #elif len(backedge_blocks) > 1:
+    #    # create new backedgeblock, that points to the loop_body_start
+    #    synth_backedge_label = SyntheticLatch(bbmap.clg.new_index())
+    #    synth_backedge_block = BasicBlock(begin=synth_backedge_label,
+    #                                end="end",
+    #                                fallthrough=False,
+    #                                #jump_targets=set((loop_body_start,loop_head_exit)),
+    #                                jump_targets=set((loop_head,)),
+    #                                backedges=set()
+    #                                )
+    #    bbmap.add_block(synth_backedge_block)
+    #    for label in backedge_blocks:
+    #        block = bbmap.graph.pop(label)
+    #        jt = set(block.jump_targets)
+    #        jt.discard(loop_head)
+    #        jt.add(synth_backedge_label)
+    #        bbmap.add_block(block.replace_jump_targets(
+    #                        jump_targets=jt))
+    #    loop.add(synth_backedge_label)
+    #else:
+    #    raise Exception("unreachable")
 
 
-    headers, entries = bbmap.find_headers_and_entries(loop)
-    pre_exits, post_exits = bbmap.find_exits(loop)
+    #headers, entries = bbmap.find_headers_and_entries(loop)
+    #pre_exits, post_exits = bbmap.find_exits(loop)
+    ##pre_exit_label, post_exit_label = bbmap.join_tails_and_exits(pre_exits,
+    ##                                                             post_exits)
+    ##loop.add(pre_exit_label)
+
+    ## recompute the scc
+    #subgraph_bbmap = BlockMap({label: bbmap[label] for label in loop})
+    #new_loops = []
+    #for scc in subgraph_bbmap.compute_scc():
+    #    if len(scc) == 1:
+    #        solo_block = next(iter(scc))
+    #        if solo_block in bbmap[solo_block].jump_targets:
+    #            new_loops.append(scc)
+    #    else:
+    #        new_loops.append(scc)
+    #assert(len(new_loops) == 1)
+    #new_loop = next(iter(new_loops))
+    #loop.clear()
+    #loop.update(new_loop)
+
+    #headers, entries = bbmap.find_headers_and_entries(loop)
+    #pre_exits, post_exits = bbmap.find_exits(loop)
+    #pre_exit_label = next(iter(pre_exits))
+    #post_exit_label = next(iter(post_exits))
     #pre_exit_label, post_exit_label = bbmap.join_tails_and_exits(pre_exits,
     #                                                             post_exits)
     #loop.add(pre_exit_label)
+    #loop_head = next(iter(headers))
 
-    # recompute the scc
-    subgraph_bbmap = BlockMap({label: bbmap[label] for label in loop})
-    new_loops = []
-    for scc in subgraph_bbmap.compute_scc():
-        if len(scc) == 1:
-            solo_block = next(iter(scc))
-            if solo_block in bbmap[solo_block].jump_targets:
-                new_loops.append(scc)
-        else:
-            new_loops.append(scc)
-    assert(len(new_loops) == 1)
-    new_loop = next(iter(new_loops))
-    loop.clear()
-    loop.update(new_loop)
+    ## fixup backedges
+    #for label in loop:
+    #    bbmap.add_block(
+    #        bbmap.graph.pop(label).replace_backedge(loop_head))
 
-    headers, entries = bbmap.find_headers_and_entries(loop)
-    pre_exits, post_exits = bbmap.find_exits(loop)
-    #pre_exit_label = next(iter(pre_exits))
-    #post_exit_label = next(iter(post_exits))
-    pre_exit_label, post_exit_label = bbmap.join_tails_and_exits(pre_exits,
-                                                                 post_exits)
-    loop.add(pre_exit_label)
-    loop_head = next(iter(headers))
+    #loop_body_start = next(iter(bbmap[loop_head].jump_targets))
 
-    # fixup backedges
-    for label in loop:
-        bbmap.add_block(
-            bbmap.graph.pop(label).replace_backedge(loop_head))
-
-    loop_body_start = next(iter(bbmap[loop_head].jump_targets))
-
-    return headers, loop_head, loop_body_start, pre_exit_label, post_exit_label
+    #return headers, loop_head, loop_body_start, pre_exit_label, post_exit_label
 
 
 def restructure_loop(bbmap: BlockMap):
@@ -590,7 +812,7 @@ def restructure_loop(bbmap: BlockMap):
 
     # extract loop
     for loop in loops:
-        headers, loop_head, loop_body_start, pre_exit_label, post_exit_label = loop_rotate(bbmap, loop)
+        headers, loop_head, pre_exit_label, post_exit_label = loop_rotate(bbmap, loop)
         loop_subregion = BlockMap({
             label: bbmap[label] for label in loop}, clg=bbmap.clg)
 
@@ -611,7 +833,7 @@ def restructure_loop(bbmap: BlockMap):
         # insert subregion back into original
         bbmap.graph[loop_head] = blk
         # process subregions
-        restructure_loop(blk.subregion)
+        #restructure_loop(blk.subregion)
 
 
 def restructure_branch(bbmap: BlockMap):
@@ -643,7 +865,7 @@ def restructure_branch(bbmap: BlockMap):
             else:
                 jt = bbmap.graph[current_block].jump_targets
                 assert len(jt) == 1
-                current_block = jt[0]
+                current_block = next(iter(jt))
         # Extract the head subregion
         head_subgraph = BlockMap({block: bbmap.graph[block]
                                  for block in head_region_blocks},
@@ -969,9 +1191,36 @@ class ByteFlowRenderer(object):
             raise Exception("Unknown label type: " + label)
         digraph.node(str(label), shape="rect", label=body)
 
+    def render_control_variable_block(self, digraph: "Digraph", label: Label, block: BasicBlock):
+        if isinstance(label, ControlLabel):
+            body = label.__class__.__name__ + ": " + str(label.index) + '\n'
+            body += "\n".join((f"{k} = {v}" for k, v in
+                               block.variable_assignment.items()))
+        else:
+            raise Exception("Unknown label type: " + label)
+        digraph.node(str(label), shape="rect", label=body)
+
+    def render_branching_block(self, digraph: "Digraph", label: Label, block: BasicBlock):
+        if isinstance(label, ControlLabel):
+            def find_index(v):
+                if hasattr(v, "offset"):
+                    return v.offset
+                if hasattr(v, "index"):
+                    return v.index
+            body = label.__class__.__name__ + ": " + str(label.index) + '\n'
+            body += f"variable: {block.variable}\n"
+            body += "\n".join((f"{k}=>{find_index(v)}" for k, v in block.branch_value_table.items()))
+        else:
+            raise Exception("Unknown label type: " + label)
+        digraph.node(str(label), shape="rect", label=body)
+
     def render_block(self, digraph: "Digraph", label: Label, block: BasicBlock):
         if type(block) == BasicBlock:
             self.render_basic_block(digraph, label, block)
+        elif type(block) == ControlVariableBlock:
+            self.render_control_variable_block(digraph, label, block)
+        elif type(block) == BranchBlock:
+            self.render_branching_block(digraph, label, block)
         elif type(block) == RegionBlock:
             self.render_region_block(digraph, label, block)
         else:
@@ -981,7 +1230,9 @@ class ByteFlowRenderer(object):
         for label, block in blocks.items():
             for dst in block.jump_targets:
                 if dst in blocks:
-                    if type(block) == BasicBlock:
+                    if type(block) in (BasicBlock,
+                                       ControlVariableBlock,
+                                       BranchBlock):
                         self.g.edge(str(label), str(dst))
                     elif type(block) == RegionBlock:
                         if block.exit is not None:
