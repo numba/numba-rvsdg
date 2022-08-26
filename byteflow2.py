@@ -377,22 +377,10 @@ class BlockMap:
         # for all nodes that contain a return
         return_nodes = [node for node in self.graph
                         if self.graph[node].is_exiting()]
-        # if there is more than one, we may need to close it
+        # close if more than one is found
         if len(return_nodes) > 1:
-            # create label and block and add to graph
             return_solo_label = SynthenticReturn(str(self.clg.new_index()))
-            return_solo_block = BasicBlock(
-                begin=return_solo_label,
-                end=ControlLabel("end"),
-                fallthrough=False,
-                jump_targets=set(),
-                backedges=set()
-                )
-            self.add_block(return_solo_block)
-            # re-wire all previous exit nodes to the synthetic one
-            for rnode in return_nodes:
-                self.add_block(self.graph.pop(rnode).replace_jump_targets(
-                            jump_targets=set((return_solo_label,))))
+            self.insert_block(return_solo_label, return_nodes, set())
 
     def is_reachable_dfs(self, begin, end):
         """Is end reachable from begin. """
