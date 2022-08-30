@@ -595,17 +595,17 @@ def loop_rotate(bbmap: BlockMap, loop: Set[Label]):
         loop.add(solo_head_label)
         loop_head: Label = solo_head_label
         # need to rewire all backedges
-        for label in loop:
-            if label == solo_head_label:
-                continue
-            block = bbmap.graph.pop(label)
-            jt = set(block.jump_targets)
-            # remove any existing backedges that point to the headers
-            jt.difference_update(headers)
-            # add a backedge to the new solo header
-            jt.add(solo_head_label)
-            bbmap.add_block(block.replace_jump_targets(
-                            jump_targets=jt))
+        #for label in loop:
+        #    if label == solo_head_label:
+        #        continue
+        #    block = bbmap.graph.pop(label)
+        #    jt = set(block.jump_targets)
+        #    # remove any existing backedges that point to the headers
+        #    jt.difference_update(headers)
+        #    # add a backedge to the new solo header
+        #    jt.add(solo_head_label)
+        #    bbmap.add_block(block.replace_jump_targets(
+        #                    jump_targets=jt))
     else:
         assert len(headers) == 1  # TODO join entries
         # find the loop head
@@ -614,18 +614,21 @@ def loop_rotate(bbmap: BlockMap, loop: Set[Label]):
     synth_exiting_latch = SyntheticExitingLatch(bbmap.clg.new_index())
     synth_exit = SyntheticExit(bbmap.clg.new_index())
     backedge_blocks = [block for block in loop
-                       if loop_head in bbmap[block].jump_targets]
+                       if headers.intersection(bbmap[block].jump_targets)]
 
-    exit_variable = bbmap.clg.new_variable()
+    # the entry variable and the exit variable will be re-used
+    exit_variable = bbmap[solo_head_label].variable
+    #exit_variable = bbmap.clg.new_variable()
     backedge_variable = bbmap.clg.new_variable()
     exit_value_table = dict(((i, j) for i, j in enumerate(exit_blocks)))
     backedge_value_table = dict((i, j) for i, j in enumerate((loop_head,
                                                               synth_exit)))
+    header_value_table = bbmap[solo_head_label].branch_value_table
 
     def reverse_lookup(d, value):
         for k, v in d.items():
             if v == value:
-                return v
+                return k
         else:
             Exception("element not found")
 
@@ -654,16 +657,25 @@ def loop_rotate(bbmap: BlockMap, loop: Set[Label]):
                     )
                     bbmap.add_block(synth_assign_block)
                     new_jt.add(synth_assign)
-                elif jt in [loop_head]:
+                elif jt in headers:
                     synth_assign = SynthenticAssignment(bbmap.clg.new_index())
                     new_blocks.add(synth_assign)
                     variable_assignment = dict((
                         (backedge_variable,
                          reverse_lookup(backedge_value_table, loop_head)),
                         (exit_variable,
-                         reverse_lookup(exit_value_table, -1)
+                         reverse_lookup(header_value_table, jt)
                          ),
                     ))
+                    # update the backedge block
+                    block = bbmap.graph.pop(label)
+                    jt = set(block.jump_targets)
+                    # remove any existing backedges that point to the headers,
+                    # no need to add a backedge, since it will be contained in
+                    # the SyntheticExitingLatch later on.
+                    jt.difference_update(headers)
+                    bbmap.add_block(block.replace_jump_targets(
+                                    jump_targets=jt))
                     synth_assign_block = ControlVariableBlock(
                                begin=synth_assign,
                                end=ControlLabel("end"),
