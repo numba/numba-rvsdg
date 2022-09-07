@@ -301,7 +301,7 @@ class BlockMap:
         # initialize new block
         new_block = BasicBlock(begin=new_label,
                                end=ControlLabel("end"),
-                               fallthrough=len(successors) <= 1,
+                               fallthrough=len(successors) == 1,
                                jump_targets=successors,
                                backedges=set()
                                )
