@@ -38,7 +38,7 @@ class SyntheticBranch(ControlLabel):
 
 
 @dataclass(frozen=True, order=True)
-class SynthenticTail(ControlLabel):
+class SyntheticTail(ControlLabel):
     index: int
 
 
@@ -524,14 +524,14 @@ class BlockMap:
 
         if len(tails) >= 2 and len(exits) == 1:
             # join only tails
-            solo_tail_label = SynthenticTail(str(self.clg.new_index()))
+            solo_tail_label = SyntheticTail(str(self.clg.new_index()))
             solo_exit_label = next(iter(exits))
             self.insert_block(solo_tail_label, tails, exits)
             return solo_tail_label, solo_exit_label
 
         if len(tails) >= 2 and len(exits) >= 2:
             # join both tails and exits
-            solo_tail_label = SynthenticTail(str(self.clg.new_index()))
+            solo_tail_label = SyntheticTail(str(self.clg.new_index()))
             solo_exit_label = SyntheticExit(str(self.clg.new_index()))
             self.insert_block(solo_tail_label, tails, exits)
             self.insert_block(solo_exit_label, set((solo_tail_label,)), exits)
