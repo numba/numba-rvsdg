@@ -701,6 +701,7 @@ def loop_rotate(bbmap: BlockMap, loop: Set[Label]):
             return "UNUSED"
 
     new_blocks = set()
+    doms = _doms(bbmap)
     for label in loop:
         if label in exiting_blocks or label in backedge_blocks:
             new_jt = set()
@@ -725,7 +726,7 @@ def loop_rotate(bbmap: BlockMap, loop: Set[Label]):
                     )
                     bbmap.add_block(synth_assign_block)
                     new_jt.add(synth_assign)
-                elif jt in headers:
+                elif jt in headers and label not in doms[jt]:
                     synth_assign = SynthenticAssignment(bbmap.clg.new_index())
                     new_blocks.add(synth_assign)
                     variable_assignment = dict((
