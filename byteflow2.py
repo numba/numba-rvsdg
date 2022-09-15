@@ -1188,7 +1188,7 @@ def extract_region(bbmap, region_blocks, region_kind):
         fallthrough=False,
         jump_targets=bbmap[region_exiting].jump_targets,
         backedges=(),
-        kind="region_kind",
+        kind=region_kind,
         headers=headers,
         subregion=head_subgraph,
         exit=region_exiting,
@@ -1205,29 +1205,30 @@ def restructure_branch(bbmap: BlockMap):
     immdoms = _imm_doms(doms)
     regions = [r for r in _iter_branch_regions(bbmap, immdoms, postimmdoms)]
 
+    # Early exit when no branching regions are found.
     if not regions:
         return
 
-    # compute initial regions
+    # Compute initial regions.
     begin, end = regions[0]
     head, head_region_blocks = find_head_blocks(bbmap, begin)
     branch_regions = find_branch_regions(bbmap, begin, end)
     tail_region_blocks = find_tail_blocks(bbmap, begin, head_region_blocks, branch_regions)
 
-    # Unify headers of tail subregion
+    # Unify headers of tail subregion if need be.
     headers, entries = bbmap.find_headers_and_entries(tail_region_blocks)
     if len(headers) > 1:
         solo_head_label = SynthenticHead(bbmap.clg.new_index())
         bbmap.insert_block_and_control_blocks(solo_head_label, entries, headers)
 
-    # recompute regions
+    # Recompute regions.
     head, head_region_blocks = find_head_blocks(bbmap, begin)
     branch_regions = find_branch_regions(bbmap, begin, end)
     tail_region_blocks = find_tail_blocks(bbmap, begin, head_region_blocks, branch_regions)
 
     # Branch region processing:
-    # Close any open brancg regions by inserting a SyntheticTail
-    # populate any empty branch regions by inserting a SyntheticBranch
+    # Close any open branch regions by inserting a SyntheticTail.
+    # Populate any empty branch regions by inserting a SyntheticBranch.
     for region in branch_regions:
         if region:
             bra_start, inner_nodes = region
@@ -1243,78 +1244,17 @@ def restructure_branch(bbmap: BlockMap):
             synthetic_branch_block_label = SyntheticBranch(bbmap.clg.new_index())
             bbmap.insert_block(synthetic_branch_block_label, {begin}, tail_headers)
 
-    # recompute regions
+    # Recompute regions.
     head, head_region_blocks = find_head_blocks(bbmap, begin)
     branch_regions = find_branch_regions(bbmap, begin, end)
     tail_region_blocks = find_tail_blocks(bbmap, begin, head_region_blocks, branch_regions)
 
-    head_subgraph = BlockMap({block: bbmap.graph[block]
-                             for block in head_region_blocks},
-                             clg=bbmap.clg)
-    head_subregion = RegionBlock(
-        begin=head,
-        end=begin,
-        fallthrough=False,
-        jump_targets=bbmap.graph[begin].jump_targets,
-        backedges=(),
-        kind="head",
-        headers=(head,),
-        subregion=head_subgraph,
-        exit=begin,
-    )
-    begin = head
-    bbmap.remove_blocks(head_region_blocks)
-    bbmap.graph[begin] = head_subregion
-
-    for region in branch_regions:
-        if region:
-            bra_start, inner_nodes = region
-        else:
-            continue
+    # extract subregions
+    extract_region(bbmap, set(head_region_blocks), "head")
+    for bra_start, inner_nodes in branch_regions:
         if inner_nodes:
-            branch_subgraph = BlockMap({block: bbmap[block]
-                                       for block in inner_nodes},
-                                       clg=bbmap.clg)
-
-            headers, entries = bbmap.find_headers_and_entries(inner_nodes)
-            exiting_blocks, exit_blocks = bbmap.find_exits(inner_nodes)
-            branch_subregion = RegionBlock(
-                begin=bra_start,
-                end="end",
-                fallthrough=False,
-                jump_targets=exit_blocks,
-                backedges=(),
-                kind="branch",
-                headers=headers,
-                subregion=branch_subgraph,
-                exit=next(iter(exiting_blocks)),
-            )
-            bbmap.remove_blocks(inner_nodes)
-            bbmap.graph[bra_start] = branch_subregion
-
-
+            extract_region(bbmap, inner_nodes, "branch")
     extract_region(bbmap, tail_region_blocks, "tail")
-
-#    tail_subgraph = BlockMap({block: bbmap[block]
-#                             for block in tail_region_blocks},
-#                             clg=bbmap.clg)
-#
-#    headers, entries = bbmap.find_headers_and_entries(tail_region_blocks)
-#    assert len(headers) == 1
-#    tail_subgraph_header = next(iter(headers))
-#    tail_subregion = RegionBlock(
-#        begin=tail_subgraph_header,
-#        end="end",
-#        fallthrough=False,
-#        jump_targets=(),
-#        backedges=(),
-#        kind="tail",
-#        headers=headers,
-#        subregion=tail_subgraph,
-#        exit=None,
-#    )
-#    bbmap.remove_blocks(tail_region_blocks)
-#    bbmap.graph[tail_subgraph_header] = tail_subregion
 
 
 def _iter_branch_regions(bbmap: BlockMap,
