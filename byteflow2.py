@@ -1164,6 +1164,11 @@ def extract_region(bbmap, region_blocks, region_kind):
                              for label in region_blocks},
                              clg=bbmap.clg)
 
+    if isinstance(bbmap[region_exiting], RegionBlock):
+        region_exit = bbmap[region_exiting].exit
+    else:
+        region_exit = region_exiting
+
     subregion = RegionBlock(
         begin=region_header,
         end=region_exiting,
@@ -1173,7 +1178,7 @@ def extract_region(bbmap, region_blocks, region_kind):
         kind=region_kind,
         headers=headers,
         subregion=head_subgraph,
-        exit=region_exiting,
+        exit=region_exit,
     )
     bbmap.remove_blocks(region_blocks)
     bbmap.graph[region_header] = subregion
@@ -1188,6 +1193,7 @@ def restructure_branch(bbmap: BlockMap):
     regions = [r for r in _iter_branch_regions(bbmap, immdoms, postimmdoms)]
 
     # Early exit when no branching regions are found.
+    # TODO: the whole graph should become a linear mono head
     if not regions:
         return
 
