@@ -450,7 +450,10 @@ class BlockMap:
             headers |= nodes_jump_in_loop
             if nodes_jump_in_loop:
                 entries.add(node)
-
+        # If the loop has no headers or entries, the only header is the head of
+        # the CFG.
+        if not headers:
+            headers = {self.find_head()}
         return headers, entries
 
     def find_exits(self, subgraph: Set[Label]):
