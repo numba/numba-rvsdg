@@ -1086,19 +1086,19 @@ def _restructure_branch(bbmap: BlockMap):
 
 def find_head_blocks(bbmap: BlockMap, begin: Label) -> Set[Label]:
     head = bbmap.find_head()
-    head_region_blocks = []
+    head_region_blocks = set()
     current_block = head
     # Start at the head block and traverse the graph linearly until
     # reaching the begin block.
     while True:
-        head_region_blocks.append(current_block)
+        head_region_blocks.add(current_block)
         if current_block == begin:
             break
         else:
             jt = bbmap.graph[current_block].jump_targets
             assert len(jt) == 1
             current_block = next(iter(jt))
-    return head, head_region_blocks
+    return head_region_blocks
 
 
 def find_branch_regions(bbmap: BlockMap, begin: Label, end: Label) \
@@ -1192,7 +1192,7 @@ def restructure_branch(bbmap: BlockMap):
 
     # Compute initial regions.
     begin, end = regions[0]
-    head, head_region_blocks = find_head_blocks(bbmap, begin)
+    head_region_blocks = find_head_blocks(bbmap, begin)
     branch_regions = find_branch_regions(bbmap, begin, end)
     tail_region_blocks = find_tail_blocks(bbmap, begin, head_region_blocks, branch_regions)
 
@@ -1203,7 +1203,7 @@ def restructure_branch(bbmap: BlockMap):
         bbmap.insert_block_and_control_blocks(solo_head_label, entries, headers)
 
     # Recompute regions.
-    head, head_region_blocks = find_head_blocks(bbmap, begin)
+    head_region_blocks = find_head_blocks(bbmap, begin)
     branch_regions = find_branch_regions(bbmap, begin, end)
     tail_region_blocks = find_tail_blocks(bbmap, begin, head_region_blocks, branch_regions)
 
@@ -1226,12 +1226,12 @@ def restructure_branch(bbmap: BlockMap):
             bbmap.insert_block(synthetic_branch_block_label, {begin}, tail_headers)
 
     # Recompute regions.
-    head, head_region_blocks = find_head_blocks(bbmap, begin)
+    head_region_blocks = find_head_blocks(bbmap, begin)
     branch_regions = find_branch_regions(bbmap, begin, end)
     tail_region_blocks = find_tail_blocks(bbmap, begin, head_region_blocks, branch_regions)
 
     # extract subregions
-    extract_region(bbmap, set(head_region_blocks), "head")
+    extract_region(bbmap, head_region_blocks, "head")
     for bra_start, inner_nodes in branch_regions:
         if inner_nodes:
             extract_region(bbmap, inner_nodes, "branch")
