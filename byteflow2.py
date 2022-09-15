@@ -897,27 +897,8 @@ def restructure_loop(bbmap: BlockMap):
     # extract loop
     for loop in loops:
         headers, loop_head, pre_exit_label, post_exit_label = loop_rotate(bbmap, loop)
-        loop_subregion = BlockMap({
-            label: bbmap[label] for label in loop}, clg=bbmap.clg)
+        extract_region(bbmap, loop, "loop")
 
-        # create a subregion
-        blk = RegionBlock(
-            begin=loop_head,
-            end="end",
-            fallthrough=False,
-            jump_targets=(post_exit_label,),
-            backedges=(),
-            kind="loop",
-            subregion=loop_subregion,
-            headers={header: bbmap.graph[header] for header in headers},
-            exit=pre_exit_label
-        )
-        # Remove the nodes in the subregion
-        bbmap.remove_blocks(loop)
-        # insert subregion back into original
-        bbmap.graph[loop_head] = blk
-        # process subregions
-        #restructure_loop(blk.subregion)
 
 
 def _restructure_branch(bbmap: BlockMap):
