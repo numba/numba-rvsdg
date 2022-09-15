@@ -1155,18 +1155,19 @@ def find_tail_blocks(bbmap: BlockMap, begin: Set[Label], head_region_blocks, bra
 def extract_region(bbmap, region_blocks, region_kind):
     headers, entries = bbmap.find_headers_and_entries(region_blocks)
     exiting_blocks, exit_blocks = bbmap.find_exits(region_blocks)
-    head_subgraph = BlockMap({label: bbmap.graph[label]
-                             for label in region_blocks},
-                             clg=bbmap.clg)
     assert len(headers) == 1
     assert len(exiting_blocks) == 1
     region_header = next(iter(headers))
     region_exiting = next(iter(exiting_blocks))
 
+    head_subgraph = BlockMap({label: bbmap.graph[label]
+                             for label in region_blocks},
+                             clg=bbmap.clg)
+
     subregion = RegionBlock(
         begin=region_header,
         end=region_exiting,
-        fallthrough=False,
+        fallthrough=len(bbmap[region_exiting].jump_targets) > 1,
         jump_targets=bbmap[region_exiting].jump_targets,
         backedges=(),
         kind=region_kind,
