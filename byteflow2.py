@@ -1206,8 +1206,8 @@ def restructure_branch(bbmap: BlockMap):
     # Unify headers of tail subregion if need be.
     headers, entries = bbmap.find_headers_and_entries(tail_region_blocks)
     if len(headers) > 1:
-        solo_head_label = SynthenticHead(bbmap.clg.new_index())
-        bbmap.insert_block_and_control_blocks(solo_head_label, entries, headers)
+        end = SynthenticHead(bbmap.clg.new_index())
+        bbmap.insert_block_and_control_blocks(end, entries, headers)
 
     # Recompute regions.
     head_region_blocks = find_head_blocks(bbmap, begin)
@@ -1239,9 +1239,11 @@ def restructure_branch(bbmap: BlockMap):
 
     # extract subregions
     extract_region(bbmap, head_region_blocks, "head")
-    for bra_start, inner_nodes in branch_regions:
-        if inner_nodes:
-            extract_region(bbmap, inner_nodes, "branch")
+    for region in branch_regions:
+        if region:
+            bra_start, inner_nodes = region
+            if inner_nodes:
+                extract_region(bbmap, inner_nodes, "branch")
     extract_region(bbmap, tail_region_blocks, "tail")
 
 
