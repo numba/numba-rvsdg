@@ -591,11 +591,81 @@ def _iter_subregions(bbmap: "BlockMap"):
             yield node
             yield from _iter_subregions(node.subregion)
 
+
 def loop_rotate_for_loop(bbmap: BlockMap, loop: Set[Label]):
+    """ "Loop-rotate" a Python for loop.
+
+    This function will convert a header controlled Python for loop into a
+    tail-controlled Python foor loop. The approach taken here is to reuse the
+    `FOR_ITER` bytecode as a loop guard. To implement this, the existing
+    instruction is replicated into a `SyntheticForIter` block and the backedges
+    are updated accordingly.
+
+    Example
+    -------
+
+    Consider the following Python for loop:
+
+    .. code-block::
+
+        def foo(n):
+            for i in range(n):
+                pass
+
+
+    This is the initial CFG.
+
+      ┌─────────┐
+      │  ENTRY  │
+      └────┬────┘
+           │
+           │
+           │
+      ┌────▼────┐
+    ┌─►FOR_ITER │
+    │ └────┬────┘
+    │      │
+    │      ├─────────────┐
+    │      │             │
+    │ ┌────▼────┐   ┌────▼────┐
+    └─┤  BODY   │   │  RETURN │
+      └─────────┘   └─────────┘
+
+    After loop-rotation, the backedge no longer points to the FOR_ITER and the
+    SYNTHETIC for-iter block handles the loop condition. The initial FOR_ITER
+    now serves as a loop-guard to determine if the loop should be entred or
+    not.
+
+      ┌─────────┐
+      │  ENTRY  │
+      └────┬────┘
+           │
+           │
+           │
+      ┌────▼────┐
+      │FOR_ITER │
+      └────┬────┘
+           │
+           ├─────────────┐
+           │             │
+      ┌────▼────┐        │
+    ┌─►  BODY   │        │
+    │ └────┬────┘        │
+    │      │             │
+    │      │             │
+    │      │             │
+    │ ┌────▼────┐   ┌────▼────┐
+    └─┤SYNTHETIC├───►  RETURN │
+      └─────────┘   └─────────┘
+
+    """
     headers, entries = bbmap.find_headers_and_entries(loop)
     exiting_blocks, exit_blocks = bbmap.find_exits(loop)
+    # Make sure there is only a single header, which is the FOR_ITER block.
     assert len(headers) == 1
     for_iter: Label = next(iter(headers))
+    # Create the SyntheticForIter block and replicate the jump targets from the
+    # original FOR_ITER block.
     synth_for_iter = SyntheticForIter(bbmap.clg.new_index())
     new_block = BasicBlock(begin=synth_for_iter,
                            end=ControlLabel("end"),
@@ -605,19 +675,19 @@ def loop_rotate_for_loop(bbmap: BlockMap, loop: Set[Label]):
                            )
     bbmap.add_block(new_block)
 
+    # Remove the FOR_ITER from the set of loop blocks. 
     loop.remove(for_iter)
-    # replace any old arcs to for_iter to the new synthetic_for_iter
+    # Rewire incoming edges for FOR_ITER to SyntheticForIter instead.
     for label in loop:
         block = bbmap.graph.pop(label)
         jt = set(block.jump_targets)
-        # remove any existing backedges that point to the headers
         if for_iter in jt:
             jt.remove(for_iter)
-            # add a backedge to the synthetic for_iter instead
             jt.add(synth_for_iter)
         bbmap.add_block(block.replace_jump_targets(
                         jump_targets=jt))
 
+    # Finally, add the SYNTHETIC_FOR_ITER to the loop.
     loop.add(synth_for_iter)
 
     ## find the new loop_head
@@ -630,6 +700,7 @@ def loop_rotate_for_loop(bbmap: BlockMap, loop: Set[Label]):
     #else:
     #    loop_head = llhjt_list[1]
     #    loop_exit = llhjt_list[0]
+
 
 def loop_rotate(bbmap: BlockMap, loop: Set[Label]):
     """ Rotate loop.
