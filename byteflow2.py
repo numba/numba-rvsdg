@@ -155,6 +155,31 @@ class BranchBlock(BasicBlock):
     variable: str
     branch_value_table: dict
 
+    def replace_jump_targets(self, jump_targets: Tuple) -> "BasicBlock":
+        fallthrough = len(jump_targets) == 1
+        old_branch_value_table = self.branch_value_table
+        new_branch_value_table = {}
+        for target in self.jump_targets:
+            if target not in jump_targets:
+                # ASSUMPTION: only one jump_target is being updated
+                diff = jump_targets.difference(self.jump_targets)
+                assert len(diff) == 1
+                new_target = next(iter(diff))
+                for k, v in old_branch_value_table.items():
+                    if v == target:
+                        new_branch_value_table[k] = new_target
+            else:
+                # copy all old values
+                for k, v in old_branch_value_table.items():
+                    if v == target:
+                        new_branch_value_table[k] = v
+
+        return replace(self,
+                       fallthrough=fallthrough,
+                       jump_targets=jump_targets,
+                       branch_value_table=new_branch_value_table,
+                       )
+
 
 @dataclass(frozen=True)
 class RegionBlock(BasicBlock):
