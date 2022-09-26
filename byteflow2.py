@@ -563,6 +563,8 @@ class ByteFlow:
     def _restructure_loop(self):
         bbmap = deepcopy(self.bbmap)
         restructure_loop(bbmap)
+        for region in _iter_subregions(bbmap):
+            restructure_loop(region.subregion)
         return ByteFlow(bc=self.bc, bbmap=bbmap)
 
     def _restructure_branch(self):
@@ -578,6 +580,8 @@ class ByteFlow:
         bbmap.join_returns()
         # handle loop
         restructure_loop(bbmap)
+        for region in _iter_subregions(bbmap):
+            restructure_loop(region.subregion)
         # handle branch
         restructure_branch(bbmap)
         for region in _iter_subregions(bbmap):
