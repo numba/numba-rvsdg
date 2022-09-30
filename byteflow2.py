@@ -383,8 +383,8 @@ class BlockMap:
                                begin=synth_assign,
                                end=ControlLabel("end"),
                                fallthrough=True,
-                               jump_targets=set((new_label,)),
-                               backedges=set(),
+                               jump_targets=(new_label,),
+                               backedges=(),
                                variable_assignment=variable_assignment,
                 )
                 # add block
@@ -1340,7 +1340,7 @@ def restructure_branch(bbmap: BlockMap):
             # Insert SyntheticBranch
             tail_headers, _ = bbmap.find_headers_and_entries(tail_region_blocks)
             synthetic_branch_block_label = SyntheticBranch(bbmap.clg.new_index())
-            bbmap.insert_block(synthetic_branch_block_label, {begin}, tail_headers)
+            bbmap.insert_block(synthetic_branch_block_label, (begin,), tail_headers)
 
     # Recompute regions.
     head_region_blocks = find_head_blocks(bbmap, begin)
