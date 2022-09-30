@@ -53,7 +53,7 @@ class SynthenticHead(ControlLabel):
 
 
 @dataclass(frozen=True, order=True)
-class SynthenticReturn(ControlLabel):
+class SyntheticReturn(ControlLabel):
     index: int
 
 
@@ -514,7 +514,7 @@ class BlockMap:
                         if self.graph[node].is_exiting()]
         # close if more than one is found
         if len(return_nodes) > 1:
-            return_solo_label = SynthenticReturn(str(self.clg.new_index()))
+            return_solo_label = SyntheticReturn(str(self.clg.new_index()))
             self.insert_block(return_solo_label, return_nodes, set())
 
     def is_reachable_dfs(self, begin, end):

@@ -31,28 +31,12 @@ class Simulator:
 
     def run_bb(self, bb: BasicBlock, target):
         print("AT", target)
-        breakpoint()
+        #breakpoint()
         if isinstance(bb, RegionBlock):
             return self._run_region(bb, target)
-        if isinstance(target, ControlLabel):
-            if type(target) == SyntheticForIter:
-                print('----', SyntheticForIter)
-                self.op_FOR_ITER(None)
-            elif type(target) == SynthenticAssignment:
-                print('----', SyntheticForIter)
-                self.ctrl_varmap.update(bb.variable_assignment)
-                print(self.ctrl_varmap)
-            elif type(target) in (SyntheticExitingLatch, SynthenticHead):
-                jump_target = bb.branch_value_table[self.ctrl_varmap[bb.variable]]
-                if bb.backedges:
-                    self.branch = jump_target in bb.backedges
-                else:
-                    self.branch = bool(list(bb.jump_targets).index(jump_target))
-            elif type(target) in (SyntheticExit, SyntheticReturn, SyntheticTail):
-                pass
-            else:
-                raise Exception(f"{target} is not implemented")
 
+        if isinstance(target, ControlLabel):
+            self.run_synth_block(target, bb)
         elif isinstance(target, BCLabel):
             assert type(bb) is BasicBlock
             pc = bb.begin.offset
@@ -92,12 +76,51 @@ class Simulator:
             else:
                 assert False, "unreachable"
 
+    def run_synth_block(self, control_label, block):
+        print('----', control_label)
+        print(f"Variable map: {self.varmap}")
+        handler = getattr(self, f"synth_{type(control_label).__name__}")
+        handler(control_label, block)
+
+    def synth_SyntheticForIter(self, control_label, block):
+        self.op_FOR_ITER(None)
+
+    def synth_SynthenticAssignment(self, control_label, block):
+        self.ctrl_varmap.update(block.variable_assignment)
+
+    def _synth_branch(self, control_label, block):
+        jump_target = block.branch_value_table[self.ctrl_varmap[block.variable]]
+        if block.backedges:
+            self.branch = jump_target in block.backedges
+        else:
+            self.branch = bool(list(block.jump_targets).index(jump_target))
+
+    def synth_SyntheticExitingLatch(self, control_label, block):
+        self._synth_branch(control_label, block)
+
+    def synth_SyntheticHead(self, control_label, block):
+        self._synth_branch(control_label, block)
+
+    def synth_SyntheticExit(self, control_label, block):
+        pass
+
+    def synth_SyntheticReturn(self, control_label, block):
+        pass
+
+    def synth_SyntheticTail(self, control_label, block):
+        pass
+
+    def synth_SyntheticBranch(self, control_label, block):
+        pass
+
     def run_inst(self, inst: Instruction):
         print('----', inst)
-        print(f"Variable map: {self.varmap}")
-        print(f"stack: {self.stack}")
+        print(f"variable map before: {self.varmap}")
+        print(f"stack before: {self.stack}")
         handler = getattr(self, f"op_{inst.opname}")
         handler(inst)
+        print(f"variable map after: {self.varmap}")
+        print(f"stack after: {self.stack}")
 
     def op_LOAD_CONST(self, inst):
         self.stack.append(inst.argval)
@@ -142,7 +165,7 @@ class Simulator:
     def op_INPLACE_ADD(self, inst):
         rhs = self.stack.pop()
         lhs = self.stack.pop()
-        breakpoint()
+        #breakpoint()
         lhs += rhs
         self.stack.append(lhs)
 

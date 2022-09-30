@@ -3,6 +3,29 @@ from simulator import Simulator
 from pprint import pprint
 from dis import dis
 
+def test_simple_for_loop():
+
+    def foo(x):
+        c = 0
+        for i in range(x):
+            c += i
+        return c
+
+    flow = ByteFlow.from_bytecode(foo)
+    flow = flow.restructure()
+
+    # test the loop bypass case
+    sim = Simulator(flow, foo.__globals__)
+    assert sim.run(dict(x=0)) == foo(x=0)
+
+    # test the loop case
+    sim = Simulator(flow, foo.__globals__)
+    assert sim.run(dict(x=1)) == foo(x=1)
+
+    # test an extended loop case
+    sim = Simulator(flow, foo.__globals__)
+    assert sim.run(dict(x=100)) == foo(x=100)
+
 
 def foo(x):
 #    c = 0
@@ -67,5 +90,6 @@ def test_bar():
 
 
 if __name__ == "__main__":
-    test_foo()
+    test_simple_for_loop()
+    #test_foo()
     #test_bar()
