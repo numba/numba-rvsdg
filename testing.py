@@ -5,7 +5,7 @@ from unittest import TestCase, main
 
 from byteflow2 import (Label, ControlLabel, BasicBlock, BlockMap,
                        ByteFlowRenderer, ByteFlow, ControlLabelGenerator,
-                       loop_rotate, SynthenticTail, SynthenticExit)
+                       loop_rotate, SyntheticTail, SyntheticExit)
 
 
 def from_yaml(yaml_string):
@@ -21,8 +21,8 @@ def from_yaml(yaml_string):
             begin_label,
             end_label,
             fallthrough=len(jump_targets) == 1,
-            backedges=set(),
-            jump_targets=set((ControlLabel(i) for i in jump_targets))
+            backedges=(),
+            jump_targets=tuple((ControlLabel(i) for i in jump_targets))
         )
         block_map_graph[begin_label] = block
     return BlockMap(block_map_graph, clg=clg)
@@ -278,7 +278,7 @@ class TestJoinTailsAndExits(MapComparator):
 
         self.assertMapEqual(expected_block_map, original_block_map)
         self.assertEqual(ControlLabel("0"), solo_tail_label)
-        self.assertEqual(SynthenticExit("4"), solo_exit_label)
+        self.assertEqual(SyntheticExit("4"), solo_exit_label)
 
     def test_join_tails_and_exits_case_02_01(self):
         original = """
@@ -311,7 +311,7 @@ class TestJoinTailsAndExits(MapComparator):
         solo_tail_label, solo_exit_label = original_block_map.join_tails_and_exits(tails, exits)
 
         self.assertMapEqual(expected_block_map, original_block_map)
-        self.assertEqual(SynthenticTail("4"), solo_tail_label)
+        self.assertEqual(SyntheticTail("4"), solo_tail_label)
         self.assertEqual(ControlLabel("3"), solo_exit_label)
 
     def test_join_tails_and_exits_case_02_02(self):
@@ -347,7 +347,7 @@ class TestJoinTailsAndExits(MapComparator):
                                                     original_block_map)).view("before")
         solo_tail_label, solo_exit_label = original_block_map.join_tails_and_exits(tails, exits)
         self.assertMapEqual(expected_block_map, original_block_map)
-        self.assertEqual(SynthenticTail("4"), solo_tail_label)
+        self.assertEqual(SyntheticTail("4"), solo_tail_label)
         self.assertEqual(ControlLabel("3"), solo_exit_label)
 
     def test_join_tails_and_exits_case_03_01(self):
@@ -391,8 +391,8 @@ class TestJoinTailsAndExits(MapComparator):
         exits = self.wrap_id(("3", "4"))
         solo_tail_label, solo_exit_label = original_block_map.join_tails_and_exits(tails, exits)
         self.assertMapEqual(expected_block_map, original_block_map)
-        self.assertEqual(SynthenticTail("6"), solo_tail_label)
-        self.assertEqual(SynthenticExit("7"), solo_exit_label)
+        self.assertEqual(SyntheticTail("6"), solo_tail_label)
+        self.assertEqual(SyntheticExit("7"), solo_exit_label)
 
     def test_join_tails_and_exits_case_03_02(self):
 
@@ -434,8 +434,8 @@ class TestJoinTailsAndExits(MapComparator):
         exits = self.wrap_id(("3", "4"))
         solo_tail_label, solo_exit_label = original_block_map.join_tails_and_exits(tails, exits)
         self.assertMapEqual(expected_block_map, original_block_map)
-        self.assertEqual(SynthenticTail("6"), solo_tail_label)
-        self.assertEqual(SynthenticExit("7"), solo_exit_label)
+        self.assertEqual(SyntheticTail("6"), solo_tail_label)
+        self.assertEqual(SyntheticExit("7"), solo_exit_label)
 
 
 class TestLoopRotate(MapComparator):

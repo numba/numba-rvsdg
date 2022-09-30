@@ -349,7 +349,11 @@ class BlockMap:
             jt = list(block.jump_targets)
             if successors:
                 for s in successors:
-                    jt[jt.index(s)] = new_label
+                    if s in jt:
+                        if new_label not in jt:
+                            jt[jt.index(s)] = new_label
+                        else:
+                            jt.pop(jt.index(s))
             else:
                 jt.append(new_label)
             self.add_block(block.replace_jump_targets(jump_targets=tuple(jt)))
