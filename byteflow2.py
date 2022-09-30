@@ -1568,5 +1568,8 @@ class ByteFlowRenderer(object):
         return self.g
 
     def bcmap_from_bytecode(self, bc: dis.Bytecode):
-        self.bcmap: Dict[Label, dis.Instruction] = {BCLabel(inst.offset): inst
-                                                    for inst in bc}
+        self.bcmap: Dict[Label, dis.Instruction] = bcmap_from_bytecode(bc)
+
+
+def bcmap_from_bytecode(bc: dis.Bytecode):
+    return {BCLabel(inst.offset): inst for inst in bc}

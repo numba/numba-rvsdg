@@ -1,7 +1,7 @@
 import dis
 
 import unittest
-from byteflow2 import (FlowInfo, BCLabel, Block, BlockMap, ByteFlow,
+from byteflow2 import (FlowInfo, BCLabel, BasicBlock, BlockMap, ByteFlow,
                        bcmap_from_bytecode)
 
 
@@ -58,7 +58,7 @@ class TestBCMapFromBytecode(unittest.TestCase):
 class TestBlock(unittest.TestCase):
 
     def test_constructor(self):
-        block = Block(
+        block = BasicBlock(
             begin=BCLabel(offset=0),
             end=BCLabel(offset=8),
             fallthrough=False,
@@ -73,7 +73,7 @@ class TestBlock(unittest.TestCase):
         self.assertTrue(block.is_exiting())
 
     def test_is_jump_target(self):
-        block = Block(
+        block = BasicBlock(
             begin=BCLabel(offset=0),
             end=BCLabel(offset=8),
             fallthrough=False,
@@ -84,7 +84,7 @@ class TestBlock(unittest.TestCase):
         self.assertFalse(block.is_exiting())
 
     def test_get_instructions(self):
-        block = Block(
+        block = BasicBlock(
             begin=BCLabel(offset=0),
             end=BCLabel(offset=8),
             fallthrough=False,
@@ -126,12 +126,13 @@ class TestFlowInfo(unittest.TestCase):
 
     def test_build_basic_blocks(self):
         expected = BlockMap(graph={
-            BCLabel(offset=0): Block(begin=BCLabel(offset=0),
-                                     end=BCLabel(offset=8),
-                                     fallthrough=False,
-                                     jump_targets=(),
-                                     backedges=()
-                                     )
+            BCLabel(offset=0): BasicBlock(
+                begin=BCLabel(offset=0),
+                end=BCLabel(offset=8),
+                fallthrough=False,
+                jump_targets=(),
+                backedges=()
+                )
                                   }
                            )
         received = FlowInfo.from_bytecode(bytecode).build_basicblocks()
@@ -147,12 +148,13 @@ class TestByteFlow(unittest.TestCase):
 
     def test_from_bytecode(self):
         bbmap = BlockMap(graph={
-            BCLabel(offset=0): Block(begin=BCLabel(offset=0),
-                                     end=BCLabel(offset=8),
-                                     fallthrough=False,
-                                     jump_targets=(),
-                                     backedges=()
-                                     )
+            BCLabel(offset=0): BasicBlock(
+                begin=BCLabel(offset=0),
+                end=BCLabel(offset=8),
+                fallthrough=False,
+                jump_targets=(),
+                backedges=()
+                )
                                   }
                            )
         expected = ByteFlow(bc=bytecode, bbmap=bbmap)
