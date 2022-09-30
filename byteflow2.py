@@ -48,7 +48,7 @@ class SyntheticExit(ControlLabel):
 
 
 @dataclass(frozen=True, order=True)
-class SynthenticHead(ControlLabel):
+class SyntheticHead(ControlLabel):
     index: int
 
 
@@ -742,7 +742,7 @@ def loop_rotate(bbmap: BlockMap, loop: Set[Label]):
     headers_were_unified = False
     if len(headers) > 1:
         headers_were_unified = True
-        solo_head_label = SynthenticHead(bbmap.clg.new_index())
+        solo_head_label = SyntheticHead(bbmap.clg.new_index())
         bbmap.insert_block_and_control_blocks(solo_head_label, entries, headers)
         loop.add(solo_head_label)
         loop_head: Label = solo_head_label
@@ -1105,7 +1105,7 @@ def _restructure_branch(bbmap: BlockMap):
             # The tail region will have multiple incoming edges, but these need
             # to be funnled through a unique header. Hence we simply insert a
             # new block in case the tail subregion has multiple headers.
-            synth_head_label = SynthenticHead(bbmap.clg.new_index())
+            synth_head_label = SyntheticHead(bbmap.clg.new_index())
             bbmap.insert_block(synth_head_label, entries, headers)
             tail_subregion.add(synth_head_label)
         else:
@@ -1306,7 +1306,7 @@ def restructure_branch(bbmap: BlockMap):
     # Unify headers of tail subregion if need be.
     headers, entries = bbmap.find_headers_and_entries(tail_region_blocks)
     if len(headers) > 1:
-        end = SynthenticHead(bbmap.clg.new_index())
+        end = SyntheticHead(bbmap.clg.new_index())
         bbmap.insert_block_and_control_blocks(end, entries, headers)
 
     # Recompute regions.

@@ -14,48 +14,49 @@ def test_simple_for_loop():
     flow = ByteFlow.from_bytecode(foo)
     flow = flow.restructure()
 
-    # test the loop bypass case
+    # loop bypass case
     sim = Simulator(flow, foo.__globals__)
     assert sim.run(dict(x=0)) == foo(x=0)
 
-    # test the loop case
+    # loop case
     sim = Simulator(flow, foo.__globals__)
     assert sim.run(dict(x=1)) == foo(x=1)
 
-    # test an extended loop case
+    # extended loop case
     sim = Simulator(flow, foo.__globals__)
     assert sim.run(dict(x=100)) == foo(x=100)
 
 
-def foo(x):
-#    c = 0
-#    for i in range(x):
-#        c += i
-#        if i == 100:
-#            break
-#    return c
-    c = 0
-    for i in range(x):
-        c += i
-    return c
+def test_for_loop_with_exit():
 
+    def foo(x):
+        c = 0
+        for i in range(x):
+            c += i
+            if i == 100:
+                break
+        return c
 
-def test_foo():
     flow = ByteFlow.from_bytecode(foo)
-    #pprint(flow.bbmap)
     flow = flow.restructure()
-    #pprint(flow.bbmap)
-    # pprint(rtsflow.bbmap)
+
     ByteFlowRenderer().render_byteflow(flow).view()
-    print(dis(foo))
 
+    # loop bypass case
     sim = Simulator(flow, foo.__globals__)
-    ret = sim.run(dict(x=1))
-    assert ret == foo(x=1)
+    ret = sim.run(dict(x=0))
+    assert ret == foo(x=0)
 
-    #sim = Simulator(flow, foo.__globals__)
-    #ret = sim.run(dict(x=100))
-    #assert ret == foo(x=100)
+    # loop case
+    sim = Simulator(flow, foo.__globals__)
+    ret = sim.run(dict(x=2))
+    assert ret == foo(x=2)
+
+    # break case
+    sim = Simulator(flow, foo.__globals__)
+    ret = sim.run(dict(x=15))
+    assert ret == foo(x=15)
+
 
 
 def bar(x):

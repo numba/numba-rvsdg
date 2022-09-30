@@ -2,7 +2,7 @@ from collections import defaultdict, ChainMap
 from dis import Instruction
 from byteflow2 import (ByteFlow, BlockMap, BCLabel, BasicBlock, RegionBlock,
                        ControlLabel, SyntheticForIter, SynthenticAssignment,
-                       SyntheticExitingLatch, SyntheticExit, SynthenticHead,
+                       SyntheticExitingLatch, SyntheticExit, SyntheticHead,
                        SyntheticReturn, SyntheticTail,
                        )
 import builtins
