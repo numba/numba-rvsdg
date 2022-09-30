@@ -2,8 +2,9 @@ from collections import defaultdict, ChainMap
 from dis import Instruction
 from byteflow2 import (ByteFlow, BlockMap, BCLabel, BasicBlock, RegionBlock,
                        ControlLabel, SyntheticForIter, SynthenticAssignment,
-                       SyntheticExitingLatch, SyntheticExit,
-                      )
+                       SyntheticExitingLatch, SyntheticExit, SynthenticHead,
+                       SyntheticReturn, SyntheticTail,
+                       )
 import builtins
 
 class Simulator:
@@ -30,6 +31,7 @@ class Simulator:
 
     def run_bb(self, bb: BasicBlock, target):
         print("AT", target)
+        breakpoint()
         if isinstance(bb, RegionBlock):
             return self._run_region(bb, target)
         if isinstance(target, ControlLabel):
@@ -40,15 +42,16 @@ class Simulator:
                 print('----', SyntheticForIter)
                 self.ctrl_varmap.update(bb.variable_assignment)
                 print(self.ctrl_varmap)
-            elif type(target) == SyntheticExitingLatch:
-                print('----', SyntheticForIter)
+            elif type(target) in (SyntheticExitingLatch, SynthenticHead):
                 jump_target = bb.branch_value_table[self.ctrl_varmap[bb.variable]]
                 if bb.backedges:
                     self.branch = jump_target in bb.backedges
                 else:
                     self.branch = bool(list(bb.jump_targets).index(jump_target))
-            elif type(target) == SyntheticExit:
+            elif type(target) in (SyntheticExit, SyntheticReturn, SyntheticTail):
                 pass
+            else:
+                raise Exception(f"{target} is not implemented")
 
         elif isinstance(target, BCLabel):
             assert type(bb) is BasicBlock
@@ -58,6 +61,7 @@ class Simulator:
                 inst = self.bcmap[pc]
                 self.run_inst(inst)
                 pc += 2
+
         if bb.fallthrough or (len(bb.jump_targets) == 1
                               and len(bb.backedges) == 0):
             [target] = bb.jump_targets
@@ -67,6 +71,7 @@ class Simulator:
             [br_false] = bb.jump_targets
             return {"jumpto": br_true if self.branch else br_false}
         elif bb.jump_targets:
+            #[br_true, br_false] = bb.jump_targets
             [br_false, br_true] = bb.jump_targets
             return {"jumpto": br_true if self.branch else br_false}
         else:
@@ -89,8 +94,8 @@ class Simulator:
 
     def run_inst(self, inst: Instruction):
         print('----', inst)
-        print(self.varmap)
-        print(self.stack)
+        print(f"Variable map: {self.varmap}")
+        print(f"stack: {self.stack}")
         handler = getattr(self, f"op_{inst.opname}")
         handler(inst)
 
@@ -137,6 +142,7 @@ class Simulator:
     def op_INPLACE_ADD(self, inst):
         rhs = self.stack.pop()
         lhs = self.stack.pop()
+        breakpoint()
         lhs += rhs
         self.stack.append(lhs)
 
