@@ -856,7 +856,8 @@ def loop_rotate(bbmap: BlockMap, loop: Set[Label]):
                     # no need to add a backedge, since it will be contained in
                     # the SyntheticExitingLatch later on.
                     for h in headers:
-                        jts.remove(h)
+                        if h in jts:
+                            jts.remove(h)
                     bbmap.add_block(block.replace_jump_targets(
                                     jump_targets=tuple(jts)))
                     synth_assign_block = ControlVariableBlock(

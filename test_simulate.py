@@ -74,32 +74,34 @@ def test_for_loop_with_exit():
 
 
 def test_bar():
-    #def bar(x):
-    #    c = 0
-    #    for i in range(x):
-    #        c += i
-    #        if c <= 0:
-    #            continue
-    #        else:
-    #            for j in range(c):
-    #                c += j
-    #                if c > 100:
-    #                    break
-    #    return c
-
     def bar(x):
         c = 0
         for i in range(x):
             c += i
-            for j in range(x):
-                c += j
-                if c > 20:
-                    break
-
+            if c <= 0:
+                continue
+            else:
+                for j in range(c):
+                    c += j
+                    if c > 100:
+                        break
         return c
+
+    #def bar(x):
+    #    c = 0
+    #    for i in range(x):
+    #        c += i
+    #        for j in range(x):
+    #            c += j
+    #            if c > 20:
+    #                break
+
+    #    return c
 
     flow = ByteFlow.from_bytecode(bar)
     flow = flow.restructure()
+
+    ByteFlowRenderer().render_byteflow(flow).view()
 
     sim = Simulator(flow, bar.__globals__)
     ret = sim.run(dict(x=0))

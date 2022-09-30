@@ -1,4 +1,4 @@
-from collections import defaultdict, ChainMap
+from collections import ChainMap
 from dis import Instruction
 from byteflow2 import (ByteFlow, BlockMap, BCLabel, BasicBlock, RegionBlock,
                        ControlLabel, SyntheticForIter, SynthenticAssignment,
@@ -6,6 +6,7 @@ from byteflow2 import (ByteFlow, BlockMap, BCLabel, BasicBlock, RegionBlock,
                        SyntheticReturn, SyntheticTail,
                        )
 import builtins
+
 
 class Simulator:
     """BlockMap simulator"""
@@ -55,7 +56,6 @@ class Simulator:
             [br_false] = bb.backedges
             return {"jumpto": br_true if self.branch else br_false}
         elif bb.jump_targets:
-            #[br_true, br_false] = bb.jump_targets
             [br_false, br_true] = bb.jump_targets
             return {"jumpto": br_true if self.branch else br_false}
         else:
@@ -89,9 +89,10 @@ class Simulator:
         self.ctrl_varmap.update(block.variable_assignment)
 
     def _synth_branch(self, control_label, block):
-        jump_target = block.branch_value_table[self.ctrl_varmap[block.variable]]
+        jump_target = block.branch_value_table[
+            self.ctrl_varmap[block.variable]]
         if block.backedges:
-            self.branch = not jump_target in block.backedges
+            self.branch = jump_target not in block.backedges
         else:
             self.branch = bool(block.jump_targets.index(jump_target))
 
@@ -166,7 +167,6 @@ class Simulator:
     def op_INPLACE_ADD(self, inst):
         rhs = self.stack.pop()
         lhs = self.stack.pop()
-        #breakpoint()
         lhs += rhs
         self.stack.append(lhs)
 
