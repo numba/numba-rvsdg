@@ -31,7 +31,7 @@ class Simulator:
 
     def run_bb(self, bb: BasicBlock, target):
         print("AT", target)
-        breakpoint()
+        #breakpoint()
         if isinstance(bb, RegionBlock):
             return self._run_region(bb, target)
 
@@ -51,8 +51,8 @@ class Simulator:
             [target] = bb.jump_targets
             return {"jumpto": target}
         elif len(bb.jump_targets) == 1 and len(bb.backedges) == 1:
-            [br_true] = bb.backedges
-            [br_false] = bb.jump_targets
+            [br_true] = bb.jump_targets
+            [br_false] = bb.backedges
             return {"jumpto": br_true if self.branch else br_false}
         elif bb.jump_targets:
             #[br_true, br_false] = bb.jump_targets
@@ -78,7 +78,7 @@ class Simulator:
 
     def run_synth_block(self, control_label, block):
         print('----', control_label)
-        print(f"Variable map: {self.varmap}")
+        print(f"control variable map: {self.ctrl_varmap}")
         handler = getattr(self, f"synth_{type(control_label).__name__}")
         handler(control_label, block)
 
@@ -91,9 +91,9 @@ class Simulator:
     def _synth_branch(self, control_label, block):
         jump_target = block.branch_value_table[self.ctrl_varmap[block.variable]]
         if block.backedges:
-            self.branch = jump_target in block.backedges
+            self.branch = not jump_target in block.backedges
         else:
-            self.branch = bool(list(block.jump_targets).index(jump_target))
+            self.branch = bool(block.jump_targets.index(jump_target))
 
     def synth_SyntheticExitingLatch(self, control_label, block):
         self._synth_branch(control_label, block)
@@ -102,7 +102,7 @@ class Simulator:
         self._synth_branch(control_label, block)
 
     def synth_SyntheticExit(self, control_label, block):
-        pass
+        self._synth_branch(control_label, block)
 
     def synth_SyntheticReturn(self, control_label, block):
         pass
@@ -128,7 +128,7 @@ class Simulator:
     def op_COMPARE_OP(self, inst):
         arg1 = self.stack.pop()
         arg2 = self.stack.pop()
-        self.stack.append(arg1 == arg2)
+        self.stack.append(eval(f"{arg2} {inst.argval} {arg1}"))
 
     def op_LOAD_FAST(self, inst):
         self.stack.append(self.varmap[inst.argval])
@@ -157,9 +157,10 @@ class Simulator:
         try:
             ind = next(tos)
         except StopIteration:
-            self.branch = False
-        else:
+            self.stack.pop()
             self.branch = True
+        else:
+            self.branch = False
             self.stack.append(ind)
 
     def op_INPLACE_ADD(self, inst):
@@ -174,7 +175,14 @@ class Simulator:
         self.return_value = v
 
     def op_JUMP_ABSOLUTE(self, inst):
-        return
+        pass
+
+    def op_JUMP_FORWARD(self, inst):
+        pass
 
     def op_POP_JUMP_IF_FALSE(self, inst):
         self.branch = not self.stack.pop()
+
+    def op_POP_TOP(self, inst):
+        self.stack.pop()
+

@@ -37,7 +37,7 @@ def test_simple_for_loop():
 
     # loop case
     sim = Simulator(flow, foo.__globals__)
-    assert sim.run(dict(x=1)) == foo(x=1)
+    assert sim.run(dict(x=2)) == foo(x=2)
 
     # extended loop case
     sim = Simulator(flow, foo.__globals__)
@@ -57,8 +57,6 @@ def test_for_loop_with_exit():
     flow = ByteFlow.from_bytecode(foo)
     flow = flow.restructure()
 
-    ByteFlowRenderer().render_byteflow(flow).view()
-
     # loop bypass case
     sim = Simulator(flow, foo.__globals__)
     ret = sim.run(dict(x=0))
@@ -75,47 +73,44 @@ def test_for_loop_with_exit():
     assert ret == foo(x=15)
 
 
-#def bar(x):
-#    c = 0
-#    for i in range(x):
-#        c += i
-#        if c <= 0:
-#            continue
-#        else:
-#            for j in range(c):
-#                c += j
-#                if c > 100:
-#                    break
-#    return c
-
-def bar(x):
-    c = 0
-    for i in range(x):
-        c += i
-        for j in range(x):
-            c += j
-            if c > 100:
-                break
-    return c
-
-
 def test_bar():
+    #def bar(x):
+    #    c = 0
+    #    for i in range(x):
+    #        c += i
+    #        if c <= 0:
+    #            continue
+    #        else:
+    #            for j in range(c):
+    #                c += j
+    #                if c > 100:
+    #                    break
+    #    return c
+
+    def bar(x):
+        c = 0
+        for i in range(x):
+            c += i
+            for j in range(x):
+                c += j
+                if c > 20:
+                    break
+
+        return c
+
     flow = ByteFlow.from_bytecode(bar)
     flow = flow.restructure()
 
-    ByteFlowRenderer().render_byteflow(flow).view()
+    sim = Simulator(flow, bar.__globals__)
+    ret = sim.run(dict(x=0))
+    assert ret == bar(x=0)
 
     sim = Simulator(flow, bar.__globals__)
-    ret = sim.run(dict(x=10))
-    #breakpoint()
-    assert ret == bar(x=10)
-
-    # sim = Simulator(rtsflow, foo.__globals__)
-    # ret = sim.run(dict(x=3))
-    # assert ret == foo(x=3)
+    ret = sim.run(dict(x=5))
+    assert ret == bar(x=5)
 
 
 if __name__ == "__main__":
-    #test_simple_for_loop()
-    #test_for_loop_with_exit()
+    test_simple_for_loop()
+    test_for_loop_with_exit()
     test_bar()

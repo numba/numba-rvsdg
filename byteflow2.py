@@ -109,10 +109,10 @@ class BasicBlock:
     fallthrough to the next block.
     """
 
-    jump_targets: Set[Label]
+    jump_targets: Tuple[Label]
     """The destination block offsets."""
 
-    backedges: Set[Label]
+    backedges: Tuple[Label]
     """Backedges offsets"""
 
     def is_exiting(self) -> bool:
@@ -135,7 +135,7 @@ class BasicBlock:
         if loop_head in self.jump_targets:
             assert not self.backedges
             # remove backede from jump_targets and add to backedges
-            jt = set(self.jump_targets)
+            jt = list(self.jump_targets)
             jt.remove(loop_head)
             return replace(self, jump_targets=tuple(jt), backedges=(loop_head,))
         return self
@@ -162,7 +162,7 @@ class BranchBlock(BasicBlock):
         for target in self.jump_targets:
             if target not in jump_targets:
                 # ASSUMPTION: only one jump_target is being updated
-                diff = jump_targets.difference(self.jump_targets)
+                diff = set(jump_targets).difference(self.jump_targets)
                 assert len(diff) == 1
                 new_target = next(iter(diff))
                 for k, v in old_branch_value_table.items():
@@ -268,11 +268,21 @@ class FlowInfo:
                 flowinfo.block_offsets.add(BCLabel(inst.offset))
             # Handle by op
             if is_conditional_jump(inst.opname):
-                flowinfo._add_jump_inst(
-                    BCLabel(inst.offset),
-                    (BCLabel(inst.argval),
-                     _next_inst_offset(BCLabel(inst.offset))),
-                )
+                if inst.opname in ("POP_JUMP_IF_TRUE"):
+                    flowinfo._add_jump_inst(
+                        BCLabel(inst.offset),
+                        (BCLabel(inst.argval),
+                         _next_inst_offset(BCLabel(inst.offset))),
+                    )
+                elif inst.opname in ("POP_JUMP_IF_FALSE", "FOR_ITER"):
+                    flowinfo._add_jump_inst(
+                        BCLabel(inst.offset),
+                        (_next_inst_offset(BCLabel(inst.offset)),
+                         BCLabel(inst.argval)),
+                    )
+                else:
+                    raise Exception("Unreachable")
+
             elif is_unconditional_jump(inst.opname):
                 flowinfo._add_jump_inst(BCLabel(inst.offset),
                                         (BCLabel(inst.argval),))
@@ -336,10 +346,13 @@ class BlockMap:
         # an arc through the inserted block instead.
         for label in predecessors:
             block = self.graph.pop(label)
-            jt = set(block.jump_targets)
-            jt.difference_update(jt.intersection(successors))
-            jt.add(new_label)
-            self.add_block(block.replace_jump_targets(jump_targets=set(jt)))
+            jt = list(block.jump_targets)
+            if successors:
+                for s in successors:
+                    jt[jt.index(s)] = new_label
+            else:
+                jt.append(new_label)
+            self.add_block(block.replace_jump_targets(jump_targets=tuple(jt)))
 
     def insert_block_and_control_blocks(self, new_label: Label,
                                         predecessors: Set[Label],
@@ -354,11 +367,11 @@ class BlockMap:
         # an arc through the to be inserted block instead.
         for label in predecessors:
             block = self.graph[label]
-            jt = set(block.jump_targets)
+            jt = list(block.jump_targets)
             # Need to create synthetic assignments for each arc from a
             # predecessors to a successor and insert it between the predecessor
             # and the newly created block
-            for s in jt.intersection(successors):
+            for s in set(jt).intersection(successors):
                 synth_assign = SynthenticAssignment(self.clg.new_index())
                 variable_assignment = {}
                 variable_assignment[branch_variable] = branch_variable_value
@@ -376,18 +389,16 @@ class BlockMap:
                 branch_value_table[branch_variable_value] = s
                 # update branching variable
                 branch_variable_value += 1
-                # remove previous successors
-                jt.discard(s)
-                # add the new assignment block to the jump targets
-                jt.add(synth_assign)
+                # replace previous successor with synth_assign
+                jt[jt.index(s)] = synth_assign
             # finally, replace the jump_targets
             self.add_block(
-                self.graph.pop(label).replace_jump_targets(jump_targets=jt))
+                self.graph.pop(label).replace_jump_targets(jump_targets=tuple(jt)))
         # initialize new block, which will hold the branching table
         new_block = BranchBlock(begin=new_label,
                                 end=ControlLabel("end"),
                                 fallthrough=len(successors) <= 1,
-                                jump_targets=successors,
+                                jump_targets=tuple(successors),
                                 backedges=set(),
                                 variable=branch_variable,
                                 branch_value_table=branch_value_table,
@@ -515,7 +526,7 @@ class BlockMap:
         # close if more than one is found
         if len(return_nodes) > 1:
             return_solo_label = SyntheticReturn(str(self.clg.new_index()))
-            self.insert_block(return_solo_label, return_nodes, set())
+            self.insert_block(return_solo_label, return_nodes, tuple())
 
     def is_reachable_dfs(self, begin, end):
         """Is end reachable from begin. """
@@ -699,8 +710,8 @@ def loop_rotate_for_loop(bbmap: BlockMap, loop: Set[Label]):
     new_block = BasicBlock(begin=synth_for_iter,
                            end=ControlLabel("end"),
                            fallthrough=False,
-                           jump_targets=set(bbmap[for_iter].jump_targets),
-                           backedges=set()
+                           jump_targets=bbmap[for_iter].jump_targets,
+                           backedges=()
                            )
     bbmap.add_block(new_block)
 
@@ -709,12 +720,11 @@ def loop_rotate_for_loop(bbmap: BlockMap, loop: Set[Label]):
     # Rewire incoming edges for FOR_ITER to SyntheticForIter instead.
     for label in loop:
         block = bbmap.graph.pop(label)
-        jt = set(block.jump_targets)
+        jt = list(block.jump_targets)
         if for_iter in jt:
-            jt.remove(for_iter)
-            jt.add(synth_for_iter)
+            jt[jt.index(for_iter)] = synth_for_iter
         bbmap.add_block(block.replace_jump_targets(
-                        jump_targets=jt))
+                        jump_targets=tuple(jt)))
 
     # Finally, add the SYNTHETIC_FOR_ITER to the loop.
     loop.add(synth_for_iter)
@@ -807,7 +817,7 @@ def loop_rotate(bbmap: BlockMap, loop: Set[Label]):
     doms = _doms(bbmap)
     for label in loop:
         if label in exiting_blocks or label in backedge_blocks:
-            new_jt = set()
+            new_jt = list(bbmap[label].jump_targets)
             for jt in bbmap[label].jump_targets:
                 if jt in exit_blocks:
                     synth_assign = SynthenticAssignment(bbmap.clg.new_index())
@@ -823,12 +833,12 @@ def loop_rotate(bbmap: BlockMap, loop: Set[Label]):
                                begin=synth_assign,
                                end=ControlLabel("end"),
                                fallthrough=True,
-                               jump_targets=set((synth_exiting_latch,)),
-                               backedges=set(),
+                               jump_targets=(synth_exiting_latch,),
+                               backedges=(),
                                variable_assignment=variable_assignment,
                     )
                     bbmap.add_block(synth_assign_block)
-                    new_jt.add(synth_assign)
+                    new_jt[new_jt.index(jt)] = synth_assign
                 elif jt in headers and label not in doms[jt]:
                     synth_assign = SynthenticAssignment(bbmap.clg.new_index())
                     new_blocks.add(synth_assign)
@@ -841,28 +851,27 @@ def loop_rotate(bbmap: BlockMap, loop: Set[Label]):
                     ))
                     # update the backedge block
                     block = bbmap.graph.pop(label)
-                    jt = set(block.jump_targets)
+                    jts = list(block.jump_targets)
                     # remove any existing backedges that point to the headers,
                     # no need to add a backedge, since it will be contained in
                     # the SyntheticExitingLatch later on.
-                    jt.difference_update(headers)
+                    for h in headers:
+                        jts.remove(h)
                     bbmap.add_block(block.replace_jump_targets(
-                                    jump_targets=jt))
+                                    jump_targets=tuple(jts)))
                     synth_assign_block = ControlVariableBlock(
                                begin=synth_assign,
                                end=ControlLabel("end"),
                                fallthrough=True,
-                               jump_targets=set((synth_exiting_latch,)),
-                               backedges=set(),
+                               jump_targets=(synth_exiting_latch,),
+                               backedges=(),
                                variable_assignment=variable_assignment,
                     )
                     bbmap.add_block(synth_assign_block)
-                    new_jt.add(synth_assign)
-                else:
-                    new_jt.add(jt)
+                    new_jt[new_jt.index(jt)] = synth_assign
             # finally, replace the jump_targets
             bbmap.add_block(
-                bbmap.graph.pop(label).replace_jump_targets(jump_targets=new_jt))
+                bbmap.graph.pop(label).replace_jump_targets(jump_targets=tuple(new_jt)))
 
     loop.update(new_blocks)
 
@@ -870,8 +879,8 @@ def loop_rotate(bbmap: BlockMap, loop: Set[Label]):
         begin=synth_exiting_latch,
         end=ControlLabel("end"),
         fallthrough=False,
-        jump_targets=set((synth_exit,)),
-        backedges=set((loop_head, )),
+        jump_targets=(synth_exit,),
+        backedges=(loop_head, ),
         variable=backedge_variable,
         branch_value_table=backedge_value_table,
         )
@@ -882,8 +891,8 @@ def loop_rotate(bbmap: BlockMap, loop: Set[Label]):
         begin=synth_exit,
         end=ControlLabel("end"),
         fallthrough=False,
-        jump_targets=exit_blocks,
-        backedges=set(),
+        jump_targets=tuple(exit_blocks),
+        backedges=(),
         variable=exit_variable,
         branch_value_table=exit_value_table,
         )
@@ -1035,10 +1044,9 @@ def _restructure_branch(bbmap: BlockMap):
 
         # insert synthetic branch blocks in case of empty branch regions
         jump_targets = list(bbmap.graph[begin].jump_targets)
-        new_jump_targets = []
         jump_targets_changed = False
-        for a in jump_targets:
-            for b in jump_targets:
+        for a in list(jump_targets):
+            for b in list(jump_targets):
                 if a == b:
                     continue
                 elif bbmap.is_reachable_dfs(a, b):
@@ -1046,7 +1054,7 @@ def _restructure_branch(bbmap: BlockMap):
                     # If one of the jump targets is reachable from the other,
                     # it means a branch region is empty and the reachable jump
                     # target becoms part of the tail. In this case,
-                    # create a new snythtic block to fill the empty branch
+                    # create a new synthetic block to fill the empty branch
                     # region and rewire the jump targets.
                     synthetic_branch_block_label = SyntheticBranch(bbmap.clg.new_index())
                     synthetic_branch_block_block = BasicBlock(
@@ -1057,17 +1065,14 @@ def _restructure_branch(bbmap: BlockMap):
                             backedges=(),
                             )
                     bbmap.add_block(synthetic_branch_block_block)
-                    new_jump_targets.append(synthetic_branch_block_label)
+                    jump_targets[jump_targets.index(b)] = synthetic_branch_block_label
                     jump_targets_changed = True
-                else:
-                    # otherwise just re-use the existing block
-                    new_jump_targets.append(b)
 
         # update the begin block with new jump_targets
         if jump_targets_changed:
             bbmap.add_block(
                 bbmap.graph.pop(begin).replace_jump_targets(
-                    jump_targets=new_jump_targets))
+                    jump_targets=tuple(jump_targets)))
             # and recompute doms
             doms = _doms(bbmap)
             postdoms = _post_doms(bbmap)

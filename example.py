@@ -181,14 +181,24 @@ logging.basicConfig(level=logging.DEBUG)
 
 
 
-def foo():
-    for i in range(10):
-        with call_context:
-            print(i)
-            if i == 5:
-                print("A")
+#def foo():
+#    for i in range(10):
+#        with call_context:
+#            print(i)
+#            if i == 5:
+#                print("A")
+#                break
+#    return i
+
+def foo(x):
+    c = 0
+    for i in range(x):
+        c += i
+        for j in range(x):
+            c += j
+            if c > 100:
                 break
-    return i
+    return c
 
 flow = ByteFlow.from_bytecode(foo)
 ByteFlowRenderer().render_byteflow(flow).view("before")
