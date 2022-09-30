@@ -31,7 +31,7 @@ class Simulator:
 
     def run_bb(self, bb: BasicBlock, target):
         print("AT", target)
-        #breakpoint()
+        breakpoint()
         if isinstance(bb, RegionBlock):
             return self._run_region(bb, target)
 

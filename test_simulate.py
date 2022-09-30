@@ -3,6 +3,23 @@ from simulator import Simulator
 from pprint import pprint
 from dis import dis
 
+#    flow = ByteFlow.from_bytecode(foo)
+#    #pprint(flow.bbmap)
+#    flow = flow.restructure()
+#    #pprint(flow.bbmap)
+#    # pprint(rtsflow.bbmap)
+#    ByteFlowRenderer().render_byteflow(flow).view()
+#    print(dis(foo))
+#
+#    sim = Simulator(flow, foo.__globals__)
+#    ret = sim.run(dict(x=1))
+#    assert ret == foo(x=1)
+#
+#    #sim = Simulator(flow, foo.__globals__)
+#    #ret = sim.run(dict(x=100))
+#    #assert ret == foo(x=100)
+
+
 def test_simple_for_loop():
 
     def foo(x):
@@ -58,31 +75,39 @@ def test_for_loop_with_exit():
     assert ret == foo(x=15)
 
 
+#def bar(x):
+#    c = 0
+#    for i in range(x):
+#        c += i
+#        if c <= 0:
+#            continue
+#        else:
+#            for j in range(c):
+#                c += j
+#                if c > 100:
+#                    break
+#    return c
 
 def bar(x):
     c = 0
     for i in range(x):
         c += i
-        if c <= 0:
-            continue
-        else:
-            for j in range(c):
-                c += j
-                if c > 100:
-                    break
+        for j in range(x):
+            c += j
+            if c > 100:
+                break
     return c
 
 
 def test_bar():
     flow = ByteFlow.from_bytecode(bar)
-    pprint(flow.bbmap)
-    flow = flow._join_returns()._restructure_loop()
-    pprint(flow.bbmap)
-    # pprint(rtsflow.bbmap)
+    flow = flow.restructure()
+
     ByteFlowRenderer().render_byteflow(flow).view()
+
     sim = Simulator(flow, bar.__globals__)
     ret = sim.run(dict(x=10))
-    breakpoint()
+    #breakpoint()
     assert ret == bar(x=10)
 
     # sim = Simulator(rtsflow, foo.__globals__)
@@ -91,6 +116,6 @@ def test_bar():
 
 
 if __name__ == "__main__":
-    test_simple_for_loop()
-    #test_foo()
-    #test_bar()
+    #test_simple_for_loop()
+    #test_for_loop_with_exit()
+    test_bar()

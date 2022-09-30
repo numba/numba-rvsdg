@@ -17,8 +17,20 @@ logging.basicConfig(level=logging.DEBUG)
 #        return 5
 #    else:
 #        return 6
+#
+#def foo(n):
+#    for i in range(n):
+#        pass
 
-## Example: nested loop
+#def foo(n):
+#    c = 0
+#    for i in range(n):
+#        c += 1
+#        if i == 100:
+#            break
+#    return c
+
+# Example: nested loop
 #def foo(n, m):
 #    c = 0
 #    for i in range(n):
@@ -29,24 +41,24 @@ logging.basicConfig(level=logging.DEBUG)
 #    return c
 
 # Example: for loop with exit
-def foo(n, m):
-    c = 0
-    for i in range(n):
-        c += i
-        if c > 100:
-            c += 5
-            return c
-    return c
+#def foo(n, m):
+#    c = 0
+#    for i in range(n):
+#        c += i
+#        if c > 100:
+#            c += 5
+#            return c
+#    return c
 
-#def foo(n):
+# Example for loop with multiple backedges
+#def foo(n, c):
 #    for i in range(n):
 #        if i == 42:
 #            c += 1
 #        elif i == 52:
 #            c += 2
 #        else:
-#            c += 1
-#        c += 0
+#            c += 42
 
 # ## Example: for loop with second exit
 
@@ -153,6 +165,30 @@ def foo(n, m):
 #        case ["go"]:
 #            b += 4
 #    return b
+
+#def foo(x):
+#    c = 0
+#    for i in range(x):
+#        c += i
+#        if c <= 0:
+#           continue 
+#        else:
+#            for j in range(c):
+#                c += j
+#                if c > 100:
+#                    break
+#    return c
+
+
+
+def foo():
+    for i in range(10):
+        with call_context:
+            print(i)
+            if i == 5:
+                print("A")
+                break
+    return i
 
 flow = ByteFlow.from_bytecode(foo)
 ByteFlowRenderer().render_byteflow(flow).view("before")
