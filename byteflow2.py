@@ -472,7 +472,7 @@ class BlockMap:
 
         return list(scc(GraphWrap(self.graph, subgraph)))
 
-    def find_headers_and_entries(self, subgraph: Set[Label]):
+    def find_headers_and_entries(self, subgraph: Set[Label]) -> Tuple[Set[Label], Set[Label]]:
         """Find entries and headers in a given subgraph.
 
         Entries are blocks outside the subgraph that have an edge pointing to the
@@ -496,7 +496,7 @@ class BlockMap:
             headers = {self.find_head()}
         return headers, entries
 
-    def find_exiting_and_exits(self, subgraph: Set[Label]):
+    def find_exiting_and_exits(self, subgraph: Set[Label]) -> Tuple[Set[Label], Set[Label]]:
         """Find exiting and exit blocks in a given subgraph.
 
         Existing blocks are blocks inside the subgraph that have edges to
