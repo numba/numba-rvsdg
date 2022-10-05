@@ -472,24 +472,24 @@ class BlockMap:
 
         return list(scc(GraphWrap(self.graph, subgraph)))
 
-    def find_headers_and_entries(self, loop: Set[Label]):
-        """Find entries and headers in a given loop.
+    def find_headers_and_entries(self, subgraph: Set[Label]):
+        """Find entries and headers in a given subgraph.
 
-        Entries are nodes outside the loop that have an edge pointing to the
-        loop header. Headers are nodes that are part of the strongly connected
-        subset, that have incoming edges from outside the loop. Entries point
+        Entries are blocks outside the subgraph that have an edge pointing to the
+        subgraph headers. Headers are blocks that are part of the strongly connected
+        subset and that have incoming edges from outside the subgraph. Entries point
         to headers and headers are pointed to by entries.
 
         """
-        node: Label
+        outside: Label
         entries: Set[Label] = set()
         headers: Set[Label] = set()
 
-        for node in self.exclude_nodes(loop):
-            nodes_jump_in_loop = set(self.graph[node].jump_targets) & loop
-            headers |= nodes_jump_in_loop
+        for outside in self.exclude_nodes(subgraph):
+            nodes_jump_in_loop = subgraph.intersection(self.graph[outside].jump_targets)
+            headers.update(nodes_jump_in_loop)
             if nodes_jump_in_loop:
-                entries.add(node)
+                entries.add(outside)
         # If the loop has no headers or entries, the only header is the head of
         # the CFG.
         if not headers:
@@ -501,22 +501,23 @@ class BlockMap:
 
         Existing blocks are blocks inside the subgraph that have edges to
         blocks outside of the subgraph. Exit blocks are blocks outside the
-        subgraph that have incoming edges from within the subgraph.
+        subgraph that have incoming edges from within the subgraph. Exiting blocks
+        point to exits and exits and pointed to by exiting blocks.
 
         """
-        node: Label
-        pre_exits: Set[Label] = set()
-        post_exits: Set[Label] = set()
+        inside: Label
+        exiting: Set[Label] = set()
+        exits: Set[Label] = set()
         for inside in subgraph:
             # any node inside that points outside the loop
             for jt in self.graph[inside].jump_targets:
                 if jt not in subgraph:
-                    pre_exits.add(inside)
-                    post_exits.add(jt)
+                    exiting.add(inside)
+                    exits.add(jt)
             # any returns
             if self.graph[inside].is_exiting():
-                pre_exits.add(inside)
-        return pre_exits, post_exits
+                exiting.add(inside)
+        return exiting, exits
 
     def join_returns(self):
         """ Close the CFG.
