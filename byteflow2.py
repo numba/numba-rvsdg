@@ -327,7 +327,6 @@ class BlockMap:
     clg: ControlLabelGenerator = field(default_factory=ControlLabelGenerator,
                                        compare=False)
 
-
     def __getitem__(self, index):
         return self.graph[index]
 
@@ -345,7 +344,7 @@ class BlockMap:
 
         Assuming the CFG is closed, this will find the block
         that no other blocks are pointing to.
-        
+
         """
         heads = set(self.graph.keys())
         for block in self.graph.keys():
@@ -392,13 +391,15 @@ class BlockMap:
 
         return list(scc(GraphWrap(self.graph, subgraph)))
 
-    def find_headers_and_entries(self, subgraph: Set[Label]) -> Tuple[Set[Label], Set[Label]]:
+    def find_headers_and_entries(self, subgraph: Set[Label]) \
+            -> Tuple[Set[Label], Set[Label]]:
         """Find entries and headers in a given subgraph.
 
-        Entries are blocks outside the subgraph that have an edge pointing to the
-        subgraph headers. Headers are blocks that are part of the strongly connected
-        subset and that have incoming edges from outside the subgraph. Entries point
-        to headers and headers are pointed to by entries.
+        Entries are blocks outside the subgraph that have an edge pointing to
+        the subgraph headers. Headers are blocks that are part of the strongly
+        connected subset and that have incoming edges from outside the
+        subgraph. Entries point to headers and headers are pointed to by
+        entries.
 
         """
         outside: Label
@@ -406,7 +407,8 @@ class BlockMap:
         headers: Set[Label] = set()
 
         for outside in self.exclude_blocks(subgraph):
-            nodes_jump_in_loop = subgraph.intersection(self.graph[outside].jump_targets)
+            nodes_jump_in_loop = subgraph.intersection(
+                self.graph[outside].jump_targets)
             headers.update(nodes_jump_in_loop)
             if nodes_jump_in_loop:
                 entries.add(outside)
@@ -416,13 +418,14 @@ class BlockMap:
             headers = {self.find_head()}
         return headers, entries
 
-    def find_exiting_and_exits(self, subgraph: Set[Label]) -> Tuple[Set[Label], Set[Label]]:
+    def find_exiting_and_exits(self, subgraph: Set[Label]) \
+            -> Tuple[Set[Label], Set[Label]]:
         """Find exiting and exit blocks in a given subgraph.
 
         Existing blocks are blocks inside the subgraph that have edges to
         blocks outside of the subgraph. Exit blocks are blocks outside the
-        subgraph that have incoming edges from within the subgraph. Exiting blocks
-        point to exits and exits and pointed to by exiting blocks.
+        subgraph that have incoming edges from within the subgraph. Exiting
+        blocks point to exits and exits and pointed to by exiting blocks.
 
         """
         inside: Label
@@ -532,7 +535,8 @@ class BlockMap:
                 jt[jt.index(s)] = synth_assign
             # finally, replace the jump_targets
             self.add_block(
-                self.graph.pop(label).replace_jump_targets(jump_targets=tuple(jt)))
+                self.graph.pop(label).replace_jump_targets(
+                    jump_targets=tuple(jt)))
         # initialize new block, which will hold the branching table
         new_block = BranchBlock(begin=new_label,
                                 end=ControlLabel("end"),
@@ -727,7 +731,7 @@ def loop_rotate_for_loop(bbmap: BlockMap, loop: Set[Label]):
                            )
     bbmap.add_block(new_block)
 
-    # Remove the FOR_ITER from the set of loop blocks. 
+    # Remove the FOR_ITER from the set of loop blocks.
     loop.remove(for_iter)
     # Rewire incoming edges for FOR_ITER to SyntheticForIter instead.
     for label in loop:
@@ -754,7 +758,8 @@ def loop_rotate(bbmap: BlockMap, loop: Set[Label]):
     if len(headers) > 1:
         headers_were_unified = True
         solo_head_label = SyntheticHead(bbmap.clg.new_index())
-        bbmap.insert_block_and_control_blocks(solo_head_label, entries, headers)
+        bbmap.insert_block_and_control_blocks(
+            solo_head_label, entries, headers)
         loop.add(solo_head_label)
         loop_head: Label = solo_head_label
     elif len(headers) == 1:
