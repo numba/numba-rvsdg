@@ -327,92 +327,6 @@ class BlockMap:
     clg: ControlLabelGenerator = field(default_factory=ControlLabelGenerator,
                                        compare=False)
 
-    def add_block(self, basicblock: BasicBlock):
-        self.graph[basicblock.begin] = basicblock
-
-    def insert_block(self, new_label: Label,
-                     predecessors: Set[Label],
-                     successors: Set[Label]):
-        # initialize new block
-        new_block = BasicBlock(begin=new_label,
-                               end=ControlLabel("end"),
-                               fallthrough=len(successors) == 1,
-                               jump_targets=successors,
-                               backedges=set()
-                               )
-        # add block to self
-        self.add_block(new_block)
-        # Replace any arcs from any of predecessors to any of successors with
-        # an arc through the inserted block instead.
-        for label in predecessors:
-            block = self.graph.pop(label)
-            jt = list(block.jump_targets)
-            if successors:
-                for s in successors:
-                    if s in jt:
-                        if new_label not in jt:
-                            jt[jt.index(s)] = new_label
-                        else:
-                            jt.pop(jt.index(s))
-            else:
-                jt.append(new_label)
-            self.add_block(block.replace_jump_targets(jump_targets=tuple(jt)))
-
-    def insert_block_and_control_blocks(self, new_label: Label,
-                                        predecessors: Set[Label],
-                                        successors: Set[Label]):
-        # name of the variable for this branching assignment
-        branch_variable = self.clg.new_variable()
-        # initial value of the assignment
-        branch_variable_value = 0
-        # store for the mapping from variable value to label
-        branch_value_table = {}
-        # Replace any arcs from any of predecessors to any of successors with
-        # an arc through the to be inserted block instead.
-        for label in predecessors:
-            block = self.graph[label]
-            jt = list(block.jump_targets)
-            # Need to create synthetic assignments for each arc from a
-            # predecessors to a successor and insert it between the predecessor
-            # and the newly created block
-            for s in set(jt).intersection(successors):
-                synth_assign = SynthenticAssignment(self.clg.new_index())
-                variable_assignment = {}
-                variable_assignment[branch_variable] = branch_variable_value
-                synth_assign_block = ControlVariableBlock(
-                               begin=synth_assign,
-                               end=ControlLabel("end"),
-                               fallthrough=True,
-                               jump_targets=(new_label,),
-                               backedges=(),
-                               variable_assignment=variable_assignment,
-                )
-                # add block
-                self.add_block(synth_assign_block)
-                # update branching table
-                branch_value_table[branch_variable_value] = s
-                # update branching variable
-                branch_variable_value += 1
-                # replace previous successor with synth_assign
-                jt[jt.index(s)] = synth_assign
-            # finally, replace the jump_targets
-            self.add_block(
-                self.graph.pop(label).replace_jump_targets(jump_targets=tuple(jt)))
-        # initialize new block, which will hold the branching table
-        new_block = BranchBlock(begin=new_label,
-                                end=ControlLabel("end"),
-                                fallthrough=len(successors) <= 1,
-                                jump_targets=tuple(successors),
-                                backedges=set(),
-                                variable=branch_variable,
-                                branch_value_table=branch_value_table,
-                                )
-        # add block to self
-        self.add_block(new_block)
-
-    def remove_blocks(self, labels: Set[Label]):
-        for label in labels:
-            del self.graph[label]
 
     def __getitem__(self, index):
         return self.graph[index]
@@ -525,20 +439,6 @@ class BlockMap:
                 exiting.add(inside)
         return exiting, exits
 
-    def join_returns(self):
-        """ Close the CFG.
-
-        A closed CFG is a CFG with a unique entry and exit node that have no
-        predescessors and no successors respectively.
-        """
-        # for all nodes that contain a return
-        return_nodes = [node for node in self.graph
-                        if self.graph[node].is_exiting()]
-        # close if more than one is found
-        if len(return_nodes) > 1:
-            return_solo_label = SyntheticReturn(str(self.clg.new_index()))
-            self.insert_block(return_solo_label, return_nodes, tuple())
-
     def is_reachable_dfs(self, begin, end):
         """Is end reachable from begin. """
         seen = set()
@@ -557,6 +457,107 @@ class BlockMap:
                 seen.add(block)
                 if block in self.graph:
                     to_vist.extend(self.graph[block].jump_targets)
+
+    def add_block(self, basicblock: BasicBlock):
+        self.graph[basicblock.begin] = basicblock
+
+    def remove_blocks(self, labels: Set[Label]):
+        for label in labels:
+            del self.graph[label]
+
+    def insert_block(self, new_label: Label,
+                     predecessors: Set[Label],
+                     successors: Set[Label]):
+        # initialize new block
+        new_block = BasicBlock(begin=new_label,
+                               end=ControlLabel("end"),
+                               fallthrough=len(successors) == 1,
+                               jump_targets=successors,
+                               backedges=set()
+                               )
+        # add block to self
+        self.add_block(new_block)
+        # Replace any arcs from any of predecessors to any of successors with
+        # an arc through the inserted block instead.
+        for label in predecessors:
+            block = self.graph.pop(label)
+            jt = list(block.jump_targets)
+            if successors:
+                for s in successors:
+                    if s in jt:
+                        if new_label not in jt:
+                            jt[jt.index(s)] = new_label
+                        else:
+                            jt.pop(jt.index(s))
+            else:
+                jt.append(new_label)
+            self.add_block(block.replace_jump_targets(jump_targets=tuple(jt)))
+
+    def insert_block_and_control_blocks(self, new_label: Label,
+                                        predecessors: Set[Label],
+                                        successors: Set[Label]):
+        # name of the variable for this branching assignment
+        branch_variable = self.clg.new_variable()
+        # initial value of the assignment
+        branch_variable_value = 0
+        # store for the mapping from variable value to label
+        branch_value_table = {}
+        # Replace any arcs from any of predecessors to any of successors with
+        # an arc through the to be inserted block instead.
+        for label in predecessors:
+            block = self.graph[label]
+            jt = list(block.jump_targets)
+            # Need to create synthetic assignments for each arc from a
+            # predecessors to a successor and insert it between the predecessor
+            # and the newly created block
+            for s in set(jt).intersection(successors):
+                synth_assign = SynthenticAssignment(self.clg.new_index())
+                variable_assignment = {}
+                variable_assignment[branch_variable] = branch_variable_value
+                synth_assign_block = ControlVariableBlock(
+                               begin=synth_assign,
+                               end=ControlLabel("end"),
+                               fallthrough=True,
+                               jump_targets=(new_label,),
+                               backedges=(),
+                               variable_assignment=variable_assignment,
+                )
+                # add block
+                self.add_block(synth_assign_block)
+                # update branching table
+                branch_value_table[branch_variable_value] = s
+                # update branching variable
+                branch_variable_value += 1
+                # replace previous successor with synth_assign
+                jt[jt.index(s)] = synth_assign
+            # finally, replace the jump_targets
+            self.add_block(
+                self.graph.pop(label).replace_jump_targets(jump_targets=tuple(jt)))
+        # initialize new block, which will hold the branching table
+        new_block = BranchBlock(begin=new_label,
+                                end=ControlLabel("end"),
+                                fallthrough=len(successors) <= 1,
+                                jump_targets=tuple(successors),
+                                backedges=set(),
+                                variable=branch_variable,
+                                branch_value_table=branch_value_table,
+                                )
+        # add block to self
+        self.add_block(new_block)
+
+    def join_returns(self):
+        """ Close the CFG.
+
+        A closed CFG is a CFG with a unique entry and exit node that have no
+        predescessors and no successors respectively.
+        """
+        # for all nodes that contain a return
+        return_nodes = [node for node in self.graph
+                        if self.graph[node].is_exiting()]
+        # close if more than one is found
+        if len(return_nodes) > 1:
+            return_solo_label = SyntheticReturn(str(self.clg.new_index()))
+            self.insert_block(return_solo_label, return_nodes, tuple())
 
     def join_tails_and_exits(self, tails: Set[Label], exits: Set[Label]):
         if len(tails) == 1 and len(exits) == 1:
