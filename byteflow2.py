@@ -1,7 +1,8 @@
 import dis
 from copy import deepcopy
 from collections import deque, ChainMap, defaultdict
-from typing import Optional, Set, Tuple, Dict, List, Sequence, Iterator, Bool
+from typing import (Optional, Set, Tuple, Dict, List, Sequence, Iterator,
+                    TypeGuard,)
 from pprint import pprint
 from dataclasses import dataclass, field, replace
 import logging
@@ -445,7 +446,7 @@ class BlockMap:
                 exiting.add(inside)
         return exiting, exits
 
-    def is_reachable_dfs(self, begin: Label, end: Label) -> Bool:
+    def is_reachable_dfs(self, begin: Label, end: Label) -> TypeGuard:
         """Is end reachable from begin. """
         seen = set()
         to_vist = list(self.graph[begin].jump_targets)
