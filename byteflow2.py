@@ -1,7 +1,7 @@
 import dis
 from copy import deepcopy
 from collections import deque, ChainMap, defaultdict
-from typing import Optional, Set, Tuple, Dict, List, Sequence, Iterator
+from typing import Optional, Set, Tuple, Dict, List, Sequence, Iterator, Bool
 from pprint import pprint
 from dataclasses import dataclass, field, replace
 import logging
@@ -374,6 +374,9 @@ class BlockMap:
         return list(scc(GraphWrap(self.graph)))
 
     def compute_scc_subgraph(self, subgraph) -> List[Set[Label]]:
+        """
+        Strongly-connected component for detecting loops inside a subgraph.
+        """
         from scc import scc
 
         class GraphWrap:
@@ -442,7 +445,7 @@ class BlockMap:
                 exiting.add(inside)
         return exiting, exits
 
-    def is_reachable_dfs(self, begin, end):
+    def is_reachable_dfs(self, begin: Label, end: Label) -> Bool:
         """Is end reachable from begin. """
         seen = set()
         to_vist = list(self.graph[begin].jump_targets)
