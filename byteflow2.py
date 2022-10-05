@@ -1,7 +1,7 @@
 import dis
 from copy import deepcopy
 from collections import deque, ChainMap, defaultdict
-from typing import Optional, Set, Tuple, Dict, List, Sequence
+from typing import Optional, Set, Tuple, Dict, List, Sequence, Iterator
 from pprint import pprint
 from dataclasses import dataclass, field, replace
 import logging
@@ -420,13 +420,19 @@ class BlockMap:
     def __contains__(self, index):
         return index in self.graph
 
-    def exclude_nodes(self, exclude_nodes: Set[Label]):
-        """Iterator over all nodes not in exclude_nodes. """
-        for node in self.graph:
-            if node not in exclude_nodes:
-                yield node
+    def exclude_blocks(self, exclude_blocks: Set[Label]) -> Iterator[Label]:
+        """Iterator over all nodes not in exclude_blocks. """
+        for block in self.graph:
+            if block not in exclude_blocks:
+                yield block
 
-    def find_head(self):
+    def find_head(self) -> Label:
+        """Find the head block of the CFG.
+
+        Assuming the CFG is closed, this will find the block
+        that no other blocks are pointing to.
+        
+        """
         heads = set(self.graph.keys())
         for block in self.graph.keys():
             for jt in self.graph[block].jump_targets:
@@ -485,7 +491,7 @@ class BlockMap:
         entries: Set[Label] = set()
         headers: Set[Label] = set()
 
-        for outside in self.exclude_nodes(subgraph):
+        for outside in self.exclude_blocks(subgraph):
             nodes_jump_in_loop = subgraph.intersection(self.graph[outside].jump_targets)
             headers.update(nodes_jump_in_loop)
             if nodes_jump_in_loop:
