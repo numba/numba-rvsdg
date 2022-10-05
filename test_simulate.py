@@ -2,6 +2,7 @@ from byteflow2 import ByteFlow, ByteFlowRenderer
 from simulator import Simulator
 from pprint import pprint
 from dis import dis
+import unittest
 
 #    flow = ByteFlow.from_bytecode(foo)
 #    #pprint(flow.bbmap)
@@ -19,137 +20,125 @@ from dis import dis
 #    #ret = sim.run(dict(x=100))
 #    #assert ret == foo(x=100)
 
+# You can use the following snipppet to visually debug the restructured
+# byteflow:
+#
+#    ByteFlowRenderer().render_byteflow(flow).view()
+#
+#
 
-def test_simple_for_loop():
+class SimulatorTest(unittest.TestCase):
 
-    def foo(x):
-        c = 0
-        for i in range(x):
-            c += i
-        return c
+    def _run(self, func, flow, kwargs):
+        with self.subTest():
+            sim = Simulator(flow, func.__globals__)
+            self.assertEqual(sim.run(kwargs), func(**kwargs))
 
-    flow = ByteFlow.from_bytecode(foo)
-    flow = flow.restructure()
+    def test_simple_branch(self):
 
-    # loop bypass case
-    sim = Simulator(flow, foo.__globals__)
-    assert sim.run(dict(x=0)) == foo(x=0)
-
-    # loop case
-    sim = Simulator(flow, foo.__globals__)
-    assert sim.run(dict(x=2)) == foo(x=2)
-
-    # extended loop case
-    sim = Simulator(flow, foo.__globals__)
-    assert sim.run(dict(x=100)) == foo(x=100)
-
-
-def test_for_loop_with_exit():
-
-    def foo(x):
-        c = 0
-        for i in range(x):
-            c += i
-            if i == 100:
-                break
-        return c
-
-    flow = ByteFlow.from_bytecode(foo)
-    flow = flow.restructure()
-
-    # loop bypass case
-    sim = Simulator(flow, foo.__globals__)
-    ret = sim.run(dict(x=0))
-    assert ret == foo(x=0)
-
-    # loop case
-    sim = Simulator(flow, foo.__globals__)
-    ret = sim.run(dict(x=2))
-    assert ret == foo(x=2)
-
-    # break case
-    sim = Simulator(flow, foo.__globals__)
-    ret = sim.run(dict(x=15))
-    assert ret == foo(x=15)
-
-
-def test_bar():
-    def bar(x):
-        c = 0
-        for i in range(x):
-            c += i
-            if c <= 0:
-                continue
-            else:
-                for j in range(c):
-                    c += j
-                    if c > 100:
-                        break
-        return c
-
-    #def bar(x):
-    #    c = 0
-    #    for i in range(x):
-    #        c += i
-    #        for j in range(x):
-    #            c += j
-    #            if c > 20:
-    #                break
-
-    #    return c
-
-    flow = ByteFlow.from_bytecode(bar)
-    flow = flow.restructure()
-
-    ByteFlowRenderer().render_byteflow(flow).view()
-
-    sim = Simulator(flow, bar.__globals__)
-    ret = sim.run(dict(x=0))
-    assert ret == bar(x=0)
-
-    sim = Simulator(flow, bar.__globals__)
-    ret = sim.run(dict(x=5))
-    assert ret == bar(x=5)
-
-
-def test_for_loop_with_multiple_backedges():
-
-    def foo(x):
-        c = 0
-        for i in range(x):
-            if i == 3:
+        def foo(x):
+            c = 0
+            if x:
                 c += 100
-            elif i == 5:
-                c += 1000
             else:
-                c += 1
-        return c
+                c += 1000
+            return c
 
-    flow = ByteFlow.from_bytecode(foo)
-    ByteFlowRenderer().render_byteflow(flow).view()
-    flow = flow.restructure()
+        flow = ByteFlow.from_bytecode(foo)
+        flow = flow.restructure()
 
-    ByteFlowRenderer().render_byteflow(flow).view()
+        # if case
+        self._run(foo, flow, {'x': 1})
+        # else case
+        self._run(foo, flow, {'x': 0})
 
-    sim = Simulator(flow, foo.__globals__)
-    ret = sim.run(dict(x=0))
-    assert ret == foo(x=0)
+    def test_simple_for_loop(self):
 
-    sim = Simulator(flow, foo.__globals__)
-    ret = sim.run(dict(x=2))
-    assert ret == foo(x=2)
+        def foo(x):
+            c = 0
+            for i in range(x):
+                c += i
+            return c
 
-    sim = Simulator(flow, foo.__globals__)
-    ret = sim.run(dict(x=4))
-    assert ret == foo(x=4)
+        flow = ByteFlow.from_bytecode(foo)
+        flow = flow.restructure()
 
-    sim = Simulator(flow, foo.__globals__)
-    ret = sim.run(dict(x=7))
-    assert ret == foo(x=7)
+        # loop bypass case
+        self._run(foo, flow, {'x': 0})
+        # loop case
+        self._run(foo, flow, {'x': 2})
+        # extended loop case
+        self._run(foo, flow, {'x': 100})
 
+    def test_for_loop_with_exit(self):
+
+        def foo(x):
+            c = 0
+            for i in range(x):
+                c += i
+                if i == 100:
+                    break
+            return c
+
+        flow = ByteFlow.from_bytecode(foo)
+        flow = flow.restructure()
+
+        # loop bypass case
+        self._run(foo, flow, {'x': 0})
+        # loop case
+        self._run(foo, flow, {'x': 2})
+        # break case
+        self._run(foo, flow, {'x': 15})
+
+    def test_nested_for_loop_with_break_and_continue(self):
+
+        def foo(x):
+            c = 0
+            for i in range(x):
+                c += i
+                if c <= 0:
+                    continue
+                else:
+                    for j in range(c):
+                        c += j
+                        if c > 100:
+                            break
+            return c
+
+        flow = ByteFlow.from_bytecode(foo)
+        flow = flow.restructure()
+
+        self._run(foo, flow, {'x': 0})
+        self._run(foo, flow, {'x': 5})
+
+    def test_for_loop_with_multiple_backedges(self):
+
+        def foo(x):
+            c = 0
+            for i in range(x):
+                if i == 3:
+                    c += 100
+                elif i == 5:
+                    c += 1000
+                else:
+                    c += 1
+            return c
+
+        flow = ByteFlow.from_bytecode(foo)
+        flow = flow.restructure()
+
+        # loop bypass
+        self._run(foo, flow, {'x': 0})
+        # default on every iteration
+        self._run(foo, flow, {'x': 2})
+        # adding 100, via the if clause
+        self._run(foo, flow, {'x': 4})
+        # adding 1000, via the elif clause
+        self._run(foo, flow, {'x': 7})
 
 if __name__ == "__main__":
-    test_simple_for_loop()
-    test_for_loop_with_exit()
-    test_bar()
-    test_for_loop_with_multiple_backedges()
+    #test_simple_for_loop()
+    #test_for_loop_with_exit()
+    #test_bar()
+    #test_for_loop_with_multiple_backedges()
+    unittest.main()
