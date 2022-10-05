@@ -112,7 +112,44 @@ def test_bar():
     assert ret == bar(x=5)
 
 
+def test_for_loop_with_multiple_backedges():
+
+    def foo(x):
+        c = 0
+        for i in range(x):
+            if i == 3:
+                c += 100
+            elif i == 5:
+                c += 1000
+            else:
+                c += 1
+        return c
+
+    flow = ByteFlow.from_bytecode(foo)
+    ByteFlowRenderer().render_byteflow(flow).view()
+    flow = flow.restructure()
+
+    ByteFlowRenderer().render_byteflow(flow).view()
+
+    sim = Simulator(flow, foo.__globals__)
+    ret = sim.run(dict(x=0))
+    assert ret == foo(x=0)
+
+    sim = Simulator(flow, foo.__globals__)
+    ret = sim.run(dict(x=2))
+    assert ret == foo(x=2)
+
+    sim = Simulator(flow, foo.__globals__)
+    ret = sim.run(dict(x=4))
+    assert ret == foo(x=4)
+
+    sim = Simulator(flow, foo.__globals__)
+    ret = sim.run(dict(x=7))
+    assert ret == foo(x=7)
+
+
 if __name__ == "__main__":
     test_simple_for_loop()
     test_for_loop_with_exit()
     test_bar()
+    test_for_loop_with_multiple_backedges()
