@@ -496,12 +496,12 @@ class BlockMap:
             headers = {self.find_head()}
         return headers, entries
 
-    def find_exits(self, subgraph: Set[Label]):
-        """Find pre-exits and post-exits in a given subgraph.
+    def find_exiting_and_exits(self, subgraph: Set[Label]):
+        """Find exiting and exit blocks in a given subgraph.
 
-        Pre-exits are nodes inside the subgraph that have edges to nodes
-        outside of the subgraph. Post-exits are nodes  outside the subgraph
-        that have incoming edges from within the subgraph.
+        Existing blocks are blocks inside the subgraph that have edges to
+        blocks outside of the subgraph. Exit blocks are blocks outside the
+        subgraph that have incoming edges from within the subgraph.
 
         """
         node: Label
@@ -704,7 +704,7 @@ def loop_rotate_for_loop(bbmap: BlockMap, loop: Set[Label]):
 
     """
     headers, entries = bbmap.find_headers_and_entries(loop)
-    exiting_blocks, exit_blocks = bbmap.find_exits(loop)
+    exiting_blocks, exit_blocks = bbmap.find_exiting_and_exits(loop)
     # Make sure there is only a single header, which is the FOR_ITER block.
     assert len(headers) == 1
     for_iter: Label = next(iter(headers))
@@ -740,7 +740,7 @@ def loop_rotate(bbmap: BlockMap, loop: Set[Label]):
     This will convert the loop into "loop canonical form".
     """
     headers, entries = bbmap.find_headers_and_entries(loop)
-    exiting_blocks, exit_blocks = bbmap.find_exits(loop)
+    exiting_blocks, exit_blocks = bbmap.find_exiting_and_exits(loop)
     assert len(entries) == 1
     headers_were_unified = False
     if len(headers) > 1:
@@ -754,7 +754,7 @@ def loop_rotate(bbmap: BlockMap, loop: Set[Label]):
         # find the loop head
         loop_rotate_for_loop(bbmap, loop)
         headers, entries = bbmap.find_headers_and_entries(loop)
-        exiting_blocks, exit_blocks = bbmap.find_exits(loop)
+        exiting_blocks, exit_blocks = bbmap.find_exiting_and_exits(loop)
         loop_head: Label = next(iter(headers))
     else:
         raise Exception("unreachable")
@@ -972,7 +972,7 @@ def find_tail_blocks(bbmap: BlockMap, begin: Set[Label], head_region_blocks, bra
 
 def extract_region(bbmap, region_blocks, region_kind):
     headers, entries = bbmap.find_headers_and_entries(region_blocks)
-    exiting_blocks, exit_blocks = bbmap.find_exits(region_blocks)
+    exiting_blocks, exit_blocks = bbmap.find_exiting_and_exits(region_blocks)
     assert len(headers) == 1
     assert len(exiting_blocks) == 1
     region_header = next(iter(headers))
@@ -1040,7 +1040,7 @@ def restructure_branch(bbmap: BlockMap):
             bra_start, inner_nodes = region
             if inner_nodes:
                 # Insert SyntheticTail
-                exiting_blocks, _ = bbmap.find_exits(inner_nodes)
+                exiting_blocks, _ = bbmap.find_exiting_and_exits(inner_nodes)
                 tail_headers, _ = bbmap.find_headers_and_entries(tail_region_blocks)
                 _, _ = bbmap.join_tails_and_exits(exiting_blocks, tail_headers)
 
