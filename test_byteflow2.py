@@ -1,7 +1,7 @@
 import dis
 
 import unittest
-from byteflow2 import (FlowInfo, BCLabel, BasicBlock, BlockMap, ByteFlow,
+from byteflow2 import (FlowInfo, PythonBytecodeBlock, PythonBytecodeLabel, BasicBlock, BlockMap, ByteFlow,
                        bcmap_from_bytecode)
 
 
@@ -16,7 +16,7 @@ bytecode = dis.Bytecode(fun)
 class TestBCMapFromBytecode(unittest.TestCase):
 
     def test(self):
-        expected = {BCLabel(offset=0): dis.Instruction(
+        expected = {0: dis.Instruction(
                         opname='LOAD_CONST',
                         opcode=100,
                         arg=1,
@@ -25,7 +25,7 @@ class TestBCMapFromBytecode(unittest.TestCase):
                         offset=0,
                         starts_line=9,
                         is_jump_target=False),
-                    BCLabel(offset=2): dis.Instruction(
+                    2: dis.Instruction(
                         opname='STORE_FAST',
                         opcode=125,
                         arg=0, argval='x',
@@ -33,7 +33,7 @@ class TestBCMapFromBytecode(unittest.TestCase):
                         offset=2,
                         starts_line=None,
                         is_jump_target=False),
-                    BCLabel(offset=4): dis.Instruction(
+                    4: dis.Instruction(
                         opname='LOAD_FAST',
                         opcode=124,
                         arg=0,
@@ -42,7 +42,7 @@ class TestBCMapFromBytecode(unittest.TestCase):
                         offset=4,
                         starts_line=10,
                         is_jump_target=False),
-                    BCLabel(offset=6): dis.Instruction(
+                    6: dis.Instruction(
                         opname='RETURN_VALUE',
                         opcode=83,
                         arg=None,
@@ -55,39 +55,40 @@ class TestBCMapFromBytecode(unittest.TestCase):
         self.assertEqual(expected, received)
 
 
-class TestBlock(unittest.TestCase):
+class TestPythonBytecodeBlock(unittest.TestCase):
 
     def test_constructor(self):
-        block = BasicBlock(
-            begin=BCLabel(offset=0),
-            end=BCLabel(offset=8),
-            fallthrough=False,
+        block = PythonBytecodeBlock(
+            label=PythonBytecodeLabel(index=0),
+            begin=0,
+            end=8,
             jump_targets=(),
             backedges=()
         )
-        self.assertEqual(block.begin, BCLabel(offset=0))
-        self.assertEqual(block.end, BCLabel(offset=8))
-        self.assertEqual(block.fallthrough, False)
+        self.assertEqual(block.label, PythonBytecodeLabel(index=0))
+        self.assertEqual(block.begin, 0)
+        self.assertEqual(block.end, 8)
+        self.assertFalse(block.fallthrough)
+        self.assertTrue(block.is_exiting)
         self.assertEqual(block.jump_targets, ())
         self.assertEqual(block.backedges, ())
-        self.assertTrue(block.is_exiting())
 
     def test_is_jump_target(self):
-        block = BasicBlock(
-            begin=BCLabel(offset=0),
-            end=BCLabel(offset=8),
-            fallthrough=False,
-            jump_targets=(BCLabel(10)),
+        block = PythonBytecodeBlock(
+            label=PythonBytecodeLabel(index=0),
+            begin=0,
+            end=8,
+            jump_targets=(PythonBytecodeLabel(index=1)),
             backedges=()
         )
-        self.assertEqual(block.jump_targets, (BCLabel(10)))
-        self.assertFalse(block.is_exiting())
+        self.assertEqual(block.jump_targets, (PythonBytecodeLabel(index=1)))
+        self.assertFalse(block.is_exiting)
 
     def test_get_instructions(self):
-        block = BasicBlock(
-            begin=BCLabel(offset=0),
-            end=BCLabel(offset=8),
-            fallthrough=False,
+        block = PythonBytecodeBlock(
+            label=PythonBytecodeLabel(index=0),
+            begin=0,
+            end=8,
             jump_targets=(),
             backedges=()
         )
@@ -116,8 +117,8 @@ class TestFlowInfo(unittest.TestCase):
 
     def test_from_bytecode(self):
 
-        expected = FlowInfo(block_offsets={BCLabel(offset=0)},
-                            jump_insts={BCLabel(offset=6): ()},
+        expected = FlowInfo(block_offsets={0},
+                            jump_insts={6: ()},
                             last_offset=6
                             )
 
@@ -126,15 +127,16 @@ class TestFlowInfo(unittest.TestCase):
 
     def test_build_basic_blocks(self):
         expected = BlockMap(graph={
-            BCLabel(offset=0): BasicBlock(
-                begin=BCLabel(offset=0),
-                end=BCLabel(offset=8),
-                fallthrough=False,
+            PythonBytecodeLabel(index=0):
+            PythonBytecodeBlock(
+                label=PythonBytecodeLabel(index=0),
+                begin=0,
+                end=8,
                 jump_targets=(),
                 backedges=()
                 )
-                                  }
-                           )
+            }
+        )
         received = FlowInfo.from_bytecode(bytecode).build_basicblocks()
         self.assertEqual(expected, received)
 
@@ -148,15 +150,16 @@ class TestByteFlow(unittest.TestCase):
 
     def test_from_bytecode(self):
         bbmap = BlockMap(graph={
-            BCLabel(offset=0): BasicBlock(
-                begin=BCLabel(offset=0),
-                end=BCLabel(offset=8),
-                fallthrough=False,
+            PythonBytecodeLabel(index=0):
+            PythonBytecodeBlock(
+                label=PythonBytecodeLabel(index=0),
+                begin=0,
+                end=8,
                 jump_targets=(),
                 backedges=()
                 )
-                                  }
-                           )
+            }
+        )
         expected = ByteFlow(bc=bytecode, bbmap=bbmap)
         received = ByteFlow.from_bytecode(fun)
         self.assertEqual(expected.bbmap, received.bbmap)

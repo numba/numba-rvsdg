@@ -1,6 +1,6 @@
 from collections import ChainMap
 from dis import Instruction
-from byteflow2 import (ByteFlow, BlockMap, BCLabel, BasicBlock, RegionBlock,
+from byteflow2 import (ByteFlow, BlockMap, BasicBlock, PythonBytecodeBlock, PythonBytecodeLabel, RegionBlock,
                        ControlLabel, SyntheticForIter, SynthenticAssignment,
                        SyntheticExitingLatch, SyntheticExit, SyntheticHead,
                        SyntheticReturn, SyntheticTail,
@@ -22,7 +22,7 @@ class Simulator:
 
     def run(self, args):
         self.varmap.update(args)
-        target = BCLabel(0)
+        target = PythonBytecodeLabel(index=0)
         while True:
             bb = self.flow.bbmap.graph[target]
             action = self.run_bb(bb, target)
@@ -38,11 +38,11 @@ class Simulator:
 
         if isinstance(target, ControlLabel):
             self.run_synth_block(target, bb)
-        elif isinstance(target, BCLabel):
-            assert type(bb) is BasicBlock
-            pc = bb.begin.offset
-            assert pc == target.offset
-            while pc < bb.end.offset:
+        elif isinstance(target, PythonBytecodeLabel):
+            assert type(bb) is PythonBytecodeBlock
+            pc = bb.begin
+            #assert pc == target.offset
+            while pc < bb.end:
                 inst = self.bcmap[pc]
                 self.run_inst(inst)
                 pc += 2

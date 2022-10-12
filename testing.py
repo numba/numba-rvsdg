@@ -15,16 +15,13 @@ def from_yaml(yaml_string):
     clg = ControlLabelGenerator()
     for index, attributes in data.items():
         jump_targets = attributes["jt"]
-        begin_label = ControlLabel(str(clg.new_index()))
-        end_label = ControlLabel("end")
+        label = ControlLabel(str(clg.new_index()))
         block = BasicBlock(
-            begin_label,
-            end_label,
-            fallthrough=len(jump_targets) == 1,
+            label=label,
             backedges=(),
             jump_targets=tuple((ControlLabel(i) for i in jump_targets))
         )
-        block_map_graph[begin_label] = block
+        block_map_graph[label] = block
     return BlockMap(block_map_graph, clg=clg)
 
 
@@ -343,8 +340,6 @@ class TestJoinTailsAndExits(MapComparator):
         tails = self.wrap_id(("1", "2"))
         exits = self.wrap_id(("3",))
 
-        ByteFlowRenderer().render_byteflow(ByteFlow({},
-                                                    original_block_map)).view("before")
         solo_tail_label, solo_exit_label = original_block_map.join_tails_and_exits(tails, exits)
         self.assertMapEqual(expected_block_map, original_block_map)
         self.assertEqual(SyntheticTail("4"), solo_tail_label)

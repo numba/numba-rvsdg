@@ -20,62 +20,63 @@ class _LogWrap:
 
 @dataclass(frozen=True, order=True)
 class Label:
+    index: int
     ...
 
 
 @dataclass(frozen=True, order=True)
-class BCLabel(Label):
-    offset: int
+class PythonBytecodeLabel(Label):
+    pass
 
 
 @dataclass(frozen=True, order=True)
 class ControlLabel(Label):
-    index: int
+    pass
 
 
 @dataclass(frozen=True, order=True)
 class SyntheticBranch(ControlLabel):
-    index: int
+    pass
 
 
 @dataclass(frozen=True, order=True)
 class SyntheticTail(ControlLabel):
-    index: int
+    pass
 
 
 @dataclass(frozen=True, order=True)
 class SyntheticExit(ControlLabel):
-    index: int
+    pass
 
 
 @dataclass(frozen=True, order=True)
 class SyntheticHead(ControlLabel):
-    index: int
+    pass
 
 
 @dataclass(frozen=True, order=True)
 class SyntheticReturn(ControlLabel):
-    index: int
+    pass
 
 
 @dataclass(frozen=True, order=True)
 class SyntheticLatch(ControlLabel):
-    index: int
+    pass
 
 
 @dataclass(frozen=True, order=True)
 class SyntheticExitingLatch(ControlLabel):
-    index: int
+    pass
 
 
 @dataclass(frozen=True, order=True)
 class SynthenticAssignment(ControlLabel):
-    index: int
+    pass
 
 
 @dataclass(frozen=True, order=True)
 class SyntheticForIter(ControlLabel):
-    index: int
+    pass
 
 
 class ControlLabelGenerator():
@@ -97,40 +98,22 @@ class ControlLabelGenerator():
 
 @dataclass(frozen=True)
 class BasicBlock:
-    begin: Label
-    """The starting bytecode offset.
-    """
-
-    end: Label
-    """The bytecode offset immediate after the last bytecode of the block.
-    """
-
-    fallthrough: bool
-    """Set to True when the block has no terminator. The control should just
-    fallthrough to the next block.
-    """
+    label: Label
+    """The corresponding Label for this block.  """
 
     jump_targets: Tuple[Label]
-    """The destination block offsets."""
+    """Jump targets (branch destinations) for this block"""
 
     backedges: Tuple[Label]
-    """Backedges offsets"""
+    """Backedges for this block."""
 
+    @property
     def is_exiting(self) -> bool:
         return not self.jump_targets
 
-    def get_instructions(
-        self, bcmap: Dict[Label, dis.Instruction]
-    ) -> List[dis.Instruction]:
-        begin = self.begin
-        end = self.end
-        it = begin
-        out = []
-        while it < end:
-            out.append(bcmap[it])
-            # increment
-            it = _next_inst_offset(it)
-        return out
+    @property
+    def fallthrough(self) ->bool:
+        return len(self.jump_targets) == 1 and len(self.backedges) == 0
 
     def replace_backedge(self, loop_head: Label) -> "BasicBlock":
         if loop_head in self.jump_targets:
@@ -142,8 +125,30 @@ class BasicBlock:
         return self
 
     def replace_jump_targets(self, jump_targets: Tuple) -> "BasicBlock":
-        fallthrough = len(jump_targets) == 1
-        return replace(self, fallthrough=fallthrough, jump_targets=jump_targets)
+        return replace(self, jump_targets=jump_targets)
+
+@dataclass(frozen=True)
+class PythonBytecodeBlock(BasicBlock):
+    begin: int
+    """The starting bytecode offset.
+    """
+    
+    end: int
+    """The bytecode offset immediate after the last bytecode of the block.
+    """
+
+    def get_instructions(
+        self, bcmap: Dict[int, dis.Instruction]
+    ) -> List[dis.Instruction]:
+        begin = self.begin
+        end = self.end
+        it = begin
+        out = []
+        while it < end:
+            out.append(bcmap[it])
+            # increment
+            it = _next_inst_offset(it)
+        return out
 
 
 @dataclass(frozen=True)
@@ -176,7 +181,6 @@ class BranchBlock(BasicBlock):
                         new_branch_value_table[k] = v
 
         return replace(self,
-                       fallthrough=fallthrough,
                        jump_targets=jump_targets,
                        branch_value_table=new_branch_value_table,
                        )
@@ -220,27 +224,27 @@ def is_exiting(opname: str) -> bool:
     return opname in _terminating
 
 
-def _next_inst_offset(offset: Label) -> BCLabel:
+def _next_inst_offset(offset: int) -> int:
     # Fix offset
-    assert isinstance(offset, BCLabel)
-    return BCLabel(offset.offset + 2)
+    assert isinstance(offset, int)
+    return offset + 2
 
 
-def _prev_inst_offset(offset: Label) -> BCLabel:
+def _prev_inst_offset(offset: int) -> int:
     # Fix offset
-    assert isinstance(offset, BCLabel)
-    return BCLabel(offset.offset - 2)
+    assert isinstance(offset, int)
+    return offset - 2
 
 
 @dataclass()
 class FlowInfo:
     """ FlowInfo converts Bytecode into a ByteFlow object (CFG). """
 
-    block_offsets: Set[Label] = field(default_factory=set)
+    block_offsets: Set[int] = field(default_factory=set)
     """Marks starting offset of basic-block
     """
 
-    jump_insts: Dict[Label, Tuple[Label, ...]] = field(default_factory=dict)
+    jump_insts: Dict[int, Tuple[int, ...]] = field(default_factory=dict)
     """Contains jump instructions and their target offsets.
     """
 
@@ -248,10 +252,13 @@ class FlowInfo:
     """Offset of the last bytecode instruction.
     """
 
-    def _add_jump_inst(self, offset: Label, targets: Sequence[Label]):
+    clg: ControlLabelGenerator = field(default_factory=ControlLabelGenerator,
+                                       compare=False)
+
+    def _add_jump_inst(self, offset: int, targets: Sequence[int]):
         """Add jump instruction to FlowInfo."""
         for off in targets:
-            assert isinstance(off, Label)
+            assert isinstance(off, int)
             self.block_offsets.add(off)
         self.jump_insts[offset] = tuple(targets)
 
@@ -266,29 +273,21 @@ class FlowInfo:
         for inst in bc:
             # Handle jump-target instruction
             if inst.offset == 0 or inst.is_jump_target:
-                flowinfo.block_offsets.add(BCLabel(inst.offset))
+                flowinfo.block_offsets.add(inst.offset)
             # Handle by op
             if is_conditional_jump(inst.opname):
                 if inst.opname in ("POP_JUMP_IF_TRUE"):
                     flowinfo._add_jump_inst(
-                        BCLabel(inst.offset),
-                        (BCLabel(inst.argval),
-                         _next_inst_offset(BCLabel(inst.offset))),
-                    )
+                        inst.offset, (inst.argval, _next_inst_offset(inst.offset)))
                 elif inst.opname in ("POP_JUMP_IF_FALSE", "FOR_ITER"):
                     flowinfo._add_jump_inst(
-                        BCLabel(inst.offset),
-                        (_next_inst_offset(BCLabel(inst.offset)),
-                         BCLabel(inst.argval)),
-                    )
+                        inst.offset, (_next_inst_offset(inst.offset), inst.argval))
                 else:
                     raise Exception("Unreachable")
-
             elif is_unconditional_jump(inst.opname):
-                flowinfo._add_jump_inst(BCLabel(inst.offset),
-                                        (BCLabel(inst.argval),))
+                flowinfo._add_jump_inst(inst.offset, (inst.argval,))
             elif is_exiting(inst.opname):
-                flowinfo._add_jump_inst(BCLabel(inst.offset), ())
+                flowinfo._add_jump_inst(inst.offset, ())
 
         flowinfo.last_offset = inst.offset
         return flowinfo
@@ -298,26 +297,28 @@ class FlowInfo:
         Build a graph of basic-blocks
         """
         offsets = sorted(self.block_offsets)
+        # enumerate labels
+        labels = dict((offset, PythonBytecodeLabel(self.clg.new_index())) for offset in offsets)
         if end_offset is None:
-            end_offset = _next_inst_offset(BCLabel(self.last_offset))
+            end_offset = _next_inst_offset(self.last_offset)
         bbmap = BlockMap()
         for begin, end in zip(offsets, [*offsets[1:], end_offset]):
+            label = labels[begin]
             targets: Tuple[Label, ...]
             term_offset = _prev_inst_offset(end)
             if term_offset not in self.jump_insts:
                 # implicit jump
-                targets = (end,)
-                fallthrough = True
+                targets = (labels[end],)
             else:
-                targets = self.jump_insts[term_offset]
-                fallthrough = False
-            bb = BasicBlock(begin=begin,
-                            end=end,
-                            jump_targets=targets,
-                            fallthrough=fallthrough,
-                            backedges=(),
-                            )
-            bbmap.add_block(bb)
+                targets = tuple(labels[o] for o in self.jump_insts[term_offset])
+            block = PythonBytecodeBlock(
+                label=label,
+                begin=begin,
+                end=end,
+                jump_targets=targets,
+                backedges=(),
+                )
+            bbmap.add_block(block)
         return bbmap
 
 
@@ -442,7 +443,7 @@ class BlockMap:
                     exiting.add(inside)
                     exits.add(jt)
             # any returns
-            if self.graph[inside].is_exiting():
+            if self.graph[inside].is_exiting:
                 exiting.add(inside)
         return exiting, exits
 
@@ -466,7 +467,7 @@ class BlockMap:
                     to_vist.extend(self.graph[block].jump_targets)
 
     def add_block(self, basicblock: BasicBlock):
-        self.graph[basicblock.begin] = basicblock
+        self.graph[basicblock.label] = basicblock
 
     def remove_blocks(self, labels: Set[Label]):
         for label in labels:
@@ -476,9 +477,7 @@ class BlockMap:
                      predecessors: Set[Label],
                      successors: Set[Label]):
         # initialize new block
-        new_block = BasicBlock(begin=new_label,
-                               end=ControlLabel("end"),
-                               fallthrough=len(successors) == 1,
+        new_block = BasicBlock(label=new_label,
                                jump_targets=successors,
                                backedges=set()
                                )
@@ -522,9 +521,7 @@ class BlockMap:
                 variable_assignment = {}
                 variable_assignment[branch_variable] = branch_variable_value
                 synth_assign_block = ControlVariableBlock(
-                               begin=synth_assign,
-                               end=ControlLabel("end"),
-                               fallthrough=True,
+                               label=synth_assign,
                                jump_targets=(new_label,),
                                backedges=(),
                                variable_assignment=variable_assignment,
@@ -542,9 +539,7 @@ class BlockMap:
                 self.graph.pop(label).replace_jump_targets(
                     jump_targets=tuple(jt)))
         # initialize new block, which will hold the branching table
-        new_block = BranchBlock(begin=new_label,
-                                end=ControlLabel("end"),
-                                fallthrough=len(successors) <= 1,
+        new_block = BranchBlock(label=new_label,
                                 jump_targets=tuple(successors),
                                 backedges=set(),
                                 variable=branch_variable,
@@ -561,7 +556,7 @@ class BlockMap:
         """
         # for all nodes that contain a return
         return_nodes = [node for node in self.graph
-                        if self.graph[node].is_exiting()]
+                        if self.graph[node].is_exiting]
         # close if more than one is found
         if len(return_nodes) > 1:
             return_solo_label = SyntheticReturn(str(self.clg.new_index()))
@@ -727,9 +722,7 @@ def loop_rotate_for_loop(bbmap: BlockMap, loop: Set[Label]):
     # Create the SyntheticForIter block and replicate the jump targets from the
     # original FOR_ITER block.
     synth_for_iter = SyntheticForIter(bbmap.clg.new_index())
-    new_block = BasicBlock(begin=synth_for_iter,
-                           end=ControlLabel("end"),
-                           fallthrough=False,
+    new_block = BasicBlock(label=synth_for_iter,
                            jump_targets=bbmap[for_iter].jump_targets,
                            backedges=()
                            )
@@ -828,9 +821,7 @@ def loop_rotate(bbmap: BlockMap, loop: Set[Label]):
                          ),
                     ))
                     synth_assign_block = ControlVariableBlock(
-                               begin=synth_assign,
-                               end=ControlLabel("end"),
-                               fallthrough=True,
+                               label=synth_assign,
                                jump_targets=(synth_exiting_latch,),
                                backedges=(),
                                variable_assignment=variable_assignment,
@@ -859,9 +850,7 @@ def loop_rotate(bbmap: BlockMap, loop: Set[Label]):
                     bbmap.add_block(block.replace_jump_targets(
                                     jump_targets=tuple(jts)))
                     synth_assign_block = ControlVariableBlock(
-                               begin=synth_assign,
-                               end=ControlLabel("end"),
-                               fallthrough=True,
+                               label=synth_assign,
                                jump_targets=(synth_exiting_latch,),
                                backedges=(),
                                variable_assignment=variable_assignment,
@@ -875,9 +864,7 @@ def loop_rotate(bbmap: BlockMap, loop: Set[Label]):
     loop.update(new_blocks)
 
     synth_exiting_latch_block = BranchBlock(
-        begin=synth_exiting_latch,
-        end=ControlLabel("end"),
-        fallthrough=False,
+        label=synth_exiting_latch,
         jump_targets=(synth_exit,),
         backedges=(loop_head, ),
         variable=backedge_variable,
@@ -887,9 +874,7 @@ def loop_rotate(bbmap: BlockMap, loop: Set[Label]):
     bbmap.add_block(synth_exiting_latch_block)
 
     synth_exit_block = BranchBlock(
-        begin=synth_exit,
-        end=ControlLabel("end"),
-        fallthrough=False,
+        label=synth_exit,
         jump_targets=tuple(exit_blocks),
         backedges=(),
         variable=exit_variable,
@@ -1005,9 +990,7 @@ def extract_region(bbmap, region_blocks, region_kind):
         region_exit = region_exiting
 
     subregion = RegionBlock(
-        begin=region_header,
-        end=region_exiting,
-        fallthrough=len(bbmap[region_exiting].jump_targets) > 1,
+        label=region_header,
         jump_targets=bbmap[region_exiting].jump_targets,
         backedges=(),
         kind=region_kind,
@@ -1227,7 +1210,7 @@ class ByteFlowRenderer(object):
         self.render_edges(graph)
 
     def render_basic_block(self, digraph: "Digraph", label: Label, block: BasicBlock):
-        if isinstance(label, BCLabel):
+        if isinstance(label, PythonBytecodeLabel):
             instlist = block.get_instructions(self.bcmap)
             body = "\l".join(
                 [f"{inst.offset:3}: {inst.opname}" for inst in instlist] + [""]
@@ -1264,6 +1247,8 @@ class ByteFlowRenderer(object):
     def render_block(self, digraph: "Digraph", label: Label, block: BasicBlock):
         if type(block) == BasicBlock:
             self.render_basic_block(digraph, label, block)
+        elif type(block) == PythonBytecodeBlock:
+            self.render_basic_block(digraph, label, block)
         elif type(block) == ControlVariableBlock:
             self.render_control_variable_block(digraph, label, block)
         elif type(block) == BranchBlock:
@@ -1277,7 +1262,8 @@ class ByteFlowRenderer(object):
         for label, block in blocks.items():
             for dst in block.jump_targets:
                 if dst in blocks:
-                    if type(block) in (BasicBlock,
+                    if type(block) in (PythonBytecodeBlock,
+                                       BasicBlock,
                                        ControlVariableBlock,
                                        BranchBlock):
                         self.g.edge(str(label), str(dst))
@@ -1303,8 +1289,8 @@ class ByteFlowRenderer(object):
         return self.g
 
     def bcmap_from_bytecode(self, bc: dis.Bytecode):
-        self.bcmap: Dict[Label, dis.Instruction] = bcmap_from_bytecode(bc)
+        self.bcmap: Dict[int, dis.Instruction] = bcmap_from_bytecode(bc)
 
 
 def bcmap_from_bytecode(bc: dis.Bytecode):
-    return {BCLabel(inst.offset): inst for inst in bc}
+    return {inst.offset: inst for inst in bc}

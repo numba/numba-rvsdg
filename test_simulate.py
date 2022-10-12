@@ -63,11 +63,13 @@ class SimulatorTest(unittest.TestCase):
         flow = ByteFlow.from_bytecode(foo)
         flow = flow.restructure()
 
+        ByteFlowRenderer().render_byteflow(flow).view()
+
         # loop bypass case
         self._run(foo, flow, {'x': 0})
         # loop case
         self._run(foo, flow, {'x': 2})
-        # extended loop case
+        ## extended loop case
         self._run(foo, flow, {'x': 100})
 
     def test_for_loop_with_exit(self):
