@@ -303,7 +303,7 @@ class FlowInfo:
         labels = dict((offset, PythonBytecodeLabel(self.clg.new_index())) for offset in offsets)
         if end_offset is None:
             end_offset = _next_inst_offset(self.last_offset)
-        bbmap = BlockMap()
+        bbmap = BlockMap(graph={}, clg=self.clg)
         for begin, end in zip(offsets, [*offsets[1:], end_offset]):
             label = labels[begin]
             targets: Tuple[Label, ...]
