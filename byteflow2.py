@@ -1214,7 +1214,8 @@ class ByteFlowRenderer(object):
     def render_basic_block(self, digraph: "Digraph", label: Label, block: BasicBlock):
         if isinstance(label, PythonBytecodeLabel):
             instlist = block.get_instructions(self.bcmap)
-            body = "\l".join(
+            body = label.__class__.__name__ + ": " + str(label.index) + "\n\n"
+            body += "\l".join(
                 [f"{inst.offset:3}: {inst.opname}" for inst in instlist] + [""]
             )
         elif isinstance(label, ControlLabel):
