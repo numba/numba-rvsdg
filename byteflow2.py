@@ -118,7 +118,7 @@ class BasicBlock:
     def replace_backedge(self, loop_head: Label) -> "BasicBlock":
         if loop_head in self.jump_targets:
             assert not self.backedges
-            # remove backede from jump_targets and add to backedges
+            # remove backedge from jump_targets and add to backedges
             jt = list(self.jump_targets)
             jt.remove(loop_head)
             return replace(self, jump_targets=tuple(jt), backedges=(loop_head,))
