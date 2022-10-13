@@ -52,6 +52,18 @@ class SimulatorTest(unittest.TestCase):
         # else case
         self._run(foo, flow, {'x': 0})
 
+    def test_andor(self):
+
+        def foo(x, y):
+            return (x > 0 and x < 10) or (y > 0 and y < 10)
+
+        flow = ByteFlow.from_bytecode(foo)
+        flow = flow.restructure()
+
+        ByteFlowRenderer().render_byteflow(flow).view("output")
+        self._run(foo, flow, {'x': 5, 'y': 5})
+
+
     def test_simple_for_loop(self):
 
         def foo(x):

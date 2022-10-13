@@ -206,7 +206,9 @@ class RegionBlock(BasicBlock):
 _cond_jump = {
     "FOR_ITER",
     "POP_JUMP_IF_FALSE",
+    "JUMP_IF_FALSE_OR_POP",
     "POP_JUMP_IF_TRUE",
+    "JUMP_IF_TRUE_OR_POP",
 }
 _uncond_jump = {"JUMP_ABSOLUTE", "JUMP_FORWARD"}
 _terminating = {"RETURN_VALUE"}
@@ -276,14 +278,14 @@ class FlowInfo:
                 flowinfo.block_offsets.add(inst.offset)
             # Handle by op
             if is_conditional_jump(inst.opname):
-                if inst.opname in ("POP_JUMP_IF_TRUE"):
+                if inst.opname in ("POP_JUMP_IF_TRUE", "JUMP_IF_TRUE_OR_POP"):
                     flowinfo._add_jump_inst(
                         inst.offset, (inst.argval, _next_inst_offset(inst.offset)))
-                elif inst.opname in ("POP_JUMP_IF_FALSE", "FOR_ITER"):
+                elif inst.opname in ("POP_JUMP_IF_FALSE", "JUMP_IF_FALSE_OR_POP", "FOR_ITER"):
                     flowinfo._add_jump_inst(
                         inst.offset, (_next_inst_offset(inst.offset), inst.argval))
                 else:
-                    raise Exception("Unreachable")
+                    raise Exception(f"Unreachable {inst.opname}")
             elif is_unconditional_jump(inst.opname):
                 flowinfo._add_jump_inst(inst.offset, (inst.argval,))
             elif is_exiting(inst.opname):

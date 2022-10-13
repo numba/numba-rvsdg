@@ -183,6 +183,20 @@ class Simulator:
     def op_POP_JUMP_IF_FALSE(self, inst):
         self.branch = not self.stack.pop()
 
+    def op_JUMP_IF_TRUE_OR_POP(self, inst):
+        if self.stack[-1]:
+            self.branch = True
+        else:
+            self.stack.pop()
+            self.branch = False
+
+    def op_JUMP_IF_FALSE_OR_POP(self, inst):
+        if not self.stack[-1]:
+            self.branch = True
+        else:
+            self.stack.pop()
+            self.branch = False
+
     def op_POP_TOP(self, inst):
         self.stack.pop()
 
