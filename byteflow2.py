@@ -115,13 +115,13 @@ class BasicBlock:
     def fallthrough(self) ->bool:
         return len(self.jump_targets) == 1 and len(self.backedges) == 0
 
-    def replace_backedge(self, loop_head: Label) -> "BasicBlock":
-        if loop_head in self.jump_targets:
+    def replace_backedge(self, target: Label) -> "BasicBlock":
+        if target in self.jump_targets:
             assert not self.backedges
             # remove backedge from jump_targets and add to backedges
             jt = list(self.jump_targets)
-            jt.remove(loop_head)
-            return replace(self, jump_targets=tuple(jt), backedges=(loop_head,))
+            jt.remove(target)
+            return replace(self, jump_targets=tuple(jt), backedges=(target,))
         return self
 
     def replace_jump_targets(self, jump_targets: Tuple) -> "BasicBlock":
@@ -754,7 +754,10 @@ def loop_rotate(bbmap: BlockMap, loop: Set[Label]):
     exiting_blocks, exit_blocks = bbmap.find_exiting_and_exits(loop)
     assert len(entries) == 1
     headers_were_unified = False
-    if len(headers) > 1:
+    if len(loop) == 1:
+        # Probably a Python while loop, only find the loop_head
+        loop_head: Label = next(iter(loop))
+    elif len(headers) > 1:
         headers_were_unified = True
         solo_head_label = SyntheticHead(bbmap.clg.new_index())
         bbmap.insert_block_and_control_blocks(
@@ -763,7 +766,7 @@ def loop_rotate(bbmap: BlockMap, loop: Set[Label]):
         loop_head: Label = solo_head_label
     elif len(headers) == 1:
         # TODO join entries
-        # find the loop head
+        # Probably a Python for loop
         loop_rotate_for_loop(bbmap, loop)
         headers, entries = bbmap.find_headers_and_entries(loop)
         exiting_blocks, exit_blocks = bbmap.find_exiting_and_exits(loop)
@@ -896,10 +899,10 @@ def restructure_loop(bbmap: BlockMap):
     scc: List[Set[Label]] = bbmap.compute_scc()
     # loops are defined as strongly connected subsets who have more than a
     # single label
-    loops: List[Set[Label]] = [nodes for nodes in scc if len(nodes) > 1]
+    loops: List[Set[Label]] = [nodes for nodes in scc if len(nodes) > 1 or next(iter(nodes)) in bbmap[next(iter(nodes))].jump_targets]
+    #loops: List[Set[Label]] = [nodes for nodes in scc]
     _logger.debug("restructure_loop found %d loops in %s",
                   len(loops), bbmap.graph.keys())
-
     # extract loop
     for loop in loops:
         headers, loop_head, pre_exit_label, post_exit_label = loop_rotate(bbmap, loop)
@@ -1297,3 +1300,5 @@ class ByteFlowRenderer(object):
 
 def bcmap_from_bytecode(bc: dis.Bytecode):
     return {inst.offset: inst for inst in bc}
+
+

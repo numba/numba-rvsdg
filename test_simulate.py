@@ -60,11 +60,29 @@ class SimulatorTest(unittest.TestCase):
         flow = ByteFlow.from_bytecode(foo)
         flow = flow.restructure()
 
-        ByteFlowRenderer().render_byteflow(flow).view("output")
         self._run(foo, flow, {'x': 5, 'y': 5})
+
+    def test_while_count(self):
+
+        def foo(s, e):
+            i = s
+            c = 0
+            while i < e:
+                c += i
+                i += 1
+            return c
+
+        flow = ByteFlow.from_bytecode(foo)
+        flow = flow.restructure()
+
+        ByteFlowRenderer().render_byteflow(flow).view()
+
+        self._run(foo, flow, {'s': 0, 'e': 0})
+        self._run(foo, flow, {'s': 0, 'e': 1})
 
 
     def test_simple_for_loop(self):
+
 
         def foo(x):
             c = 0
