@@ -75,14 +75,22 @@ class SimulatorTest(unittest.TestCase):
         flow = ByteFlow.from_bytecode(foo)
         flow = flow.restructure()
 
-        ByteFlowRenderer().render_byteflow(flow).view()
-
+        # no looping
         self._run(foo, flow, {'s': 0, 'e': 0})
+        # single execution
         self._run(foo, flow, {'s': 0, 'e': 1})
+        # mutiple iterations
+        self._run(foo, flow, {'s': 0, 'e': 5})
+
+        # no looping
+        self._run(foo, flow, {'s': 23, 'e': 0})
+        # single execution
+        self._run(foo, flow, {'s': 23, 'e': 24})
+        # mutiple iterations
+        self._run(foo, flow, {'s': 23, 'e': 28})
 
 
     def test_simple_for_loop(self):
-
 
         def foo(x):
             c = 0
@@ -167,8 +175,4 @@ class SimulatorTest(unittest.TestCase):
         self._run(foo, flow, {'x': 7})
 
 if __name__ == "__main__":
-    #test_simple_for_loop()
-    #test_for_loop_with_exit()
-    #test_bar()
-    #test_for_loop_with_multiple_backedges()
     unittest.main()

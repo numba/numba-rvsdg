@@ -19,7 +19,7 @@ def from_yaml(yaml_string):
         block = BasicBlock(
             label=label,
             backedges=(),
-            jump_targets=tuple((ControlLabel(i) for i in jump_targets))
+            _jump_targets=tuple((ControlLabel(i) for i in jump_targets))
         )
         block_map_graph[label] = block
     return BlockMap(block_map_graph, clg=clg)
@@ -37,9 +37,9 @@ class MapComparator(TestCase):
             self.assertEqual(key1.index, key2.index)
             # compare indices of jump_targets
             self.assertEqual(sorted([j.index for j in
-                                     first_map[key1].jump_targets]),
+                                     first_map[key1]._jump_targets]),
                              sorted([j.index for j in
-                                     second_map[key2].jump_targets]))
+                                     second_map[key2]._jump_targets]))
 
     def wrap_id(self, indices: Set[Label]):
         return set([ControlLabel(i) for i in indices])

@@ -101,7 +101,7 @@ class BasicBlock:
     label: Label
     """The corresponding Label for this block.  """
 
-    jump_targets: Tuple[Label]
+    _jump_targets: Tuple[Label]
     """Jump targets (branch destinations) for this block"""
 
     backedges: Tuple[Label]
@@ -113,19 +113,25 @@ class BasicBlock:
 
     @property
     def fallthrough(self) ->bool:
-        return len(self.jump_targets) == 1 and len(self.backedges) == 0
+        return len(self._jump_targets) == 1
+
+    @property
+    def jump_targets(self) -> Tuple[Label]:
+        acc = []
+        for j in self._jump_targets:
+            if j not in self.backedges:
+                acc.append(j)
+        return tuple(acc)
+
 
     def replace_backedge(self, target: Label) -> "BasicBlock":
         if target in self.jump_targets:
             assert not self.backedges
-            # remove backedge from jump_targets and add to backedges
-            jt = list(self.jump_targets)
-            jt.remove(target)
-            return replace(self, jump_targets=tuple(jt), backedges=(target,))
+            return replace(self, backedges=(target,))
         return self
 
     def replace_jump_targets(self, jump_targets: Tuple) -> "BasicBlock":
-        return replace(self, jump_targets=jump_targets)
+        return replace(self, _jump_targets=jump_targets)
 
 @dataclass(frozen=True)
 class PythonBytecodeBlock(BasicBlock):
@@ -181,7 +187,7 @@ class BranchBlock(BasicBlock):
                         new_branch_value_table[k] = v
 
         return replace(self,
-                       jump_targets=jump_targets,
+                       _jump_targets=jump_targets,
                        branch_value_table=new_branch_value_table,
                        )
 
@@ -278,14 +284,8 @@ class FlowInfo:
                 flowinfo.block_offsets.add(inst.offset)
             # Handle by op
             if is_conditional_jump(inst.opname):
-                if inst.opname in ("POP_JUMP_IF_TRUE", "JUMP_IF_TRUE_OR_POP"):
-                    flowinfo._add_jump_inst(
-                        inst.offset, (inst.argval, _next_inst_offset(inst.offset)))
-                elif inst.opname in ("POP_JUMP_IF_FALSE", "JUMP_IF_FALSE_OR_POP", "FOR_ITER"):
-                    flowinfo._add_jump_inst(
+                flowinfo._add_jump_inst(
                         inst.offset, (_next_inst_offset(inst.offset), inst.argval))
-                else:
-                    raise Exception(f"Unreachable {inst.opname}")
             elif is_unconditional_jump(inst.opname):
                 flowinfo._add_jump_inst(inst.offset, (inst.argval,))
             elif is_exiting(inst.opname):
@@ -317,7 +317,7 @@ class FlowInfo:
                 label=label,
                 begin=begin,
                 end=end,
-                jump_targets=targets,
+                _jump_targets=targets,
                 backedges=(),
                 )
             bbmap.add_block(block)
@@ -351,8 +351,9 @@ class BlockMap:
 
         """
         heads = set(self.graph.keys())
-        for block in self.graph.keys():
-            for jt in self.graph[block].jump_targets:
+        for label in self.graph.keys():
+            block = self.graph[label]
+            for jt in block.jump_targets:
                 heads.discard(jt)
         assert len(heads) == 1
         return next(iter(heads))
@@ -480,7 +481,7 @@ class BlockMap:
                      successors: Set[Label]):
         # initialize new block
         new_block = BasicBlock(label=new_label,
-                               jump_targets=successors,
+                               _jump_targets=successors,
                                backedges=set()
                                )
         # add block to self
@@ -524,7 +525,7 @@ class BlockMap:
                 variable_assignment[branch_variable] = branch_variable_value
                 synth_assign_block = ControlVariableBlock(
                                label=synth_assign,
-                               jump_targets=(new_label,),
+                               _jump_targets=(new_label,),
                                backedges=(),
                                variable_assignment=variable_assignment,
                 )
@@ -542,7 +543,7 @@ class BlockMap:
                     jump_targets=tuple(jt)))
         # initialize new block, which will hold the branching table
         new_block = BranchBlock(label=new_label,
-                                jump_targets=tuple(successors),
+                                _jump_targets=tuple(successors),
                                 backedges=set(),
                                 variable=branch_variable,
                                 branch_value_table=branch_value_table,
@@ -725,7 +726,7 @@ def loop_rotate_for_loop(bbmap: BlockMap, loop: Set[Label]):
     # original FOR_ITER block.
     synth_for_iter = SyntheticForIter(bbmap.clg.new_index())
     new_block = BasicBlock(label=synth_for_iter,
-                           jump_targets=bbmap[for_iter].jump_targets,
+                           _jump_targets=bbmap[for_iter].jump_targets,
                            backedges=()
                            )
     bbmap.add_block(new_block)
@@ -752,6 +753,8 @@ def loop_rotate(bbmap: BlockMap, loop: Set[Label]):
     """
     headers, entries = bbmap.find_headers_and_entries(loop)
     exiting_blocks, exit_blocks = bbmap.find_exiting_and_exits(loop)
+    #if len(entries) == 0:
+    #    return
     assert len(entries) == 1
     headers_were_unified = False
     if len(loop) == 1:
@@ -827,7 +830,7 @@ def loop_rotate(bbmap: BlockMap, loop: Set[Label]):
                     ))
                     synth_assign_block = ControlVariableBlock(
                                label=synth_assign,
-                               jump_targets=(synth_exiting_latch,),
+                               _jump_targets=(synth_exiting_latch,),
                                backedges=(),
                                variable_assignment=variable_assignment,
                     )
@@ -856,7 +859,7 @@ def loop_rotate(bbmap: BlockMap, loop: Set[Label]):
                                     jump_targets=tuple(jts)))
                     synth_assign_block = ControlVariableBlock(
                                label=synth_assign,
-                               jump_targets=(synth_exiting_latch,),
+                               _jump_targets=(synth_exiting_latch,),
                                backedges=(),
                                variable_assignment=variable_assignment,
                     )
@@ -870,7 +873,7 @@ def loop_rotate(bbmap: BlockMap, loop: Set[Label]):
 
     synth_exiting_latch_block = BranchBlock(
         label=synth_exiting_latch,
-        jump_targets=(synth_exit,),
+        _jump_targets=(synth_exit, loop_head),
         backedges=(loop_head, ),
         variable=backedge_variable,
         branch_value_table=backedge_value_table,
@@ -880,14 +883,12 @@ def loop_rotate(bbmap: BlockMap, loop: Set[Label]):
 
     synth_exit_block = BranchBlock(
         label=synth_exit,
-        jump_targets=tuple(exit_blocks),
+        _jump_targets=tuple(exit_blocks),
         backedges=(),
         variable=exit_variable,
         branch_value_table=exit_value_table,
         )
     bbmap.add_block(synth_exit_block)
-
-    return headers, loop_head, synth_exiting_latch, synth_exit
 
 
 def restructure_loop(bbmap: BlockMap):
@@ -898,14 +899,16 @@ def restructure_loop(bbmap: BlockMap):
     # connected, i.e. all reachable from one another by traversing the subset
     scc: List[Set[Label]] = bbmap.compute_scc()
     # loops are defined as strongly connected subsets who have more than a
-    # single label
-    loops: List[Set[Label]] = [nodes for nodes in scc if len(nodes) > 1 or next(iter(nodes)) in bbmap[next(iter(nodes))].jump_targets]
-    #loops: List[Set[Label]] = [nodes for nodes in scc]
+    # single label and single label loops that point back to to themselves.
+    loops: List[Set[Label]] = [nodes for nodes in scc
+                               if len(nodes) > 1
+                               or next(iter(nodes)) in bbmap[next(iter(nodes))].jump_targets]
+                            
     _logger.debug("restructure_loop found %d loops in %s",
                   len(loops), bbmap.graph.keys())
-    # extract loop
+    # rotate and extract loop
     for loop in loops:
-        headers, loop_head, pre_exit_label, post_exit_label = loop_rotate(bbmap, loop)
+        loop_rotate(bbmap, loop)
         extract_region(bbmap, loop, "loop")
 
 
@@ -996,7 +999,7 @@ def extract_region(bbmap, region_blocks, region_kind):
 
     subregion = RegionBlock(
         label=region_header,
-        jump_targets=bbmap[region_exiting].jump_targets,
+        _jump_targets=bbmap[region_exiting].jump_targets,
         backedges=(),
         kind=region_kind,
         headers=headers,

@@ -62,7 +62,7 @@ class TestPythonBytecodeBlock(unittest.TestCase):
             label=PythonBytecodeLabel(index=0),
             begin=0,
             end=8,
-            jump_targets=(),
+            _jump_targets=(),
             backedges=()
         )
         self.assertEqual(block.label, PythonBytecodeLabel(index=0))
@@ -78,10 +78,10 @@ class TestPythonBytecodeBlock(unittest.TestCase):
             label=PythonBytecodeLabel(index=0),
             begin=0,
             end=8,
-            jump_targets=(PythonBytecodeLabel(index=1)),
+            _jump_targets=(PythonBytecodeLabel(index=1), ),
             backedges=()
         )
-        self.assertEqual(block.jump_targets, (PythonBytecodeLabel(index=1)))
+        self.assertEqual(block.jump_targets, (PythonBytecodeLabel(index=1), ))
         self.assertFalse(block.is_exiting)
 
     def test_get_instructions(self):
@@ -89,7 +89,7 @@ class TestPythonBytecodeBlock(unittest.TestCase):
             label=PythonBytecodeLabel(index=0),
             begin=0,
             end=8,
-            jump_targets=(),
+            _jump_targets=(),
             backedges=()
         )
         expected = [dis.Instruction(
@@ -132,7 +132,7 @@ class TestFlowInfo(unittest.TestCase):
                 label=PythonBytecodeLabel(index=0),
                 begin=0,
                 end=8,
-                jump_targets=(),
+                _jump_targets=(),
                 backedges=()
                 )
             }
@@ -155,7 +155,7 @@ class TestByteFlow(unittest.TestCase):
                 label=PythonBytecodeLabel(index=0),
                 begin=0,
                 end=8,
-                jump_targets=(),
+                _jump_targets=(),
                 backedges=()
                 )
             }

@@ -19,6 +19,7 @@ class Simulator:
         self.stack = []
         self.branch = None
         self.return_value = None
+    
 
     def run(self, args):
         self.varmap.update(args)
@@ -47,16 +48,11 @@ class Simulator:
                 self.run_inst(inst)
                 pc += 2
 
-        if bb.fallthrough or (len(bb.jump_targets) == 1
-                              and len(bb.backedges) == 0):
+        if bb.fallthrough:
             [target] = bb.jump_targets
             return {"jumpto": target}
-        elif len(bb.jump_targets) == 1 and len(bb.backedges) == 1:
-            [br_true] = bb.jump_targets
-            [br_false] = bb.backedges
-            return {"jumpto": br_true if self.branch else br_false}
-        elif bb.jump_targets:
-            [br_false, br_true] = bb.jump_targets
+        elif len(bb._jump_targets) == 2:
+            [br_false, br_true] = bb._jump_targets
             return {"jumpto": br_true if self.branch else br_false}
         else:
             return {"return": self.return_value}
@@ -91,10 +87,7 @@ class Simulator:
     def _synth_branch(self, control_label, block):
         jump_target = block.branch_value_table[
             self.ctrl_varmap[block.variable]]
-        if block.backedges:
-            self.branch = jump_target not in block.backedges
-        else:
-            self.branch = bool(block.jump_targets.index(jump_target))
+        self.branch = bool(block._jump_targets.index(jump_target))
 
     def synth_SyntheticExitingLatch(self, control_label, block):
         self._synth_branch(control_label, block)
@@ -184,7 +177,7 @@ class Simulator:
         self.branch = not self.stack.pop()
 
     def op_POP_JUMP_IF_TRUE(self, inst):
-        self.branch = not self.stack.pop()
+        self.branch = bool(self.stack.pop())
 
     def op_JUMP_IF_TRUE_OR_POP(self, inst):
         if self.stack[-1]:
