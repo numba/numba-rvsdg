@@ -52,43 +52,6 @@ class SimulatorTest(unittest.TestCase):
         # else case
         self._run(foo, flow, {'x': 0})
 
-    def test_andor(self):
-
-        def foo(x, y):
-            return (x > 0 and x < 10) or (y > 0 and y < 10)
-
-        flow = ByteFlow.from_bytecode(foo)
-        flow = flow.restructure()
-
-        self._run(foo, flow, {'x': 5, 'y': 5})
-
-    def test_while_count(self):
-
-        def foo(s, e):
-            i = s
-            c = 0
-            while i < e:
-                c += i
-                i += 1
-            return c
-
-        flow = ByteFlow.from_bytecode(foo)
-        flow = flow.restructure()
-
-        # no looping
-        self._run(foo, flow, {'s': 0, 'e': 0})
-        # single execution
-        self._run(foo, flow, {'s': 0, 'e': 1})
-        # mutiple iterations
-        self._run(foo, flow, {'s': 0, 'e': 5})
-
-        # no looping
-        self._run(foo, flow, {'s': 23, 'e': 0})
-        # single execution
-        self._run(foo, flow, {'s': 23, 'e': 24})
-        # mutiple iterations
-        self._run(foo, flow, {'s': 23, 'e': 28})
-
 
     def test_simple_for_loop(self):
 
@@ -146,7 +109,13 @@ class SimulatorTest(unittest.TestCase):
         flow = ByteFlow.from_bytecode(foo)
         flow = flow.restructure()
 
+        # no loop
         self._run(foo, flow, {'x': 0})
+        # only continue
+        self._run(foo, flow, {'x': 1})
+        # no break
+        self._run(foo, flow, {'x': 4})
+        # will break
         self._run(foo, flow, {'x': 5})
 
     def test_for_loop_with_multiple_backedges(self):
@@ -174,5 +143,42 @@ class SimulatorTest(unittest.TestCase):
         # adding 1000, via the elif clause
         self._run(foo, flow, {'x': 7})
 
+
+    def test_andor(self):
+
+        def foo(x, y):
+            return (x > 0 and x < 10) or (y > 0 and y < 10)
+
+        flow = ByteFlow.from_bytecode(foo)
+        flow = flow.restructure()
+
+        self._run(foo, flow, {'x': 5, 'y': 5})
+
+    def test_while_count(self):
+
+        def foo(s, e):
+            i = s
+            c = 0
+            while i < e:
+                c += i
+                i += 1
+            return c
+
+        flow = ByteFlow.from_bytecode(foo)
+        flow = flow.restructure()
+
+        # no looping
+        self._run(foo, flow, {'s': 0, 'e': 0})
+        # single execution
+        self._run(foo, flow, {'s': 0, 'e': 1})
+        # mutiple iterations
+        self._run(foo, flow, {'s': 0, 'e': 5})
+
+        # no looping
+        self._run(foo, flow, {'s': 23, 'e': 0})
+        # single execution
+        self._run(foo, flow, {'s': 23, 'e': 24})
+        # mutiple iterations
+        self._run(foo, flow, {'s': 23, 'e': 28})
 if __name__ == "__main__":
     unittest.main()
