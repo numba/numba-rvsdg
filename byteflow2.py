@@ -138,7 +138,7 @@ class PythonBytecodeBlock(BasicBlock):
     begin: int
     """The starting bytecode offset.
     """
-    
+
     end: int
     """The bytecode offset immediate after the last bytecode of the block.
     """
@@ -479,6 +479,7 @@ class BlockMap:
     def insert_block(self, new_label: Label,
                      predecessors: Set[Label],
                      successors: Set[Label]):
+        # TODO: needs a diagram and documentaion
         # initialize new block
         new_block = BasicBlock(label=new_label,
                                _jump_targets=successors,
@@ -505,6 +506,7 @@ class BlockMap:
     def insert_block_and_control_blocks(self, new_label: Label,
                                         predecessors: Set[Label],
                                         successors: Set[Label]):
+        # TODO: needs a diagram and documentaion
         # name of the variable for this branching assignment
         branch_variable = self.clg.new_variable()
         # initial value of the assignment

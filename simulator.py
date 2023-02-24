@@ -19,7 +19,6 @@ class Simulator:
         self.stack = []
         self.branch = None
         self.return_value = None
-    
 
     def run(self, args):
         self.varmap.update(args)
