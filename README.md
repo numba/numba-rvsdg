@@ -11,8 +11,8 @@ within Numba.
 
 ## references
 
-* https://arxiv.org/pdf/1912.05036.pdf -- Describes the concept of RVSDGs
-* https://dl.acm.org/doi/pdf/10.1145/2693261 -- Descibes the transformation
+* `Reismann2020` -- https://arxiv.org/pdf/1912.05036.pdf -- Describes the concept of RVSDGs
+* `Bahmann2015` -- https://dl.acm.org/doi/pdf/10.1145/2693261 -- Descibes the transformation
   algorithms implemented
 
 ## license
