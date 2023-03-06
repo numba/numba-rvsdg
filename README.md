@@ -9,6 +9,23 @@ This repository contains Numba compatible utilities for working with RVSDGs
 Intermiediary Representation (IR) suitable for regularizing Python byetcode
 within Numba.
 
+## dependencies
+
+* Python 3.11
+* graphviz
+* pyyaml
+
+As of 2023-03-06 you can create a conda env using the following:
+
+```
+conda env create -n numba-rvsdg python=3.11 python-graphviz
+conda activate numba-rvsdg
+pip install pyyaml
+```
+
+At the time of writing `pyyaml` was not available for Python 3.11 via
+`defaults` so it had to be installed with `pip`.
+
 ## references
 
 * `Reismann2020` -- https://arxiv.org/pdf/1912.05036.pdf -- Describes the concept of RVSDGs
