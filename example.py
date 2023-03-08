@@ -190,14 +190,30 @@ logging.basicConfig(level=logging.DEBUG)
 #                break
 #    return i
 
-def foo(x):
+#def foo(x):
+#    c = 0
+#    for i in range(x):
+#        c += i
+#        for j in range(x):
+#            c += j
+#            if c > 100:
+#                break
+#    return c
+
+#def foo(x):
+#    c = 0
+#    for i in range(x):
+#        c += i
+#        if i == 100:
+#            break
+#    return c
+#
+def foo(s, e):
+    i = s
     c = 0
-    for i in range(x):
+    while i < e:
         c += i
-        for j in range(x):
-            c += j
-            if c > 100:
-                break
+        i += 1
     return c
 
 flow = ByteFlow.from_bytecode(foo)
