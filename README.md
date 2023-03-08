@@ -6,10 +6,10 @@ Numba compatible RVSDG (Regionalized Value State Dependence Graph)  utilities.
 
 This repository contains Numba compatible utilities for working with RVSDGs
 (Regionalized Value State Dependency Graphs). RVSDGs are a type of
-Intermiediary Representation (IR) suitable for regularizing Python bytecode
+Intermediary Representation (IR) suitable for regularizing Python bytecode
 within Numba.
 
-The code in this repository is an implementation of the CFG restrucrturing
+The code in this repository is an implementation of the CFG restructuring
 algorithms in Bahmann2015, specifically those from section 4.1 and 4.2: namely
 "loop restructuring" and "branch restructuring". These are interesting for
 Numba because they serve to clearly identify regions withing the Python
@@ -39,7 +39,7 @@ The following files are included in this repository:
 * byteflow2.py -- the algorithms from Bahmann2015
 * chk.py  -- leftover early test file
 * example.py -- file for running and displaying examples
-* scc.py -- strongly connnected components copied verbatim from networkx
+* scc.py -- strongly connected components, copied verbatim from networkx
 * simulator.py -- a CFG simulator, for testing
 * test_byteflow2.py -- tests for byteflow2 algorithms
 * test_fig3.py -- test for fig3 from Bahmann2015
@@ -84,7 +84,7 @@ ByteFlowRenderer().render_byteflow(bflow).view("branch restructured")
 ## references
 
 * `Reismann2020` -- https://arxiv.org/pdf/1912.05036.pdf -- Describes the concept of RVSDGs
-* `Bahmann2015` -- https://dl.acm.org/doi/pdf/10.1145/2693261 -- Descibes the transformation
+* `Bahmann2015` -- https://dl.acm.org/doi/pdf/10.1145/2693261 -- Describes the transformation
   algorithms implemented
 
 ## license
