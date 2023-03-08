@@ -80,6 +80,10 @@ bflow = lflow._restructure_branch()
 ByteFlowRenderer().render_byteflow(bflow).view("branch restructured")
 ```
 
+![initial](docs/images/initial.png "initial")
+![closed](docs/images/closed.png "closed")
+![loop-restructured](docs/images/loop_restructured.png "loop-restructured")
+![branch-restructured](docs/images/branch_restructured.png "branch-restructured")
 
 ## references
 
