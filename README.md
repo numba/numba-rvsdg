@@ -6,8 +6,14 @@ Numba compatible RVSDG (Regionalized Value State Dependence Graph)  utilities.
 
 This repository contains Numba compatible utilities for working with RVSDGs
 (Regionalized Value State Dependency Graphs). RVSDGs are a type of
-Intermiediary Representation (IR) suitable for regularizing Python byetcode
+Intermiediary Representation (IR) suitable for regularizing Python bytecode
 within Numba.
+
+The code in this repository is an implementation of the CFG restrucrturing
+algorithms in Bahmann2015, specifically those from section 4.1 and 4.2: namely
+"loop restructuring" and "branch restructuring". These are interesting for
+Numba because they serve to clearly identify regions withing the Python
+bytecode.
 
 ## dependencies
 
@@ -25,6 +31,55 @@ pip install pyyaml
 
 At the time of writing `pyyaml` was not available for Python 3.11 via
 `defaults` so it had to be installed with `pip`.
+
+## overview
+
+The following files are included in this repository:
+
+byteflow2.py -- the algorithms from Bahmann2015
+chk.py  -- leftover early test file
+example.py -- file for running and displaying examples
+scc.py -- strongly connnected components copied verbatim from networkx
+simulator.py -- a CFG simulator, for testing
+test_byteflow2.py -- tests for byteflow2 algorithms
+test_fig3.py -- test for fig3 from Bahmann2015
+test_fig4.py -- test for fig4 from Bahmann2015
+test_simulate.py -- simulator based tests
+testing.py -- more tests for byteflow2, should probably be merged
+
+## example
+
+The following will process the given example function and display the four
+different stages. "initial" is the unprocessed bytecode as produced by
+cpython. "closed" is simply the closed variant of the initial CFG. "loop
+restructuring" is the loop-restructured version and "branch-restructured" is
+the final form which includes closing, loop-restructuring and
+branch-restructuring.
+
+
+```python
+# Example: for loop with branch and early exit
+def foo(n):
+    c = 0
+    for i in range(n):
+        c += 1
+        if i == 100:
+            break
+    return c
+
+flow = ByteFlow.from_bytecode(foo)
+ByteFlowRenderer().render_byteflow(flow).view("initial")
+
+cflow = flow._join_returns()
+ByteFlowRenderer().render_byteflow(cflow).view("closed")
+
+lflow = cflow._restructure_loop()
+ByteFlowRenderer().render_byteflow(lflow).view("loop restructured")
+
+bflow = lflow._restructure_branch()
+ByteFlowRenderer().render_byteflow(bflow).view("branch restructured")
+```
+
 
 ## references
 
