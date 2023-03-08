@@ -32,7 +32,6 @@ class Simulator:
 
     def run_bb(self, bb: BasicBlock, target):
         print("AT", target)
-        #breakpoint()
         if isinstance(bb, RegionBlock):
             return self._run_region(bb, target)
 
@@ -40,13 +39,8 @@ class Simulator:
             self.run_synth_block(target, bb)
         elif isinstance(target, PythonBytecodeLabel):
             assert type(bb) is PythonBytecodeBlock
-            pc = bb.begin
-            #assert pc == target.offset
-            while pc < bb.end:
-                inst = self.bcmap[pc]
-                self.run_inst(inst)
-                pc += 2
-
+            for inst in bb.get_instructions(self.bcmap):
+                    self.run_inst(inst)
         if bb.fallthrough:
             [target] = bb.jump_targets
             return {"jumpto": target}
@@ -128,7 +122,12 @@ class Simulator:
 
     def op_LOAD_GLOBAL(self, inst):
         v = self.globals[inst.argval]
-        self.stack.append(v)
+        if inst.argrepr.startswith('NULL'):
+            append_null = True
+            self.stack.append(v)
+            self.stack.append(None)
+        else:
+            raise NotImplementedError
 
     def op_STORE_FAST(self, inst):
         val = self.stack.pop()
@@ -195,3 +194,64 @@ class Simulator:
     def op_POP_TOP(self, inst):
         self.stack.pop()
 
+    def op_RESUME(self, inst):
+        pass
+
+    def op_PRECALL(self, inst):
+        pass
+
+    def op_CALL_FUNCTION(self, inst):
+        args = [self.stack.pop() for _ in range(inst.argval)][::-1]
+        fn = self.stack.pop()
+        res = fn(*args)
+        self.stack.append(res)
+
+    def op_CALL(self, inst):
+        args = [self.stack.pop() for _ in range(inst.argval)][::-1]
+        first, second = self.stack.pop(), self.stack.pop()
+        if first == None:
+            func = second
+        else:
+            raise NotImplementedError
+        res = func(*args)
+        self.stack.append(res)
+
+    def op_BINARY_OP(self, inst):
+        rhs, lhs, op = self.stack.pop(), self.stack.pop(), inst.argrepr
+        op = op if len(op) == 1 else op[0]
+        self.stack.append(eval(f"{lhs} {op} {rhs}"))
+
+    def op_JUMP_BACKWARD(self, inst):
+        pass
+
+    def op_POP_JUMP_FORWARD_IF_TRUE(self, inst):
+        self.branch = self.stack[-1]
+        self.stack.pop()
+
+    def op_POP_JUMP_BACKWARD_IF_TRUE(self, inst):
+        self.branch = self.stack[-1]
+        self.stack.pop()
+
+    def op_POP_JUMP_FORWARD_IF_FALSE(self, inst):
+        self.branch = not self.stack[-1]
+        self.stack.pop()
+
+    def op_POP_JUMP_BACKWARD_IF_FALSE(self, inst):
+        self.branch = not self.stack[-1]
+        self.stack.pop()
+
+    def op_POP_JUMP_FORWARD_IF_NOT_NONE(self, inst):
+        self.branch = self.stack[-1] is not None
+        self.stack.pop()
+
+    def op_POP_JUMP_BACKWARD_IF_NOT_NONE(self, inst):
+        self.branch = self.stack[-1] is not None
+        self.stack.pop()
+
+    def op_POP_JUMP_FORWARD_IF_NONE(self, inst):
+        self.branch = self.stack[-1] is None
+        self.stack.pop()
+
+    def op_POP_JUMP_BACKWARD_IF_NONE(self, inst):
+        self.branch = self.stack[-1] is None
+        self.stack.pop()

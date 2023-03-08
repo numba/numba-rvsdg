@@ -151,9 +151,14 @@ class PythonBytecodeBlock(BasicBlock):
         it = begin
         out = []
         while it < end:
-            out.append(bcmap[it])
-            # increment
-            it = _next_inst_offset(it)
+            # Python 3.11 hack: account for gaps in the bytecode sequence
+            try:
+                out.append(bcmap[it])
+            except KeyError:
+                pass
+            finally:
+                it = _next_inst_offset(it)
+
         return out
 
 
@@ -215,8 +220,17 @@ _cond_jump = {
     "JUMP_IF_FALSE_OR_POP",
     "POP_JUMP_IF_TRUE",
     "JUMP_IF_TRUE_OR_POP",
+    "POP_JUMP_FORWARD_IF_TRUE",
+    "POP_JUMP_BACKWARD_IF_TRUE",
+    "POP_JUMP_FORWARD_IF_FALSE",
+    "POP_JUMP_BACKWARD_IF_FALSE",
+    "POP_JUMP_FORWARD_IF_NOT_NONE",
+    "POP_JUMP_BACKWARD_IF_NOT_NONE",
+    "POP_JUMP_FORWARD_IF_NONE",
+    "POP_JUMP_BACKWARD_IF_NONE",
+
 }
-_uncond_jump = {"JUMP_ABSOLUTE", "JUMP_FORWARD"}
+_uncond_jump = {"JUMP_ABSOLUTE", "JUMP_FORWARD", "JUMP_BACKWARD"}
 _terminating = {"RETURN_VALUE"}
 
 
