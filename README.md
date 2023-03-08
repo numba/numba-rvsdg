@@ -36,16 +36,16 @@ At the time of writing `pyyaml` was not available for Python 3.11 via
 
 The following files are included in this repository:
 
-byteflow2.py -- the algorithms from Bahmann2015
-chk.py  -- leftover early test file
-example.py -- file for running and displaying examples
-scc.py -- strongly connnected components copied verbatim from networkx
-simulator.py -- a CFG simulator, for testing
-test_byteflow2.py -- tests for byteflow2 algorithms
-test_fig3.py -- test for fig3 from Bahmann2015
-test_fig4.py -- test for fig4 from Bahmann2015
-test_simulate.py -- simulator based tests
-testing.py -- more tests for byteflow2, should probably be merged
+* byteflow2.py -- the algorithms from Bahmann2015
+* chk.py  -- leftover early test file
+* example.py -- file for running and displaying examples
+* scc.py -- strongly connnected components copied verbatim from networkx
+* simulator.py -- a CFG simulator, for testing
+* test_byteflow2.py -- tests for byteflow2 algorithms
+* test_fig3.py -- test for fig3 from Bahmann2015
+* test_fig4.py -- test for fig4 from Bahmann2015
+* test_simulate.py -- simulator based tests
+* testing.py -- more tests for byteflow2, should probably be merged
 
 ## example
 
