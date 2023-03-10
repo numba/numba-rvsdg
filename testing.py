@@ -8,24 +8,6 @@ from byteflow2 import (Label, ControlLabel, BasicBlock, BlockMap,
                        loop_rotate, SyntheticTail, SyntheticExit)
 
 
-def from_yaml(yaml_string):
-    def toTupleControlLabel(it):
-        return tuple((ControlLabel(i) for i in it))
-    # Convert to BlockMap
-    data = yaml.safe_load(yaml_string)
-    block_map_graph = {}
-    clg = ControlLabelGenerator()
-    for index, attributes in data.items():
-        jump_targets = attributes["jt"]
-        backedges = attributes.get("be", ())
-        label = ControlLabel(str(clg.new_index()))
-        block = BasicBlock(
-            label=label,
-            backedges=toTupleControlLabel(backedges),
-            _jump_targets=toTupleControlLabel(jump_targets),
-        )
-        block_map_graph[label] = block
-    return BlockMap(block_map_graph, clg=clg)
 
 
 class MapComparator(TestCase):
@@ -47,6 +29,23 @@ class MapComparator(TestCase):
     def wrap_id(self, indices: Set[Label]):
         return tuple([ControlLabel(i) for i in indices])
 
+    def from_yaml(self, yaml_string):
+        # Convert to BlockMap
+        data = yaml.safe_load(yaml_string)
+        block_map_graph = {}
+        clg = ControlLabelGenerator()
+        for index, attributes in data.items():
+            jump_targets = attributes["jt"]
+            backedges = attributes.get("be", ())
+            label = ControlLabel(str(clg.new_index()))
+            block = BasicBlock(
+                label=label,
+                backedges=self.wrap_id(backedges),
+                _jump_targets=self.wrap_id(jump_targets),
+            )
+            block_map_graph[label] = block
+        return BlockMap(block_map_graph, clg=clg)
+
 
 class TestInsertBlock(MapComparator):
 
@@ -57,7 +56,7 @@ class TestInsertBlock(MapComparator):
         "1":
             jt: []
         """
-        original_block_map = from_yaml(original)
+        original_block_map = self.from_yaml(original)
         expected = """
         "0":
             jt: ["2"]
@@ -66,7 +65,7 @@ class TestInsertBlock(MapComparator):
         "2":
             jt: ["1"]
         """
-        expected_block_map = from_yaml(expected)
+        expected_block_map = self.from_yaml(expected)
         original_block_map.insert_block(ControlLabel("2"),
                                         self.wrap_id(("0",)),
                                         self.wrap_id(("1",)))
@@ -81,7 +80,7 @@ class TestInsertBlock(MapComparator):
         "2":
             jt: []
         """
-        original_block_map = from_yaml(original)
+        original_block_map = self.from_yaml(original)
         expected = """
         "0":
             jt: ["3"]
@@ -92,7 +91,7 @@ class TestInsertBlock(MapComparator):
         "3":
             jt: ["2"]
         """
-        expected_block_map = from_yaml(expected)
+        expected_block_map = self.from_yaml(expected)
         original_block_map.insert_block(ControlLabel("3"),
                                         self.wrap_id(("0", "1")),
                                         self.wrap_id(("2",)))
@@ -107,7 +106,7 @@ class TestInsertBlock(MapComparator):
         "2":
             jt: []
         """
-        original_block_map = from_yaml(original)
+        original_block_map = self.from_yaml(original)
         expected = """
         "0":
             jt: ["3"]
@@ -118,7 +117,7 @@ class TestInsertBlock(MapComparator):
         "3":
             jt: ["1", "2"]
         """
-        expected_block_map = from_yaml(expected)
+        expected_block_map = self.from_yaml(expected)
         original_block_map.insert_block(ControlLabel("3"),
                                         self.wrap_id(("0",)),
                                         self.wrap_id(("1", "2",)))
@@ -137,7 +136,7 @@ class TestInsertBlock(MapComparator):
         "4":
             jt: []
         """
-        original_block_map = from_yaml(original)
+        original_block_map = self.from_yaml(original)
         expected = """
         "0":
             jt: ["1", "2"]
@@ -152,7 +151,7 @@ class TestInsertBlock(MapComparator):
         "5":
             jt: ["3", "4"]
         """
-        expected_block_map = from_yaml(expected)
+        expected_block_map = self.from_yaml(expected)
         original_block_map.insert_block(ControlLabel("5"),
                                         self.wrap_id(("1", "2")),
                                         self.wrap_id(("3", "4",)))
@@ -171,7 +170,7 @@ class TestInsertBlock(MapComparator):
         "4":
             jt: []
         """
-        original_block_map = from_yaml(original)
+        original_block_map = self.from_yaml(original)
         expected = """
         "0":
             jt: ["1", "2"]
@@ -186,7 +185,7 @@ class TestInsertBlock(MapComparator):
         "5":
             jt: ["3", "4"]
         """
-        expected_block_map = from_yaml(expected)
+        expected_block_map = self.from_yaml(expected)
         original_block_map.insert_block(ControlLabel("5"),
                                         self.wrap_id(("1", "2")),
                                         self.wrap_id(("3", "4",)))
@@ -204,7 +203,7 @@ class TestJoinReturns(MapComparator):
         "2":
             jt: []
         """
-        original_block_map = from_yaml(original)
+        original_block_map = self.from_yaml(original)
         expected = """
         "0":
             jt: ["1", "2"]
@@ -215,7 +214,7 @@ class TestJoinReturns(MapComparator):
         "3":
             jt: []
         """
-        expected_block_map = from_yaml(expected)
+        expected_block_map = self.from_yaml(expected)
         original_block_map.join_returns()
         self.assertMapEqual(expected_block_map, original_block_map)
 
@@ -229,14 +228,14 @@ class TestJoinTailsAndExits(MapComparator):
         "1":
             jt: []
         """
-        original_block_map = from_yaml(original)
+        original_block_map = self.from_yaml(original)
         expected = """
         "0":
             jt: ["1"]
         "1":
             jt: []
         """
-        expected_block_map = from_yaml(expected)
+        expected_block_map = self.from_yaml(expected)
 
         tails = self.wrap_id(("0",))
         exits = self.wrap_id(("1",))
@@ -257,7 +256,7 @@ class TestJoinTailsAndExits(MapComparator):
         "3":
             jt: []
         """
-        original_block_map = from_yaml(original)
+        original_block_map = self.from_yaml(original)
         expected = """
         "0":
             jt: ["4"]
@@ -270,7 +269,7 @@ class TestJoinTailsAndExits(MapComparator):
         "4":
             jt: ["1", "2"]
         """
-        expected_block_map = from_yaml(expected)
+        expected_block_map = self.from_yaml(expected)
 
         tails = self.wrap_id(("0",))
         exits = self.wrap_id(("1", "2"))
@@ -291,7 +290,7 @@ class TestJoinTailsAndExits(MapComparator):
         "3":
             jt: []
         """
-        original_block_map = from_yaml(original)
+        original_block_map = self.from_yaml(original)
         expected = """
         "0":
             jt: ["1", "2"]
@@ -304,7 +303,7 @@ class TestJoinTailsAndExits(MapComparator):
         "4":
             jt: ["3"]
         """
-        expected_block_map = from_yaml(expected)
+        expected_block_map = self.from_yaml(expected)
 
         tails = self.wrap_id(("1", "2"))
         exits = self.wrap_id(("3",))
@@ -325,7 +324,7 @@ class TestJoinTailsAndExits(MapComparator):
         "3":
             jt: []
         """
-        original_block_map = from_yaml(original)
+        original_block_map = self.from_yaml(original)
         expected = """
         "0":
             jt: ["1", "2"]
@@ -338,7 +337,7 @@ class TestJoinTailsAndExits(MapComparator):
         "4":
             jt: ["3"]
         """
-        expected_block_map = from_yaml(expected)
+        expected_block_map = self.from_yaml(expected)
 
         tails = self.wrap_id(("1", "2"))
         exits = self.wrap_id(("3",))
@@ -364,7 +363,7 @@ class TestJoinTailsAndExits(MapComparator):
         "5":
             jt: []
         """
-        original_block_map = from_yaml(original)
+        original_block_map = self.from_yaml(original)
         expected = """
         "0":
             jt: ["1", "2"]
@@ -383,7 +382,7 @@ class TestJoinTailsAndExits(MapComparator):
         "7":
             jt: ["3", "4"]
         """
-        expected_block_map = from_yaml(expected)
+        expected_block_map = self.from_yaml(expected)
 
         tails = self.wrap_id(("1", "2"))
         exits = self.wrap_id(("3", "4"))
@@ -408,7 +407,7 @@ class TestJoinTailsAndExits(MapComparator):
         "5":
             jt: []
         """
-        original_block_map = from_yaml(original)
+        original_block_map = self.from_yaml(original)
         expected = """
         "0":
             jt: ["1", "2"]
@@ -427,7 +426,7 @@ class TestJoinTailsAndExits(MapComparator):
         "7":
             jt: ["3", "4"]
         """
-        expected_block_map = from_yaml(expected)
+        expected_block_map = self.from_yaml(expected)
         tails = self.wrap_id(("1", "2"))
         exits = self.wrap_id(("3", "4"))
         solo_tail_label, solo_exit_label = original_block_map.join_tails_and_exits(tails, exits)
@@ -450,7 +449,7 @@ class TestLoopRotate(MapComparator):
         "3":
             jt: []
         """
-        original_block_map = from_yaml(original)
+        original_block_map = self.from_yaml(original)
         expected = """
         "0":
             jt: ["1"]
@@ -464,7 +463,7 @@ class TestLoopRotate(MapComparator):
             jt: ["2", "3"]
             be: ["2"]
         """
-        expected_block_map = from_yaml(expected)
+        expected_block_map = self.from_yaml(expected)
 
         loop_rotate(original_block_map, {ControlLabel("1"), ControlLabel("2")})
         print(original_block_map.compute_scc())
