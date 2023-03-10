@@ -71,6 +71,26 @@ class SimulatorTest(unittest.TestCase):
         # extended loop case
         self._run(foo, flow, {'x': 100})
 
+    def test_simple_while_loop(self):
+
+        def foo(x):
+            c = 0
+            i = 0
+            while i < x:
+                c += i
+                i += 1
+            return c
+
+        flow = ByteFlow.from_bytecode(foo)
+        flow = flow.restructure()
+
+        # loop bypass case
+        self._run(foo, flow, {'x': 0})
+        # loop case
+        self._run(foo, flow, {'x': 2})
+        # extended loop case
+        self._run(foo, flow, {'x': 100})
+
     def test_for_loop_with_exit(self):
 
         def foo(x):

@@ -740,7 +740,7 @@ def loop_rotate_for_loop(bbmap: BlockMap, loop: Set[Label]):
     for_iter: Label = next(iter(headers))
     # Create the SyntheticForIter block and replicate the jump targets from the
     # original FOR_ITER block.
-    synth_for_iter = SyntheticForIter(bbmap.clg.new_index())
+    synth_for_iter = SyntheticForIter(str(bbmap.clg.new_index()))
     new_block = BasicBlock(label=synth_for_iter,
                            _jump_targets=bbmap[for_iter].jump_targets,
                            backedges=()
@@ -1071,7 +1071,7 @@ def restructure_branch(bbmap: BlockMap):
         else:
             # Insert SyntheticBranch
             tail_headers, _ = bbmap.find_headers_and_entries(tail_region_blocks)
-            synthetic_branch_block_label = SyntheticBranch(bbmap.clg.new_index())
+            synthetic_branch_block_label = SyntheticBranch(str(bbmap.clg.new_index()))
             bbmap.insert_block(synthetic_branch_block_label, (begin,), tail_headers)
 
     # Recompute regions.
