@@ -467,7 +467,6 @@ class TestLoopRotate(MapComparator):
 
         loop_rotate(original_block_map, {ControlLabel("1"), ControlLabel("2")})
         print(original_block_map.compute_scc())
-        breakpoint()
         self.assertMapEqual(expected_block_map, original_block_map)
 
 
