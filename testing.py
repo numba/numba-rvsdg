@@ -25,6 +25,11 @@ class MapComparator(TestCase):
                                      first_map[key1]._jump_targets]),
                              sorted([j.index for j in
                                      second_map[key2]._jump_targets]))
+            # compare indices of backedges
+            self.assertEqual(sorted([j.index for j in
+                                     first_map[key1].backedges]),
+                             sorted([j.index for j in
+                                     second_map[key2].backedges]))
 
     def wrap_id(self, indices: Set[Label]):
         return tuple([ControlLabel(i) for i in indices])
