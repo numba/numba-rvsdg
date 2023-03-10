@@ -1071,7 +1071,7 @@ def restructure_branch(bbmap: BlockMap):
         else:
             # Insert SyntheticBranch
             tail_headers, _ = bbmap.find_headers_and_entries(tail_region_blocks)
-            synthetic_branch_block_label = SyntheticBranch(bbmap.clg.new_index())
+            synthetic_branch_block_label = SyntheticBranch(str(bbmap.clg.new_index()))
             bbmap.insert_block(synthetic_branch_block_label, (begin,), tail_headers)
 
     # Recompute regions.

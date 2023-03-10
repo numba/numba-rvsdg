@@ -474,6 +474,31 @@ class TestLoopRotate(MapComparator):
         print(original_block_map.compute_scc())
         self.assertMapEqual(expected_block_map, original_block_map)
 
+    def test_basic_while_loop(self):
+        original = """
+        "0":
+            jt: ["1", "2"]
+        "1":
+            jt: ["1", "2"]
+        "2":
+            jt: []
+        """
+        original_block_map = self.from_yaml(original)
+        expected = """
+        "0":
+            jt: ["1", "2"]
+        "1":
+            jt: ["1", "2"]
+            be: ["1"]
+        "2":
+            jt: []
+        """
+        expected_block_map = self.from_yaml(expected)
+
+        loop_rotate(original_block_map, {ControlLabel("1")})
+        print(original_block_map.compute_scc())
+        self.assertMapEqual(expected_block_map, original_block_map)
+
 
 if __name__ == '__main__':
     main()
