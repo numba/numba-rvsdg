@@ -9,17 +9,20 @@ from byteflow2 import (Label, ControlLabel, BasicBlock, BlockMap,
 
 
 def from_yaml(yaml_string):
+    def toTupleControlLabel(it):
+        return tuple((ControlLabel(i) for i in it))
     # Convert to BlockMap
     data = yaml.safe_load(yaml_string)
     block_map_graph = {}
     clg = ControlLabelGenerator()
     for index, attributes in data.items():
         jump_targets = attributes["jt"]
+        backedges = attributes.get("be", ())
         label = ControlLabel(str(clg.new_index()))
         block = BasicBlock(
             label=label,
-            backedges=(),
-            _jump_targets=tuple((ControlLabel(i) for i in jump_targets))
+            backedges=toTupleControlLabel(backedges),
+            _jump_targets=toTupleControlLabel(jump_targets),
         )
         block_map_graph[label] = block
     return BlockMap(block_map_graph, clg=clg)
@@ -42,7 +45,7 @@ class MapComparator(TestCase):
                                      second_map[key2]._jump_targets]))
 
     def wrap_id(self, indices: Set[Label]):
-        return set([ControlLabel(i) for i in indices])
+        return tuple([ControlLabel(i) for i in indices])
 
 
 class TestInsertBlock(MapComparator):
@@ -450,13 +453,24 @@ class TestLoopRotate(MapComparator):
         original_block_map = from_yaml(original)
         expected = """
         "0":
+            jt: ["1"]
+        "1":
+            jt: ["2", "3"]
+        "2":
+            jt: ["4"]
+        "3":
             jt: []
+        "4":
+            jt: ["2", "3"]
+            be: ["2"]
         """
         expected_block_map = from_yaml(expected)
 
         loop_rotate(original_block_map, {ControlLabel("1"), ControlLabel("2")})
         print(original_block_map.compute_scc())
-        self.assertEqual(expected_block_map, original_block_map)
+        breakpoint()
+        self.assertMapEqual(expected_block_map, original_block_map)
+
 
 if __name__ == '__main__':
     main()
