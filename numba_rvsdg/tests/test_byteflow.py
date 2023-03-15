@@ -1,9 +1,11 @@
 from dis import Bytecode, Instruction, Positions
 
 import unittest
-from numba_rvsdg.core.datastructures import (FlowInfo, PythonBytecodeBlock, PythonBytecodeLabel,
-                                             BlockMap, ByteFlow)
-from numba_rvsdg.utils.map_utils import bcmap_from_bytecode
+from numba_rvsdg.core.datastructures.basic_block import PythonBytecodeBlock
+from numba_rvsdg.core.datastructures.labels import PythonBytecodeLabel
+from numba_rvsdg.core.datastructures.byte_flow import ByteFlow
+from numba_rvsdg.core.datastructures.block_map import BlockMap
+from numba_rvsdg.core.datastructures.flow_info import FlowInfo
 
 
 def fun():
@@ -15,57 +17,87 @@ bytecode = Bytecode(fun)
 
 
 class TestBCMapFromBytecode(unittest.TestCase):
-
     def test(self):
 
-        expected = {0: Instruction(
-                        opname='RESUME', opcode=151, arg=0, argval=0,
-                        argrepr='', offset=0, starts_line=8,
-                        is_jump_target=False,
-                        positions=Positions(
-                            lineno=8, end_lineno=8,
-                            col_offset=0, end_col_offset=0)),
-                    2: Instruction(
-                        opname='LOAD_CONST', opcode=100, arg=1, argval=1,
-                        argrepr='1', offset=2, starts_line=9,
-                        is_jump_target=False,
-                        positions=Positions(
-                            lineno=9, end_lineno=9,
-                            col_offset=8, end_col_offset=9)),
-                    4: Instruction(
-                        opname='STORE_FAST', opcode=125, arg=0, argval='x',
-                        argrepr='x', offset=4, starts_line=None,
-                        is_jump_target=False,
-                        positions=Positions(
-                            lineno=9, end_lineno=9,
-                            col_offset=4, end_col_offset=5)),
-                    6: Instruction(
-                        opname='LOAD_FAST', opcode=124, arg=0, argval='x',
-                        argrepr='x', offset=6, starts_line=10,
-                        is_jump_target=False,
-                        positions=Positions(
-                            lineno=10, end_lineno=10,
-                            col_offset=11, end_col_offset=12)),
-                    8: Instruction(
-                        opname='RETURN_VALUE', opcode=83, arg=None,
-                        argval=None, argrepr='', offset=8, starts_line=None,
-                        is_jump_target=False,
-                        positions=Positions(
-                            lineno=10, end_lineno=10,
-                            col_offset=4, end_col_offset=12))}
-        received = bcmap_from_bytecode(bytecode)
+        expected = {
+            0: Instruction(
+                opname="RESUME",
+                opcode=151,
+                arg=0,
+                argval=0,
+                argrepr="",
+                offset=0,
+                starts_line=8,
+                is_jump_target=False,
+                positions=Positions(
+                    lineno=8, end_lineno=8, col_offset=0, end_col_offset=0
+                ),
+            ),
+            2: Instruction(
+                opname="LOAD_CONST",
+                opcode=100,
+                arg=1,
+                argval=1,
+                argrepr="1",
+                offset=2,
+                starts_line=9,
+                is_jump_target=False,
+                positions=Positions(
+                    lineno=9, end_lineno=9, col_offset=8, end_col_offset=9
+                ),
+            ),
+            4: Instruction(
+                opname="STORE_FAST",
+                opcode=125,
+                arg=0,
+                argval="x",
+                argrepr="x",
+                offset=4,
+                starts_line=None,
+                is_jump_target=False,
+                positions=Positions(
+                    lineno=9, end_lineno=9, col_offset=4, end_col_offset=5
+                ),
+            ),
+            6: Instruction(
+                opname="LOAD_FAST",
+                opcode=124,
+                arg=0,
+                argval="x",
+                argrepr="x",
+                offset=6,
+                starts_line=10,
+                is_jump_target=False,
+                positions=Positions(
+                    lineno=10, end_lineno=10, col_offset=11, end_col_offset=12
+                ),
+            ),
+            8: Instruction(
+                opname="RETURN_VALUE",
+                opcode=83,
+                arg=None,
+                argval=None,
+                argrepr="",
+                offset=8,
+                starts_line=None,
+                is_jump_target=False,
+                positions=Positions(
+                    lineno=10, end_lineno=10, col_offset=4, end_col_offset=12
+                ),
+            ),
+        }
+        received = BlockMap.bcmap_from_bytecode(bytecode)
         self.assertEqual(expected, received)
 
 
 class TestPythonBytecodeBlock(unittest.TestCase):
-
     def test_constructor(self):
         block = PythonBytecodeBlock(
             label=PythonBytecodeLabel(index=0),
             begin=0,
             end=8,
             _jump_targets=(),
-            backedges=()
+            backedges=(),
         )
         self.assertEqual(block.label, PythonBytecodeLabel(index=0))
         self.assertEqual(block.begin, 0)
@@ -80,10 +112,10 @@ class TestPythonBytecodeBlock(unittest.TestCase):
             label=PythonBytecodeLabel(index=0),
             begin=0,
             end=8,
-            _jump_targets=(PythonBytecodeLabel(index=1), ),
-            backedges=()
+            _jump_targets=(PythonBytecodeLabel(index=1),),
+            backedges=(),
         )
-        self.assertEqual(block.jump_targets, (PythonBytecodeLabel(index=1), ))
+        self.assertEqual(block.jump_targets, (PythonBytecodeLabel(index=1),))
         self.assertFalse(block.is_exiting)
 
     def test_get_instructions(self):
@@ -92,34 +124,68 @@ class TestPythonBytecodeBlock(unittest.TestCase):
             begin=0,
             end=8,
             _jump_targets=(),
-            backedges=()
+            backedges=(),
         )
-        expected = [Instruction(
-            opname='RESUME', opcode=151, arg=0, argval=0, argrepr='',
-            offset=0, starts_line=8, is_jump_target=False,
-            positions=Positions(lineno=8, end_lineno=8,
-                                col_offset=0, end_col_offset=0)),
-                       Instruction(
-            opname='LOAD_CONST', opcode=100, arg=1, argval=1, argrepr='1',
-            offset=2, starts_line=9, is_jump_target=False,
-            positions=Positions(lineno=9, end_lineno=9,
-                                col_offset=8, end_col_offset=9)),
-                       Instruction(
-            opname='STORE_FAST', opcode=125, arg=0, argval='x', argrepr='x',
-            offset=4, starts_line=None, is_jump_target=False,
-            positions=Positions(lineno=9, end_lineno=9,
-                                col_offset=4, end_col_offset=5)),
-                        Instruction(opname='LOAD_FAST', opcode=124, arg=0, argval='x',
-            argrepr='x', offset=6, starts_line=10, is_jump_target=False,
-            positions=Positions(lineno=10, end_lineno=10,
-                                col_offset=11, end_col_offset=12))]
+        expected = [
+            Instruction(
+                opname="RESUME",
+                opcode=151,
+                arg=0,
+                argval=0,
+                argrepr="",
+                offset=0,
+                starts_line=8,
+                is_jump_target=False,
+                positions=Positions(
+                    lineno=8, end_lineno=8, col_offset=0, end_col_offset=0
+                ),
+            ),
+            Instruction(
+                opname="LOAD_CONST",
+                opcode=100,
+                arg=1,
+                argval=1,
+                argrepr="1",
+                offset=2,
+                starts_line=9,
+                is_jump_target=False,
+                positions=Positions(
+                    lineno=9, end_lineno=9, col_offset=8, end_col_offset=9
+                ),
+            ),
+            Instruction(
+                opname="STORE_FAST",
+                opcode=125,
+                arg=0,
+                argval="x",
+                argrepr="x",
+                offset=4,
+                starts_line=None,
+                is_jump_target=False,
+                positions=Positions(
+                    lineno=9, end_lineno=9, col_offset=4, end_col_offset=5
+                ),
+            ),
+            Instruction(
+                opname="LOAD_FAST",
+                opcode=124,
+                arg=0,
+                argval="x",
+                argrepr="x",
+                offset=6,
+                starts_line=10,
+                is_jump_target=False,
+                positions=Positions(
+                    lineno=10, end_lineno=10, col_offset=11, end_col_offset=12
+                ),
+            ),
+        ]
 
-        received = block.get_instructions(bcmap_from_bytecode(bytecode))
+        received = block.get_instructions(BlockMap.bcmap_from_bytecode(bytecode))
         self.assertEqual(expected, received)
 
 
 class TestFlowInfo(unittest.TestCase):
-
     def test_constructor(self):
         flowinfo = FlowInfo()
         self.assertEqual(len(flowinfo.block_offsets), 0)
@@ -127,23 +193,20 @@ class TestFlowInfo(unittest.TestCase):
 
     def test_from_bytecode(self):
 
-        expected = FlowInfo(block_offsets={0},
-                            jump_insts={8: ()},
-                            last_offset=8
-                            )
+        expected = FlowInfo(block_offsets={0}, jump_insts={8: ()}, last_offset=8)
 
         received = FlowInfo.from_bytecode(bytecode)
         self.assertEqual(expected, received)
 
     def test_build_basic_blocks(self):
-        expected = BlockMap(graph={
-            PythonBytecodeLabel(index=0):
-            PythonBytecodeBlock(
-                label=PythonBytecodeLabel(index=0),
-                begin=0,
-                end=10,
-                _jump_targets=(),
-                backedges=()
+        expected = BlockMap(
+            graph={
+                PythonBytecodeLabel(index=0): PythonBytecodeBlock(
+                    label=PythonBytecodeLabel(index=0),
+                    begin=0,
+                    end=10,
+                    _jump_targets=(),
+                    backedges=(),
                 )
             }
         )
@@ -152,21 +215,20 @@ class TestFlowInfo(unittest.TestCase):
 
 
 class TestByteFlow(unittest.TestCase):
-
     def test_constructor(self):
         byteflow = ByteFlow([], [])
         self.assertEqual(len(byteflow.bc), 0)
         self.assertEqual(len(byteflow.bbmap), 0)
 
     def test_from_bytecode(self):
-        bbmap = BlockMap(graph={
-            PythonBytecodeLabel(index=0):
-            PythonBytecodeBlock(
-                label=PythonBytecodeLabel(index=0),
-                begin=0,
-                end=10,
-                _jump_targets=(),
-                backedges=()
+        bbmap = BlockMap(
+            graph={
+                PythonBytecodeLabel(index=0): PythonBytecodeBlock(
+                    label=PythonBytecodeLabel(index=0),
+                    begin=0,
+                    end=10,
+                    _jump_targets=(),
+                    backedges=(),
                 )
             }
         )
@@ -175,5 +237,5 @@ class TestByteFlow(unittest.TestCase):
         self.assertEqual(expected.bbmap, received.bbmap)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

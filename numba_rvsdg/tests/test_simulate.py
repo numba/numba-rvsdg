@@ -1,5 +1,5 @@
-from numba_rvsdg.core.datastructures import ByteFlow
-from numba_rvsdg.utils.simulator import Simulator
+from numba_rvsdg.core.datastructures.byte_flow import ByteFlow
+from numba_rvsdg.tests.simulator import Simulator
 import unittest
 
 #    flow = ByteFlow.from_bytecode(foo)
@@ -25,15 +25,14 @@ import unittest
 #
 #
 
-class SimulatorTest(unittest.TestCase):
 
+class SimulatorTest(unittest.TestCase):
     def _run(self, func, flow, kwargs):
         with self.subTest():
             sim = Simulator(flow, func.__globals__)
             self.assertEqual(sim.run(kwargs), func(**kwargs))
 
     def test_simple_branch(self):
-
         def foo(x):
             c = 0
             if x:
@@ -46,13 +45,11 @@ class SimulatorTest(unittest.TestCase):
         flow = flow.restructure()
 
         # if case
-        self._run(foo, flow, {'x': 1})
+        self._run(foo, flow, {"x": 1})
         # else case
-        self._run(foo, flow, {'x': 0})
-
+        self._run(foo, flow, {"x": 0})
 
     def test_simple_for_loop(self):
-
         def foo(x):
             c = 0
             for i in range(x):
@@ -63,14 +60,13 @@ class SimulatorTest(unittest.TestCase):
         flow = flow.restructure()
 
         # loop bypass case
-        self._run(foo, flow, {'x': 0})
+        self._run(foo, flow, {"x": 0})
         # loop case
-        self._run(foo, flow, {'x': 2})
+        self._run(foo, flow, {"x": 2})
         # extended loop case
-        self._run(foo, flow, {'x': 100})
+        self._run(foo, flow, {"x": 100})
 
     def test_simple_while_loop(self):
-
         def foo(x):
             c = 0
             i = 0
@@ -83,14 +79,13 @@ class SimulatorTest(unittest.TestCase):
         flow = flow.restructure()
 
         # loop bypass case
-        self._run(foo, flow, {'x': 0})
+        self._run(foo, flow, {"x": 0})
         # loop case
-        self._run(foo, flow, {'x': 2})
+        self._run(foo, flow, {"x": 2})
         # extended loop case
-        self._run(foo, flow, {'x': 100})
+        self._run(foo, flow, {"x": 100})
 
     def test_for_loop_with_exit(self):
-
         def foo(x):
             c = 0
             for i in range(x):
@@ -103,14 +98,13 @@ class SimulatorTest(unittest.TestCase):
         flow = flow.restructure()
 
         # loop bypass case
-        self._run(foo, flow, {'x': 0})
+        self._run(foo, flow, {"x": 0})
         # loop case
-        self._run(foo, flow, {'x': 2})
+        self._run(foo, flow, {"x": 2})
         # break case
-        self._run(foo, flow, {'x': 15})
+        self._run(foo, flow, {"x": 15})
 
     def test_nested_for_loop_with_break_and_continue(self):
-
         def foo(x):
             c = 0
             for i in range(x):
@@ -128,16 +122,15 @@ class SimulatorTest(unittest.TestCase):
         flow = flow.restructure()
 
         # no loop
-        self._run(foo, flow, {'x': 0})
+        self._run(foo, flow, {"x": 0})
         # only continue
-        self._run(foo, flow, {'x': 1})
+        self._run(foo, flow, {"x": 1})
         # no break
-        self._run(foo, flow, {'x': 4})
+        self._run(foo, flow, {"x": 4})
         # will break
-        self._run(foo, flow, {'x': 5})
+        self._run(foo, flow, {"x": 5})
 
     def test_for_loop_with_multiple_backedges(self):
-
         def foo(x):
             c = 0
             for i in range(x):
@@ -153,27 +146,24 @@ class SimulatorTest(unittest.TestCase):
         flow = flow.restructure()
 
         # loop bypass
-        self._run(foo, flow, {'x': 0})
+        self._run(foo, flow, {"x": 0})
         # default on every iteration
-        self._run(foo, flow, {'x': 2})
+        self._run(foo, flow, {"x": 2})
         # adding 100, via the if clause
-        self._run(foo, flow, {'x': 4})
+        self._run(foo, flow, {"x": 4})
         # adding 1000, via the elif clause
-        self._run(foo, flow, {'x': 7})
-
+        self._run(foo, flow, {"x": 7})
 
     def test_andor(self):
-
         def foo(x, y):
             return (x > 0 and x < 10) or (y > 0 and y < 10)
 
         flow = ByteFlow.from_bytecode(foo)
         flow = flow.restructure()
 
-        self._run(foo, flow, {'x': 5, 'y': 5})
+        self._run(foo, flow, {"x": 5, "y": 5})
 
     def test_while_count(self):
-
         def foo(s, e):
             i = s
             c = 0
@@ -186,17 +176,19 @@ class SimulatorTest(unittest.TestCase):
         flow = flow.restructure()
 
         # no looping
-        self._run(foo, flow, {'s': 0, 'e': 0})
+        self._run(foo, flow, {"s": 0, "e": 0})
         # single execution
-        self._run(foo, flow, {'s': 0, 'e': 1})
+        self._run(foo, flow, {"s": 0, "e": 1})
         # mutiple iterations
-        self._run(foo, flow, {'s': 0, 'e': 5})
+        self._run(foo, flow, {"s": 0, "e": 5})
 
         # no looping
-        self._run(foo, flow, {'s': 23, 'e': 0})
+        self._run(foo, flow, {"s": 23, "e": 0})
         # single execution
-        self._run(foo, flow, {'s': 23, 'e': 24})
+        self._run(foo, flow, {"s": 23, "e": 24})
         # mutiple iterations
-        self._run(foo, flow, {'s': 23, 'e': 28})
+        self._run(foo, flow, {"s": 23, "e": 28})
+
+
 if __name__ == "__main__":
     unittest.main()

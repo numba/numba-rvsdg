@@ -1,15 +1,27 @@
 from collections import ChainMap
 from dis import Instruction
-from numba_rvsdg.core.datastructures import (ByteFlow, BlockMap, BasicBlock, PythonBytecodeBlock, PythonBytecodeLabel, RegionBlock,
-                       ControlLabel, SyntheticForIter, SynthenticAssignment,
-                       SyntheticExitingLatch, SyntheticExit, SyntheticHead,
-                       SyntheticReturn, SyntheticTail,
-                       )
+from numba_rvsdg.core.datastructures import (
+    ByteFlow,
+    BlockMap,
+    BasicBlock,
+    PythonBytecodeBlock,
+    PythonBytecodeLabel,
+    RegionBlock,
+    ControlLabel,
+    SyntheticForIter,
+    SynthenticAssignment,
+    SyntheticExitingLatch,
+    SyntheticExit,
+    SyntheticHead,
+    SyntheticReturn,
+    SyntheticTail,
+)
 import builtins
 
 
 class Simulator:
     """BlockMap simulator"""
+
     def __init__(self, flow: ByteFlow, globals: dict):
         self.flow = flow
         self.bcmap = {inst.offset: inst for inst in flow.bc}
@@ -40,7 +52,7 @@ class Simulator:
         elif isinstance(target, PythonBytecodeLabel):
             assert type(bb) is PythonBytecodeBlock
             for inst in bb.get_instructions(self.bcmap):
-                    self.run_inst(inst)
+                self.run_inst(inst)
         if bb.fallthrough:
             [target] = bb.jump_targets
             return {"jumpto": target}
@@ -66,7 +78,7 @@ class Simulator:
                 assert False, "unreachable"
 
     def run_synth_block(self, control_label, block):
-        print('----', control_label)
+        print("----", control_label)
         print(f"control variable map: {self.ctrl_varmap}")
         handler = getattr(self, f"synth_{type(control_label).__name__}")
         handler(control_label, block)
@@ -78,8 +90,7 @@ class Simulator:
         self.ctrl_varmap.update(block.variable_assignment)
 
     def _synth_branch(self, control_label, block):
-        jump_target = block.branch_value_table[
-            self.ctrl_varmap[block.variable]]
+        jump_target = block.branch_value_table[self.ctrl_varmap[block.variable]]
         self.branch = bool(block._jump_targets.index(jump_target))
 
     def synth_SyntheticExitingLatch(self, control_label, block):
@@ -101,7 +112,7 @@ class Simulator:
         pass
 
     def run_inst(self, inst: Instruction):
-        print('----', inst)
+        print("----", inst)
         print(f"variable map before: {self.varmap}")
         print(f"stack before: {self.stack}")
         handler = getattr(self, f"op_{inst.opname}")
@@ -122,7 +133,7 @@ class Simulator:
 
     def op_LOAD_GLOBAL(self, inst):
         v = self.globals[inst.argval]
-        if inst.argrepr.startswith('NULL'):
+        if inst.argrepr.startswith("NULL"):
             append_null = True
             self.stack.append(v)
             self.stack.append(None)

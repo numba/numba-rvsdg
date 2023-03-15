@@ -1,31 +1,41 @@
 import logging
-from numba_rvsdg.core.datastructures import (ByteFlow, Label, ControlLabel, 
-                                             RegionBlock, BasicBlock, PythonBytecodeBlock,
-                                             PythonBytecodeLabel, ControlVariableBlock, BranchBlock)
-from numba_rvsdg.utils.map_utils import bcmap_from_bytecode
+from numba_rvsdg.core.datastructures.basic_block import (
+    BasicBlock,
+    RegionBlock,
+    PythonBytecodeBlock,
+    ControlVariableBlock,
+    BranchBlock,
+)
+from numba_rvsdg.core.datastructures.labels import (
+    Label,
+    PythonBytecodeLabel,
+    ControlLabel,
+)
+from numba_rvsdg.core.datastructures.byte_flow import ByteFlow
+from numba_rvsdg.core.utils import bcmap_from_bytecode
 import dis
 from typing import Dict
 
 
-
-
 class ByteFlowRenderer(object):
-
     def __init__(self):
         from graphviz import Digraph
+
         self.g = Digraph()
 
-    def render_region_block(self, digraph: "Digraph", label: Label, regionblock: RegionBlock):
+    def render_region_block(
+        self, digraph: "Digraph", label: Label, regionblock: RegionBlock
+    ):
         # render subgraph
         graph = regionblock.get_full_graph()
         with digraph.subgraph(name=f"cluster_{label}") as subg:
-            color = 'blue'
-            if regionblock.kind == 'branch':
-                color = 'green'
-            if regionblock.kind == 'tail':
-                color = 'purple'
-            if regionblock.kind == 'head':
-                color = 'red'
+            color = "blue"
+            if regionblock.kind == "branch":
+                color = "green"
+            if regionblock.kind == "tail":
+                color = "purple"
+            if regionblock.kind == "head":
+                color = "red"
             subg.attr(color=color, label=regionblock.kind)
             for label, block in graph.items():
                 self.render_block(subg, label, block)
@@ -45,25 +55,34 @@ class ByteFlowRenderer(object):
             raise Exception("Unknown label type: " + label)
         digraph.node(str(label), shape="rect", label=body)
 
-    def render_control_variable_block(self, digraph: "Digraph", label: Label, block: BasicBlock):
+    def render_control_variable_block(
+        self, digraph: "Digraph", label: Label, block: BasicBlock
+    ):
         if isinstance(label, ControlLabel):
-            body = label.__class__.__name__ + ": " + str(label.index) + '\n'
-            body += "\n".join((f"{k} = {v}" for k, v in
-                               block.variable_assignment.items()))
+            body = label.__class__.__name__ + ": " + str(label.index) + "\n"
+            body += "\n".join(
+                (f"{k} = {v}" for k, v in block.variable_assignment.items())
+            )
         else:
             raise Exception("Unknown label type: " + label)
         digraph.node(str(label), shape="rect", label=body)
 
-    def render_branching_block(self, digraph: "Digraph", label: Label, block: BasicBlock):
+    def render_branching_block(
+        self, digraph: "Digraph", label: Label, block: BasicBlock
+    ):
         if isinstance(label, ControlLabel):
+
             def find_index(v):
                 if hasattr(v, "offset"):
                     return v.offset
                 if hasattr(v, "index"):
                     return v.index
-            body = label.__class__.__name__ + ": " + str(label.index) + '\n'
+
+            body = label.__class__.__name__ + ": " + str(label.index) + "\n"
             body += f"variable: {block.variable}\n"
-            body += "\n".join((f"{k}=>{find_index(v)}" for k, v in block.branch_value_table.items()))
+            body += "\n".join(
+                (f"{k}=>{find_index(v)}" for k, v in block.branch_value_table.items())
+            )
         else:
             raise Exception("Unknown label type: " + label)
         digraph.node(str(label), shape="rect", label=body)
@@ -86,10 +105,12 @@ class ByteFlowRenderer(object):
         for label, block in blocks.items():
             for dst in block.jump_targets:
                 if dst in blocks:
-                    if type(block) in (PythonBytecodeBlock,
-                                       BasicBlock,
-                                       ControlVariableBlock,
-                                       BranchBlock):
+                    if type(block) in (
+                        PythonBytecodeBlock,
+                        BasicBlock,
+                        ControlVariableBlock,
+                        BranchBlock,
+                    ):
                         self.g.edge(str(label), str(dst))
                     elif type(block) == RegionBlock:
                         if block.exit is not None:
@@ -99,9 +120,10 @@ class ByteFlowRenderer(object):
                     else:
                         raise Exception("unreachable")
             for dst in block.backedges:
-                #assert dst in blocks
-                self.g.edge(str(label), str(dst),
-                            style="dashed", color="grey", constraint="0")
+                # assert dst in blocks
+                self.g.edge(
+                    str(label), str(dst), style="dashed", color="grey", constraint="0"
+                )
 
     def render_byteflow(self, byteflow: ByteFlow):
         self.bcmap_from_bytecode(byteflow.bc)
@@ -117,6 +139,7 @@ class ByteFlowRenderer(object):
 
 
 logging.basicConfig(level=logging.DEBUG)
+
 
 def render_func(func):
     flow = ByteFlow.from_bytecode(func)

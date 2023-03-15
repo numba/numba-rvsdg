@@ -1,7 +1,8 @@
-
 # Figure 3 of the paper
-from numba_rvsdg.core.datastructures import ByteFlow, FlowInfo
-from numba_rvsdg.utils.rendering import ByteFlowRenderer
+from numba_rvsdg.core.datastructures.byte_flow import ByteFlow
+from numba_rvsdg.core.datastructures.flow_info import FlowInfo
+from numba_rvsdg.rendering.rendering import ByteFlowRenderer
+
 # import logging
 # logging.basicConfig(level=logging.DEBUG)
 
@@ -9,6 +10,7 @@ from numba_rvsdg.utils.rendering import ByteFlowRenderer
 def make_flow():
     # flowinfo = FlowInfo()
     import dis
+
     # fake bytecode just good enough for FlowInfo
     bc = [
         dis.Instruction("OP", 1, None, None, "", 0, None, False),
@@ -30,14 +32,15 @@ def make_flow():
     bbmap = flow.build_basicblocks()
     return ByteFlow(bc=bc, bbmap=bbmap)
 
+
 flow = make_flow()
-#ByteFlowRenderer().render_byteflow(flow).view("before")
+# ByteFlowRenderer().render_byteflow(flow).view("before")
 #
-#flow = flow.restructure()
-#ByteFlowRenderer().render_byteflow(flow).view("after")
+# flow = flow.restructure()
+# ByteFlowRenderer().render_byteflow(flow).view("after")
 #
 #
-#flow = ByteFlow.from_bytecode(foo)
+# flow = ByteFlow.from_bytecode(foo)
 ByteFlowRenderer().render_byteflow(flow).view("before")
 
 cflow = flow._join_returns()

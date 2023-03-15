@@ -3,33 +3,31 @@ from typing import Set
 import yaml
 from unittest import TestCase, main
 
-from numba_rvsdg.core.datastructures import (Label, ControlLabel, BasicBlock, BlockMap,
-                       ByteFlowRenderer, ByteFlow, ControlLabelGenerator,
-                       loop_rotate, SyntheticTail, SyntheticExit)
-
-
+from numba_rvsdg.core.datastructures.labels import Label, ControlLabel, ControlLabelGenerator, SyntheticTail, SyntheticExit
+from numba_rvsdg.core.datastructures.basic_block import BasicBlock
+from numba_rvsdg.core.datastructures.block_map import BlockMap
+from numba_rvsdg.core.transformations import loop_rotate
 
 
 class MapComparator(TestCase):
-
     def assertMapEqual(self, first_map, second_map):
 
-        for key1, key2 in zip(sorted(first_map.graph.keys(), key=lambda x:
-                                     x.index),
-                              sorted(second_map.graph.keys(), key=lambda x:
-                                     x.index)):
+        for key1, key2 in zip(
+            sorted(first_map.graph.keys(), key=lambda x: x.index),
+            sorted(second_map.graph.keys(), key=lambda x: x.index),
+        ):
             # compare indices of labels
             self.assertEqual(key1.index, key2.index)
             # compare indices of jump_targets
-            self.assertEqual(sorted([j.index for j in
-                                     first_map[key1]._jump_targets]),
-                             sorted([j.index for j in
-                                     second_map[key2]._jump_targets]))
+            self.assertEqual(
+                sorted([j.index for j in first_map[key1]._jump_targets]),
+                sorted([j.index for j in second_map[key2]._jump_targets]),
+            )
             # compare indices of backedges
-            self.assertEqual(sorted([j.index for j in
-                                     first_map[key1].backedges]),
-                             sorted([j.index for j in
-                                     second_map[key2].backedges]))
+            self.assertEqual(
+                sorted([j.index for j in first_map[key1].backedges]),
+                sorted([j.index for j in second_map[key2].backedges]),
+            )
 
     def wrap_id(self, indices: Set[Label]):
         return tuple([ControlLabel(i) for i in indices])
@@ -53,7 +51,6 @@ class MapComparator(TestCase):
 
 
 class TestInsertBlock(MapComparator):
-
     def test_linear(self):
         original = """
         "0":
@@ -71,9 +68,9 @@ class TestInsertBlock(MapComparator):
             jt: ["1"]
         """
         expected_block_map = self.from_yaml(expected)
-        original_block_map.insert_block(ControlLabel("2"),
-                                        self.wrap_id(("0",)),
-                                        self.wrap_id(("1",)))
+        original_block_map.insert_block(
+            ControlLabel("2"), self.wrap_id(("0",)), self.wrap_id(("1",))
+        )
         self.assertMapEqual(expected_block_map, original_block_map)
 
     def test_dual_predecessor(self):
@@ -97,9 +94,9 @@ class TestInsertBlock(MapComparator):
             jt: ["2"]
         """
         expected_block_map = self.from_yaml(expected)
-        original_block_map.insert_block(ControlLabel("3"),
-                                        self.wrap_id(("0", "1")),
-                                        self.wrap_id(("2",)))
+        original_block_map.insert_block(
+            ControlLabel("3"), self.wrap_id(("0", "1")), self.wrap_id(("2",))
+        )
         self.assertMapEqual(expected_block_map, original_block_map)
 
     def test_dual_successor(self):
@@ -123,9 +120,9 @@ class TestInsertBlock(MapComparator):
             jt: ["1", "2"]
         """
         expected_block_map = self.from_yaml(expected)
-        original_block_map.insert_block(ControlLabel("3"),
-                                        self.wrap_id(("0",)),
-                                        self.wrap_id(("1", "2",)))
+        original_block_map.insert_block(
+            ControlLabel("3"), self.wrap_id(("0",)), self.wrap_id(("1", "2",))
+        )
         self.assertMapEqual(expected_block_map, original_block_map)
 
     def test_dual_predecessor_and_dual_successor(self):
@@ -157,9 +154,9 @@ class TestInsertBlock(MapComparator):
             jt: ["3", "4"]
         """
         expected_block_map = self.from_yaml(expected)
-        original_block_map.insert_block(ControlLabel("5"),
-                                        self.wrap_id(("1", "2")),
-                                        self.wrap_id(("3", "4",)))
+        original_block_map.insert_block(
+            ControlLabel("5"), self.wrap_id(("1", "2")), self.wrap_id(("3", "4",))
+        )
         self.assertMapEqual(expected_block_map, original_block_map)
 
     def test_dual_predecessor_and_dual_successor_with_additional_arcs(self):
@@ -191,14 +188,13 @@ class TestInsertBlock(MapComparator):
             jt: ["3", "4"]
         """
         expected_block_map = self.from_yaml(expected)
-        original_block_map.insert_block(ControlLabel("5"),
-                                        self.wrap_id(("1", "2")),
-                                        self.wrap_id(("3", "4",)))
+        original_block_map.insert_block(
+            ControlLabel("5"), self.wrap_id(("1", "2")), self.wrap_id(("3", "4",))
+        )
         self.assertMapEqual(expected_block_map, original_block_map)
 
 
 class TestJoinReturns(MapComparator):
-
     def test_two_returns(self):
         original = """
         "0":
@@ -225,7 +221,6 @@ class TestJoinReturns(MapComparator):
 
 
 class TestJoinTailsAndExits(MapComparator):
-
     def test_join_tails_and_exits_case_00(self):
         original = """
         "0":
@@ -244,7 +239,9 @@ class TestJoinTailsAndExits(MapComparator):
 
         tails = self.wrap_id(("0",))
         exits = self.wrap_id(("1",))
-        solo_tail_label, solo_exit_label = original_block_map.join_tails_and_exits(tails, exits)
+        solo_tail_label, solo_exit_label = original_block_map.join_tails_and_exits(
+            tails, exits
+        )
 
         self.assertMapEqual(expected_block_map, original_block_map)
         self.assertEqual(ControlLabel("0"), solo_tail_label)
@@ -278,7 +275,9 @@ class TestJoinTailsAndExits(MapComparator):
 
         tails = self.wrap_id(("0",))
         exits = self.wrap_id(("1", "2"))
-        solo_tail_label, solo_exit_label = original_block_map.join_tails_and_exits(tails, exits)
+        solo_tail_label, solo_exit_label = original_block_map.join_tails_and_exits(
+            tails, exits
+        )
 
         self.assertMapEqual(expected_block_map, original_block_map)
         self.assertEqual(ControlLabel("0"), solo_tail_label)
@@ -312,7 +311,9 @@ class TestJoinTailsAndExits(MapComparator):
 
         tails = self.wrap_id(("1", "2"))
         exits = self.wrap_id(("3",))
-        solo_tail_label, solo_exit_label = original_block_map.join_tails_and_exits(tails, exits)
+        solo_tail_label, solo_exit_label = original_block_map.join_tails_and_exits(
+            tails, exits
+        )
 
         self.assertMapEqual(expected_block_map, original_block_map)
         self.assertEqual(SyntheticTail("4"), solo_tail_label)
@@ -347,7 +348,9 @@ class TestJoinTailsAndExits(MapComparator):
         tails = self.wrap_id(("1", "2"))
         exits = self.wrap_id(("3",))
 
-        solo_tail_label, solo_exit_label = original_block_map.join_tails_and_exits(tails, exits)
+        solo_tail_label, solo_exit_label = original_block_map.join_tails_and_exits(
+            tails, exits
+        )
         self.assertMapEqual(expected_block_map, original_block_map)
         self.assertEqual(SyntheticTail("4"), solo_tail_label)
         self.assertEqual(ControlLabel("3"), solo_exit_label)
@@ -391,7 +394,9 @@ class TestJoinTailsAndExits(MapComparator):
 
         tails = self.wrap_id(("1", "2"))
         exits = self.wrap_id(("3", "4"))
-        solo_tail_label, solo_exit_label = original_block_map.join_tails_and_exits(tails, exits)
+        solo_tail_label, solo_exit_label = original_block_map.join_tails_and_exits(
+            tails, exits
+        )
         self.assertMapEqual(expected_block_map, original_block_map)
         self.assertEqual(SyntheticTail("6"), solo_tail_label)
         self.assertEqual(SyntheticExit("7"), solo_exit_label)
@@ -434,14 +439,15 @@ class TestJoinTailsAndExits(MapComparator):
         expected_block_map = self.from_yaml(expected)
         tails = self.wrap_id(("1", "2"))
         exits = self.wrap_id(("3", "4"))
-        solo_tail_label, solo_exit_label = original_block_map.join_tails_and_exits(tails, exits)
+        solo_tail_label, solo_exit_label = original_block_map.join_tails_and_exits(
+            tails, exits
+        )
         self.assertMapEqual(expected_block_map, original_block_map)
         self.assertEqual(SyntheticTail("6"), solo_tail_label)
         self.assertEqual(SyntheticExit("7"), solo_exit_label)
 
 
 class TestLoopRotate(MapComparator):
-
     def test_basic_for_loop(self):
 
         original = """
@@ -500,5 +506,5 @@ class TestLoopRotate(MapComparator):
         self.assertMapEqual(expected_block_map, original_block_map)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
