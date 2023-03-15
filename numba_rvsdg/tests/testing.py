@@ -3,7 +3,7 @@ from typing import Set
 import yaml
 from unittest import TestCase, main
 
-from byteflow2 import (Label, ControlLabel, BasicBlock, BlockMap,
+from numba_rvsdg.core.datastructures import (Label, ControlLabel, BasicBlock, BlockMap,
                        ByteFlowRenderer, ByteFlow, ControlLabelGenerator,
                        loop_rotate, SyntheticTail, SyntheticExit)
 

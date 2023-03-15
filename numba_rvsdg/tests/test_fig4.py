@@ -1,7 +1,8 @@
 
-# Figure 3 of the paper
-from byteflow2 import ByteFlow, ByteFlowRenderer, FlowInfo
-import logging
+# Figure 4 of the paper
+from numba_rvsdg.core.datastructures import ByteFlow, FlowInfo
+from numba_rvsdg.utils.rendering import ByteFlowRenderer
+# import logging
 # logging.basicConfig(level=logging.DEBUG)
 
 
@@ -11,19 +12,18 @@ def make_flow():
     # fake bytecode just good enough for FlowInfo
     bc = [
         dis.Instruction("OP", 1, None, None, "", 0, None, False),
-        dis.Instruction("POP_JUMP_IF_TRUE", 2, None, 12, "", 2, None, False),
+        dis.Instruction("POP_JUMP_IF_TRUE", 2, None, 14, "", 2, None, False),
         # label 4
         dis.Instruction("OP", 1, None, None, "", 4, None, False),
         dis.Instruction("POP_JUMP_IF_TRUE", 2, None, 12, "", 6, None, False),
         dis.Instruction("OP", 1, None, None, "", 8, None, False),
-        dis.Instruction("JUMP_ABSOLUTE", 2, None, 20, "", 10, None, False),
+        dis.Instruction("JUMP_ABSOLUTE", 2, None, 18, "", 10, None, False),
         # label 12
         dis.Instruction("OP", 1, None, None, "", 12, None, False),
-        dis.Instruction("POP_JUMP_IF_TRUE", 2, None, 4, "", 14, None, False),
-        dis.Instruction("OP", 1, None, None, "", 16, None, False),
-        dis.Instruction("JUMP_ABSOLUTE", 2, None, 20, "", 18, None, False),
-        # label 20
-        dis.Instruction("RETURN_VALUE", 1, None, None, "", 20, None, False),
+        dis.Instruction("OP", 2, None, 4, "", 14, None, False),
+        dis.Instruction("JUMP_ABSOLUTE", 2, None, 18, "", 16, None, False),
+        # label 18
+        dis.Instruction("RETURN_VALUE", 1, None, None, "", 18, None, False),
     ]
     flow = FlowInfo.from_bytecode(bc)
     bbmap = flow.build_basicblocks()

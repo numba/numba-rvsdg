@@ -1,7 +1,5 @@
-from byteflow2 import ByteFlow, ByteFlowRenderer
-from simulator import Simulator
-from pprint import pprint
-from dis import dis
+from numba_rvsdg.core.datastructures import ByteFlow
+from numba_rvsdg.utils.simulator import Simulator
 import unittest
 
 #    flow = ByteFlow.from_bytecode(foo)

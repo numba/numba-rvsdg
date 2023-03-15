@@ -1,8 +1,9 @@
 from dis import Bytecode, Instruction, Positions
 
 import unittest
-from byteflow2 import (FlowInfo, PythonBytecodeBlock, PythonBytecodeLabel, BasicBlock, BlockMap, ByteFlow,
-                       bcmap_from_bytecode)
+from numba_rvsdg.core.datastructures import (FlowInfo, PythonBytecodeBlock, PythonBytecodeLabel,
+                                             BlockMap, ByteFlow)
+from numba_rvsdg.utils.map_utils import bcmap_from_bytecode
 
 
 def fun():

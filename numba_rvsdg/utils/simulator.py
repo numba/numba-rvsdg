@@ -1,6 +1,6 @@
 from collections import ChainMap
 from dis import Instruction
-from byteflow2 import (ByteFlow, BlockMap, BasicBlock, PythonBytecodeBlock, PythonBytecodeLabel, RegionBlock,
+from numba_rvsdg.core.datastructures import (ByteFlow, BlockMap, BasicBlock, PythonBytecodeBlock, PythonBytecodeLabel, RegionBlock,
                        ControlLabel, SyntheticForIter, SynthenticAssignment,
                        SyntheticExitingLatch, SyntheticExit, SyntheticHead,
                        SyntheticReturn, SyntheticTail,
