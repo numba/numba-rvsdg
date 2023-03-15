@@ -1,0 +1,26 @@
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "numba_rvsdg"
+version = "0.0.1"
+authors = [
+    {name = "Numba Developers", email="none@none.none"},
+]
+description = "Numba Compatible RVSDG utilities"
+readme = "README.md"
+requires-python = ">=3.11"
+keywords = ["numba"]
+license = {text = "BSD-2-Clause"}
+classifiers = [
+    "Programming Language :: Python :: 3",
+]
+dependencies = [
+    "graphviz",
+    "pyyaml",
+]
+
+[tool.setuptools]
+packages = ["numba_rvsdg"]

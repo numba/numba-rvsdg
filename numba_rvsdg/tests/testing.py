@@ -3,7 +3,13 @@ from typing import Set
 import yaml
 from unittest import TestCase, main
 
-from numba_rvsdg.core.datastructures.labels import Label, ControlLabel, ControlLabelGenerator, SyntheticTail, SyntheticExit
+from numba_rvsdg.core.datastructures.labels import (
+    Label,
+    ControlLabel,
+    ControlLabelGenerator,
+    SyntheticTail,
+    SyntheticExit,
+)
 from numba_rvsdg.core.datastructures.basic_block import BasicBlock
 from numba_rvsdg.core.datastructures.block_map import BlockMap
 from numba_rvsdg.core.transformations import loop_rotate
@@ -121,7 +127,14 @@ class TestInsertBlock(MapComparator):
         """
         expected_block_map = self.from_yaml(expected)
         original_block_map.insert_block(
-            ControlLabel("3"), self.wrap_id(("0",)), self.wrap_id(("1", "2",))
+            ControlLabel("3"),
+            self.wrap_id(("0",)),
+            self.wrap_id(
+                (
+                    "1",
+                    "2",
+                )
+            ),
         )
         self.assertMapEqual(expected_block_map, original_block_map)
 
@@ -155,7 +168,14 @@ class TestInsertBlock(MapComparator):
         """
         expected_block_map = self.from_yaml(expected)
         original_block_map.insert_block(
-            ControlLabel("5"), self.wrap_id(("1", "2")), self.wrap_id(("3", "4",))
+            ControlLabel("5"),
+            self.wrap_id(("1", "2")),
+            self.wrap_id(
+                (
+                    "3",
+                    "4",
+                )
+            ),
         )
         self.assertMapEqual(expected_block_map, original_block_map)
 
@@ -189,7 +209,14 @@ class TestInsertBlock(MapComparator):
         """
         expected_block_map = self.from_yaml(expected)
         original_block_map.insert_block(
-            ControlLabel("5"), self.wrap_id(("1", "2")), self.wrap_id(("3", "4",))
+            ControlLabel("5"),
+            self.wrap_id(("1", "2")),
+            self.wrap_id(
+                (
+                    "3",
+                    "4",
+                )
+            ),
         )
         self.assertMapEqual(expected_block_map, original_block_map)
 

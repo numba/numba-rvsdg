@@ -19,7 +19,7 @@ from numba_rvsdg.core.datastructures.labels import (
 
 @dataclass(frozen=True)
 class BlockMap:
-    """ Map of Labels to Blocks. """
+    """Map of Labels to Blocks."""
 
     graph: Dict[Label, BasicBlock] = field(default_factory=dict)
     clg: ControlLabelGenerator = field(
@@ -33,7 +33,7 @@ class BlockMap:
         return index in self.graph
 
     def exclude_blocks(self, exclude_blocks: Set[Label]) -> Iterator[Label]:
-        """Iterator over all nodes not in exclude_blocks. """
+        """Iterator over all nodes not in exclude_blocks."""
         for block in self.graph:
             if block not in exclude_blocks:
                 yield block
@@ -147,7 +147,7 @@ class BlockMap:
         return exiting, exits
 
     def is_reachable_dfs(self, begin: Label, end: Label):  # -> TypeGuard:
-        """Is end reachable from begin. """
+        """Is end reachable from begin."""
         seen = set()
         to_vist = list(self.graph[begin].jump_targets)
         while True:
@@ -250,7 +250,7 @@ class BlockMap:
         self.add_block(new_block)
 
     def join_returns(self):
-        """ Close the CFG.
+        """Close the CFG.
 
         A closed CFG is a CFG with a unique entry and exit node that have no
         predescessors and no successors respectively.

@@ -1,21 +1,24 @@
 from collections import ChainMap
 from dis import Instruction
-from numba_rvsdg.core.datastructures import (
-    ByteFlow,
-    BlockMap,
+from numba_rvsdg.core.datastructures.byte_flow import ByteFlow
+from numba_rvsdg.core.datastructures.block_map import BlockMap
+from numba_rvsdg.core.datastructures.basic_block import (
     BasicBlock,
     PythonBytecodeBlock,
-    PythonBytecodeLabel,
     RegionBlock,
+)
+from numba_rvsdg.core.datastructures.labels import (
+    PythonBytecodeLabel,
     ControlLabel,
     SyntheticForIter,
     SynthenticAssignment,
     SyntheticExitingLatch,
     SyntheticExit,
     SyntheticHead,
-    SyntheticReturn,
     SyntheticTail,
+    SyntheticReturn,
 )
+
 import builtins
 
 

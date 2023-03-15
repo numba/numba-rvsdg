@@ -26,7 +26,11 @@ jobs:
         run: |
           conda install graphviz python=3.11
           pip install pytest pyyaml graphviz
+      - name: Setup numba_rvsdg
+        shell: bash -l {0}
+        run: |
+          pip install -e .
       - name: run pytest
         shell: bash -l {0}
         run: |
-          pytest test_byteflow2.py test_simulate.py testing.py
+          pytest numba_rvsdg/tests/

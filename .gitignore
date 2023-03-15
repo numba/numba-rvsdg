@@ -1,1 +1,4 @@
 *.pyc
+numba_rvsdg.egg-info
+.pytest_cache
+*__pycache__

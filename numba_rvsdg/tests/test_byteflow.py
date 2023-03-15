@@ -18,7 +18,8 @@ bytecode = Bytecode(fun)
 
 class TestBCMapFromBytecode(unittest.TestCase):
     def test(self):
-
+        # If the function definition line changes, just change the variable below, rest of it will adjust as long as function remains the same
+        func_def_line = 11
         expected = {
             0: Instruction(
                 opname="RESUME",
@@ -27,10 +28,13 @@ class TestBCMapFromBytecode(unittest.TestCase):
                 argval=0,
                 argrepr="",
                 offset=0,
-                starts_line=8,
+                starts_line=func_def_line,
                 is_jump_target=False,
                 positions=Positions(
-                    lineno=8, end_lineno=8, col_offset=0, end_col_offset=0
+                    lineno=func_def_line,
+                    end_lineno=func_def_line,
+                    col_offset=0,
+                    end_col_offset=0,
                 ),
             ),
             2: Instruction(
@@ -40,10 +44,13 @@ class TestBCMapFromBytecode(unittest.TestCase):
                 argval=1,
                 argrepr="1",
                 offset=2,
-                starts_line=9,
+                starts_line=func_def_line + 1,
                 is_jump_target=False,
                 positions=Positions(
-                    lineno=9, end_lineno=9, col_offset=8, end_col_offset=9
+                    lineno=func_def_line + 1,
+                    end_lineno=func_def_line + 1,
+                    col_offset=8,
+                    end_col_offset=9,
                 ),
             ),
             4: Instruction(
@@ -56,7 +63,10 @@ class TestBCMapFromBytecode(unittest.TestCase):
                 starts_line=None,
                 is_jump_target=False,
                 positions=Positions(
-                    lineno=9, end_lineno=9, col_offset=4, end_col_offset=5
+                    lineno=func_def_line + 1,
+                    end_lineno=func_def_line + 1,
+                    col_offset=4,
+                    end_col_offset=5,
                 ),
             ),
             6: Instruction(
@@ -66,10 +76,13 @@ class TestBCMapFromBytecode(unittest.TestCase):
                 argval="x",
                 argrepr="x",
                 offset=6,
-                starts_line=10,
+                starts_line=func_def_line + 2,
                 is_jump_target=False,
                 positions=Positions(
-                    lineno=10, end_lineno=10, col_offset=11, end_col_offset=12
+                    lineno=func_def_line + 2,
+                    end_lineno=func_def_line + 2,
+                    col_offset=11,
+                    end_col_offset=12,
                 ),
             ),
             8: Instruction(
@@ -82,7 +95,10 @@ class TestBCMapFromBytecode(unittest.TestCase):
                 starts_line=None,
                 is_jump_target=False,
                 positions=Positions(
-                    lineno=10, end_lineno=10, col_offset=4, end_col_offset=12
+                    lineno=func_def_line + 2,
+                    end_lineno=func_def_line + 2,
+                    col_offset=4,
+                    end_col_offset=12,
                 ),
             ),
         }
@@ -119,6 +135,8 @@ class TestPythonBytecodeBlock(unittest.TestCase):
         self.assertFalse(block.is_exiting)
 
     def test_get_instructions(self):
+        # If the function definition line changes, just change the variable below, rest of it will adjust as long as function remains the same
+        func_def_line = 11
         block = PythonBytecodeBlock(
             label=PythonBytecodeLabel(index=0),
             begin=0,
@@ -134,10 +152,13 @@ class TestPythonBytecodeBlock(unittest.TestCase):
                 argval=0,
                 argrepr="",
                 offset=0,
-                starts_line=8,
+                starts_line=func_def_line,
                 is_jump_target=False,
                 positions=Positions(
-                    lineno=8, end_lineno=8, col_offset=0, end_col_offset=0
+                    lineno=func_def_line,
+                    end_lineno=func_def_line,
+                    col_offset=0,
+                    end_col_offset=0,
                 ),
             ),
             Instruction(
@@ -147,10 +168,13 @@ class TestPythonBytecodeBlock(unittest.TestCase):
                 argval=1,
                 argrepr="1",
                 offset=2,
-                starts_line=9,
+                starts_line=func_def_line + 1,
                 is_jump_target=False,
                 positions=Positions(
-                    lineno=9, end_lineno=9, col_offset=8, end_col_offset=9
+                    lineno=func_def_line + 1,
+                    end_lineno=func_def_line + 1,
+                    col_offset=8,
+                    end_col_offset=9,
                 ),
             ),
             Instruction(
@@ -163,7 +187,10 @@ class TestPythonBytecodeBlock(unittest.TestCase):
                 starts_line=None,
                 is_jump_target=False,
                 positions=Positions(
-                    lineno=9, end_lineno=9, col_offset=4, end_col_offset=5
+                    lineno=func_def_line + 1,
+                    end_lineno=func_def_line + 1,
+                    col_offset=4,
+                    end_col_offset=5,
                 ),
             ),
             Instruction(
@@ -173,10 +200,13 @@ class TestPythonBytecodeBlock(unittest.TestCase):
                 argval="x",
                 argrepr="x",
                 offset=6,
-                starts_line=10,
+                starts_line=func_def_line + 2,
                 is_jump_target=False,
                 positions=Positions(
-                    lineno=10, end_lineno=10, col_offset=11, end_col_offset=12
+                    lineno=func_def_line + 2,
+                    end_lineno=func_def_line + 2,
+                    col_offset=11,
+                    end_col_offset=12,
                 ),
             ),
         ]

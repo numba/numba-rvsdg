@@ -6,13 +6,13 @@ from numba_rvsdg.core.datastructures.basic_block import (
     ControlVariableBlock,
     BranchBlock,
 )
+from numba_rvsdg.core.datastructures.block_map import BlockMap
 from numba_rvsdg.core.datastructures.labels import (
     Label,
     PythonBytecodeLabel,
     ControlLabel,
 )
 from numba_rvsdg.core.datastructures.byte_flow import ByteFlow
-from numba_rvsdg.core.utils import bcmap_from_bytecode
 import dis
 from typing import Dict
 
@@ -135,7 +135,7 @@ class ByteFlowRenderer(object):
         return self.g
 
     def bcmap_from_bytecode(self, bc: dis.Bytecode):
-        self.bcmap: Dict[int, dis.Instruction] = bcmap_from_bytecode(bc)
+        self.bcmap: Dict[int, dis.Instruction] = BlockMap.bcmap_from_bytecode(bc)
 
 
 logging.basicConfig(level=logging.DEBUG)

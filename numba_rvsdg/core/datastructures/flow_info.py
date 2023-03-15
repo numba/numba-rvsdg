@@ -21,7 +21,7 @@ from numba_rvsdg.core.utils import (
 
 @dataclass()
 class FlowInfo:
-    """ FlowInfo converts Bytecode into a ByteFlow object (CFG). """
+    """FlowInfo converts Bytecode into a ByteFlow object (CFG)."""
 
     block_offsets: Set[int] = field(default_factory=set)
     """Marks starting offset of basic-block
@@ -93,7 +93,11 @@ class FlowInfo:
             else:
                 targets = tuple(labels[o] for o in self.jump_insts[term_offset])
             block = PythonBytecodeBlock(
-                label=label, begin=begin, end=end, _jump_targets=targets, backedges=(),
+                label=label,
+                begin=begin,
+                end=end,
+                _jump_targets=targets,
+                backedges=(),
             )
             bbmap.add_block(block)
         return bbmap

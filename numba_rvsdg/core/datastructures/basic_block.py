@@ -103,7 +103,9 @@ class BranchBlock(BasicBlock):
                         new_branch_value_table[k] = v
 
         return replace(
-            self, _jump_targets=jump_targets, branch_value_table=new_branch_value_table,
+            self,
+            _jump_targets=jump_targets,
+            branch_value_table=new_branch_value_table,
         )
 
 

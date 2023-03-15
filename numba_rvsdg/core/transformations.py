@@ -117,7 +117,7 @@ def loop_rotate_for_loop(bbmap: BlockMap, loop: Set[Label]):
 
 
 def loop_rotate(bbmap: BlockMap, loop: Set[Label]):
-    """ Rotate loop.
+    """Rotate loop.
 
     This will convert the loop into "loop canonical form".
     """
