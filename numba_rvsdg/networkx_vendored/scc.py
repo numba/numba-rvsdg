@@ -5,6 +5,7 @@ LICENSE: https://github.com/networkx/networkx/blob/main/LICENSE.txt
 
 """
 
+
 def scc(G):
     preorder = {}
     lowlink = {}
