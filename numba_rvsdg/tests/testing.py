@@ -129,12 +129,7 @@ class TestInsertBlock(MapComparator):
         original_block_map.insert_block(
             ControlLabel("3"),
             self.wrap_id(("0",)),
-            self.wrap_id(
-                (
-                    "1",
-                    "2",
-                )
-            ),
+            self.wrap_id(("1", "2")),
         )
         self.assertMapEqual(expected_block_map, original_block_map)
 
@@ -170,12 +165,7 @@ class TestInsertBlock(MapComparator):
         original_block_map.insert_block(
             ControlLabel("5"),
             self.wrap_id(("1", "2")),
-            self.wrap_id(
-                (
-                    "3",
-                    "4",
-                )
-            ),
+            self.wrap_id(("3", "4")),
         )
         self.assertMapEqual(expected_block_map, original_block_map)
 
@@ -211,12 +201,7 @@ class TestInsertBlock(MapComparator):
         original_block_map.insert_block(
             ControlLabel("5"),
             self.wrap_id(("1", "2")),
-            self.wrap_id(
-                (
-                    "3",
-                    "4",
-                )
-            ),
+            self.wrap_id(("3", "4")),
         )
         self.assertMapEqual(expected_block_map, original_block_map)
 
