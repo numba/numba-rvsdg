@@ -36,15 +36,31 @@ At the time of writing `pyyaml` was not available for Python 3.11 via
 
 The following files are included in this repository:
 
-* byteflow2.py -- the algorithms from Bahmann2015
-* example.py -- file for running and displaying examples
-* scc.py -- strongly connected components, copied verbatim from networkx
-* simulator.py -- a CFG simulator, for testing
-* test_byteflow2.py -- tests for byteflow2 algorithms
-* test_fig3.py -- test for fig3 from Bahmann2015
-* test_fig4.py -- test for fig4 from Bahmann2015
-* test_simulate.py -- simulator based tests
-* testing.py -- more tests for byteflow2, should probably be merged
+```
+numba_rvsdg
+├── __init__.py
+├── core
+│   ├── datastructures
+│   │   ├── basic_block.py  # BasicBlock implementation
+│   │   ├── block_map.py    # BlockMap implementation, maps labels to blocks
+│   │   ├── byte_flow.py    # ByteFlow implementation, BlockMap + bytecode
+│   │   ├── flow_info.py    # Converts program to ByteFlow
+│   │   └── labels.py       # Collection of Label classes
+│   ├── transformations.py  # Algorithms
+│   └── utils.py            # Miscellaneous utilities
+├── networkx_vendored
+│   └── scc.py              # Strongly Connected Componets (loop detection)
+├── rendering
+│   └── rendering.py        # Graphivz based rendering of BlockMaps
+├── tests
+│   ├── simulator.py        # Simulator utility for running SCFGs
+│   ├── test_byteflow.py    # Testung ByteFlow and others
+│   ├── test_fig3.py        # Testing fig. 3 from Bahman2015
+│   ├── test_fig4.py        # Testing fig. 4 from Bahman2015
+│   ├── test_simulate.py    # Simulator based testing
+│   └── test_transforms.py  # Testing graph transformations
+└── utils
+```
 
 ## example
 
