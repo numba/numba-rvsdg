@@ -8,6 +8,7 @@ from numba_rvsdg.core.datastructures.basic_block import (
     RegionBlock,
 )
 from numba_rvsdg.core.datastructures.labels import (
+    Label,
     PythonBytecodeLabel,
     ControlLabel,
     SyntheticForIter,
@@ -23,19 +24,66 @@ import builtins
 
 
 class Simulator:
-    """BlockMap simulator"""
+    """BlockMap simulator.
+
+    This is a simulator utility to be used for testing.
+
+    This simulator will take a given structured control flow graph (SCFG) and
+    simulate it. It contains a tiny barebones Python interpreter with stack and
+    registers to simulate any Python bytecode Instructions present in any
+    PythonBytecodeBlock. For any SyntheticBlock it will determine where and how
+    to jump based on the values of the control variables.
+
+    Parameters
+    ----------
+    flow: ByteFlow
+        The ByteFlow to be simulated.
+    globals: dict of any
+        The globals to become available during simulation
+
+    Attributes
+    ----------
+    bcmap: Dict[int, Instruction]
+        Mapping of bytecode offset to instruction.
+    varmap: Dict[Str, Any]
+        Python variable map more or less a register
+    ctrl_varmap: Dict[Str, int]
+        Control variable map
+    self.stack: List[Instruction]
+        Instruction stack
+    self.branch: Boolean
+        Flag to be set during execution.
+    self.return_value: Any
+        The return value of the function.
+
+    """
 
     def __init__(self, flow: ByteFlow, globals: dict):
+
         self.flow = flow
+        self.globals = ChainMap(globals, builtins.__dict__)
+
         self.bcmap = {inst.offset: inst for inst in flow.bc}
         self.varmap = dict()
         self.ctrl_varmap = dict()
-        self.globals = ChainMap(globals, builtins.__dict__)
         self.stack = []
         self.branch = None
         self.return_value = None
 
     def run(self, args):
+        """Run the given simulator with gievn args.
+
+        Parameters
+        ----------
+        args: Dict[Any, Any]
+            Arguments for function execution
+
+        Returns
+        -------
+        result: Any
+            The result of the simulation.
+
+        """
         self.varmap.update(args)
         target = PythonBytecodeLabel(index=0)
         while True:
@@ -45,7 +93,23 @@ class Simulator:
                 return action["return"]
             target = action["jumpto"]
 
-    def run_bb(self, bb: BasicBlock, target):
+    def run_bb(self, bb: BasicBlock, target: Label):
+        """Run a BasicBlock.
+
+        Paramters
+        ---------
+        bb: BasicBlock
+            The BasicBlock to execute.
+        target: Label
+            The Label of the BasicBlock
+
+        Returns
+        -------
+        action: Dict[Str: Int or Boolean or Any]
+            The action to be taken as a result of having executed the
+            BasicBlock.
+
+        """
         print("AT", target)
         if isinstance(bb, RegionBlock):
             return self._run_region(bb, target)
@@ -66,6 +130,26 @@ class Simulator:
             return {"return": self.return_value}
 
     def _run_region(self, region: RegionBlock, target):
+        """Run region.
+
+        Execute all BasicBlocks in this region. Stay within the region, only
+        return the action when we jump out of the region or when we return from
+        within the region.
+
+        Parameters
+        ----------
+        region: RegionBlock
+            The region to execute
+        target: Label
+            The Label for the RegionBlock
+
+        Returns
+        -------
+        action: Dict[Str: Int or Boolean or Any]
+            The action to be taken as a result of having executed the
+            BasicBlock.
+
+        """
         while True:
             bb = region.subregion[target]
             action = self.run_bb(bb, target)
@@ -81,11 +165,39 @@ class Simulator:
                 assert False, "unreachable"
 
     def run_synth_block(self, control_label, block):
+        """Run a SyntheticBlock
+
+        Paramaters
+        ----------
+        control_label: Label
+            The Label for the block.
+        block: SyntheticBlock
+            The block itself.
+
+        """
         print("----", control_label)
         print(f"control variable map: {self.ctrl_varmap}")
         handler = getattr(self, f"synth_{type(control_label).__name__}")
         handler(control_label, block)
 
+    def run_inst(self, inst: Instruction):
+        """Run a bytecode Instruction
+
+        Paramaters
+        ----------
+        inst: Instruction
+            The Python bytecode instruction to execute.
+
+        """
+        print("----", inst)
+        print(f"variable map before: {self.varmap}")
+        print(f"stack before: {self.stack}")
+        handler = getattr(self, f"op_{inst.opname}")
+        handler(inst)
+        print(f"variable map after: {self.varmap}")
+        print(f"stack after: {self.stack}")
+
+    ### Synthetic Instructions ###
     def synth_SyntheticForIter(self, control_label, block):
         self.op_FOR_ITER(None)
 
@@ -114,15 +226,7 @@ class Simulator:
     def synth_SyntheticBranch(self, control_label, block):
         pass
 
-    def run_inst(self, inst: Instruction):
-        print("----", inst)
-        print(f"variable map before: {self.varmap}")
-        print(f"stack before: {self.stack}")
-        handler = getattr(self, f"op_{inst.opname}")
-        handler(inst)
-        print(f"variable map after: {self.varmap}")
-        print(f"stack after: {self.stack}")
-
+    ### Bytecode Instructions ###
     def op_LOAD_CONST(self, inst):
         self.stack.append(inst.argval)
 
