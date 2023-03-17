@@ -51,6 +51,8 @@ class Simulator:
         Control variable map
     self.stack: List[Instruction]
         Instruction stack
+    self.region_stack: List[RegionBlocks]
+        Stack to hold the recusion level for regions
     self.branch: Boolean
         Flag to be set during execution.
     self.return_value: Any
@@ -67,8 +69,37 @@ class Simulator:
         self.varmap = dict()
         self.ctrl_varmap = dict()
         self.stack = []
+        self.region_stack = []
         self.branch = None
         self.return_value = None
+
+    def get_block(self, label:Label):
+        """Return the BasicBlock object for a give label.
+
+        This method is aware of the recusion level of the `Simulator` into the
+        `region_stack`. That is to say, if we have recursed into regions, the
+        BasicBlock is  returned from the current region (the top region of the
+        region_stack). Otherwise the BasicBlock is returned from the initial
+        ByteFlow supplied to the simulator. The method `run_RegionBlock` is
+        responsible for maintaining the `region_stack`.
+
+        Parameters
+        ----------
+        label: Label
+            The label for which to fetch the BasicBlock
+
+        Return
+        ------
+        block: BasicBlock
+            The requested block
+
+        """
+        # Recursed into regions, return block from region
+        if self.region_stack:
+            return self.region_stack[-1].subregion[label]
+        # Not recursed into regions, return block from ByteFlow
+        else:
+            return self.flow.bbmap[label]
 
     def run(self, args):
         """Run the given simulator with gievn args.
@@ -87,21 +118,18 @@ class Simulator:
         self.varmap.update(args)
         label = PythonBytecodeLabel(index=0)
         while True:
-            block = self.flow.bbmap.graph[label]
-            action = self.run_BasicBlock(label, block)
+            action = self.run_BasicBlock(label)
             if "return" in action:
                 return action["return"]
             label = action["jumpto"]
 
-    def run_BasicBlock(self, label: Label, block: BasicBlock):
+    def run_BasicBlock(self, label: Label):
         """Run a BasicBlock.
 
         Paramters
         ---------
         label: Label
             The Label of the BasicBlock
-        block: BasicBlock
-            The BasicBlock to execute.
 
         Returns
         -------
@@ -111,15 +139,14 @@ class Simulator:
 
         """
         print("AT", label)
+        block = self.get_block(label)
         if isinstance(block, RegionBlock):
-            return self.run_RegionBlock(label, block)
+            return self.run_RegionBlock(label)
 
         if isinstance(label, ControlLabel):
-            self.run_synth_block(label, block)
+            self.run_synth_block(label)
         elif isinstance(label, PythonBytecodeLabel):
-            assert type(block) is PythonBytecodeBlock
-            for inst in block.get_instructions(self.bcmap):
-                self.run_inst(inst)
+            self.run_PythonBytecodeBlock(label)
         if block.fallthrough:
             [label] = block.jump_targets
             return {"jumpto": label}
@@ -129,19 +156,25 @@ class Simulator:
         else:
             return {"return": self.return_value}
 
-    def run_RegionBlock(self, label: Label, region: RegionBlock):
+    def run_RegionBlock(self, label: Label):
         """Run region.
 
         Execute all BasicBlocks in this region. Stay within the region, only
         return the action when we jump out of the region or when we return from
         within the region.
 
+        Sepcial attention is directed at the use of the `region_stack` here.
+        Since the blocks for the subregion are stored in the `region.subregion`
+        graph, we need to use a region aware `get_blocks` in methods such as
+        `run_BasicBlock` so that we get the correct `BasicBlock`. The net effect
+        of placing the `region` onto the `region_stack` is that `run_BasicBlock`
+        will be able to fetch the correct label from the `region.subregion`
+        graph, and thus be able to run the correct sequence of blocks.
+
         Parameters
         ----------
         label: Label
             The Label for the RegionBlock
-        region: RegionBlock
-            The region to execute
 
         Returns
         -------
@@ -150,33 +183,56 @@ class Simulator:
             BasicBlock.
 
         """
+        # Get the RegionBlock and place it onto the region_stack
+        region: RegionBlock = self.get_block(label)
+        self.region_stack.append(region)
         while True:
-            block = region.subregion[label]
-            action = self.run_BasicBlock(label, block)
+            # Execute the first block of the region.
+            action = self.run_BasicBlock(label)
+            # If we need to return, break and do so
             if "return" in action:
-                return action
+                break  # break and return action
             elif "jumpto" in action:
                 label = action["jumpto"]
+                # Otherwise check if we stay in the region and break otherwise
                 if label in region.subregion.graph:
-                    continue
+                    continue  # stay in the region
                 else:
-                    return action
+                    break  # break and return action
             else:
-                assert False, "unreachable"
+                assert False, "unreachable" # in case of coding errors
+        # Pop the region from the region stack again and return the final
+        # action for this region
+        popped = self.region_stack.pop()
+        assert(popped == region)
+        return action
 
-    def run_synth_block(self, label: ControlLabel, block: BasicBlock):
+    def run_PythonBytecodeBlock(self, label: PythonBytecodeLabel):
+        """Run PythonBytecodeBlock
+
+        Parameters
+        ----------
+        label: PythonBytecodeLabel
+            The Label for the block.
+
+        """
+        block: PythonBytecodeBlock = self.get_block(label)
+        assert type(block) is PythonBytecodeBlock
+        for inst in block.get_instructions(self.bcmap):
+            self.run_inst(inst)
+
+    def run_synth_block(self, label: ControlLabel):
         """Run a SyntheticBlock
 
         Paramaters
         ----------
-        label: Label
+        label: ControlLabel
             The Label for the block.
-        block: SyntheticBlock
-            The block itself.
 
         """
         print("----", label)
         print(f"control variable map: {self.ctrl_varmap}")
+        block = self.get_block(label)
         handler = getattr(self, f"synth_{type(label).__name__}")
         handler(label, block)
 
