@@ -49,13 +49,13 @@ class Simulator:
         Python variable map more or less a register
     ctrl_varmap: Dict[Str, int]
         Control variable map
-    self.stack: List[Instruction]
+    stack: List[Instruction]
         Instruction stack
-    self.region_stack: List[RegionBlocks]
+    region_stack: List[RegionBlocks]
         Stack to hold the recusion level for regions
-    self.branch: Boolean
+    branch: Boolean
         Flag to be set during execution.
-    self.return_value: Any
+    return_value: Any
         The return value of the function.
 
     """
@@ -102,7 +102,7 @@ class Simulator:
             return self.flow.bbmap[label]
 
     def run(self, args):
-        """Run the given simulator with gievn args.
+        """Run the given simulator with given args.
 
         Parameters
         ----------
