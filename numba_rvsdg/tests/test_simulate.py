@@ -189,6 +189,35 @@ class SimulatorTest(unittest.TestCase):
         # mutiple iterations
         self._run(foo, flow, {"s": 23, "e": 28})
 
+    def test_mixed_for_and_while_loop_with_branch(self):
+
+        def foo(x):
+            acc = 0
+            for i in range(x): # the for loop just has a while loop and an
+                               # increment of the accumulator inside it.
+                k = 0
+                while k < x - 2:
+                    if acc == 10: # this will make the while loop have three blocks
+                                  # header, branch and body, so the length of the loop
+                                  # is thus 3
+                        k += 1
+                    acc +=1
+                    k += 1
+                acc += 1
+            return acc
+
+        flow = ByteFlow.from_bytecode(foo)
+        flow = flow.restructure()
+
+        # no looping
+        self._run(foo, flow, {"x": 0})
+        # for loop, but no while loop 
+        self._run(foo, flow, {"x": 2})
+        # for loop and while loop
+        self._run(foo, flow, {"x": 4})
+        # for loop and while loop and branch
+        self._run(foo, flow, {"x": 12})
+
 
 if __name__ == "__main__":
     unittest.main()

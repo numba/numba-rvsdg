@@ -139,10 +139,13 @@ def loop_rotate(bbmap: BlockMap, loop: Set[Label]):
     elif len(headers) == 1:
         # TODO join entries
         # Probably a Python for loop
-        loop_rotate_for_loop(bbmap, loop)
-        headers, entries = bbmap.find_headers_and_entries(loop)
-        exiting_blocks, exit_blocks = bbmap.find_exiting_and_exits(loop)
+        # also needs to check if the header has one jump target into the loop and one outside
         loop_head: Label = next(iter(headers))
+        if len (bbmap.graph[loop_head]._jump_targets) == 2 and not all((jt in loop for jt in bbmap.graph[loop_head]._jump_targets)):
+            loop_rotate_for_loop(bbmap, loop)
+            headers, entries = bbmap.find_headers_and_entries(loop)
+            exiting_blocks, exit_blocks = bbmap.find_exiting_and_exits(loop)
+            loop_head: Label = next(iter(headers))
     else:
         raise Exception("unreachable")
 
