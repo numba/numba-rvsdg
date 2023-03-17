@@ -8,6 +8,7 @@ from numba_rvsdg.core.datastructures.basic_block import (
     RegionBlock,
 )
 from numba_rvsdg.core.datastructures.labels import (
+    Label,
     PythonBytecodeLabel,
     ControlLabel,
     SyntheticForIter,
