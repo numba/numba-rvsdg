@@ -85,23 +85,23 @@ class Simulator:
 
         """
         self.varmap.update(args)
-        target = PythonBytecodeLabel(index=0)
+        label = PythonBytecodeLabel(index=0)
         while True:
-            bb = self.flow.bbmap.graph[target]
-            action = self.run_bb(bb, target)
+            block = self.flow.bbmap.graph[label]
+            action = self.run_BasicBlock(label, block)
             if "return" in action:
                 return action["return"]
-            target = action["jumpto"]
+            label = action["jumpto"]
 
-    def run_bb(self, bb: BasicBlock, target: Label):
+    def run_BasicBlock(self, label: Label, block: BasicBlock):
         """Run a BasicBlock.
 
         Paramters
         ---------
-        bb: BasicBlock
-            The BasicBlock to execute.
-        target: Label
+        label: Label
             The Label of the BasicBlock
+        block: BasicBlock
+            The BasicBlock to execute.
 
         Returns
         -------
@@ -110,26 +110,26 @@ class Simulator:
             BasicBlock.
 
         """
-        print("AT", target)
-        if isinstance(bb, RegionBlock):
-            return self._run_region(bb, target)
+        print("AT", label)
+        if isinstance(block, RegionBlock):
+            return self.run_RegionBlock(label, block)
 
-        if isinstance(target, ControlLabel):
-            self.run_synth_block(target, bb)
-        elif isinstance(target, PythonBytecodeLabel):
-            assert type(bb) is PythonBytecodeBlock
-            for inst in bb.get_instructions(self.bcmap):
+        if isinstance(label, ControlLabel):
+            self.run_synth_block(label, block)
+        elif isinstance(label, PythonBytecodeLabel):
+            assert type(block) is PythonBytecodeBlock
+            for inst in block.get_instructions(self.bcmap):
                 self.run_inst(inst)
-        if bb.fallthrough:
-            [target] = bb.jump_targets
-            return {"jumpto": target}
-        elif len(bb._jump_targets) == 2:
-            [br_false, br_true] = bb._jump_targets
+        if block.fallthrough:
+            [label] = block.jump_targets
+            return {"jumpto": label}
+        elif len(block._jump_targets) == 2:
+            [br_false, br_true] = block._jump_targets
             return {"jumpto": br_true if self.branch else br_false}
         else:
             return {"return": self.return_value}
 
-    def _run_region(self, region: RegionBlock, target):
+    def run_RegionBlock(self, label: Label, region: RegionBlock):
         """Run region.
 
         Execute all BasicBlocks in this region. Stay within the region, only
@@ -138,10 +138,10 @@ class Simulator:
 
         Parameters
         ----------
+        label: Label
+            The Label for the RegionBlock
         region: RegionBlock
             The region to execute
-        target: Label
-            The Label for the RegionBlock
 
         Returns
         -------
@@ -151,34 +151,34 @@ class Simulator:
 
         """
         while True:
-            bb = region.subregion[target]
-            action = self.run_bb(bb, target)
+            block = region.subregion[label]
+            action = self.run_BasicBlock(label, block)
             if "return" in action:
                 return action
             elif "jumpto" in action:
-                target = action["jumpto"]
-                if target in region.subregion.graph:
+                label = action["jumpto"]
+                if label in region.subregion.graph:
                     continue
                 else:
                     return action
             else:
                 assert False, "unreachable"
 
-    def run_synth_block(self, control_label, block):
+    def run_synth_block(self, label: ControlLabel, block: BasicBlock):
         """Run a SyntheticBlock
 
         Paramaters
         ----------
-        control_label: Label
+        label: Label
             The Label for the block.
         block: SyntheticBlock
             The block itself.
 
         """
-        print("----", control_label)
+        print("----", label)
         print(f"control variable map: {self.ctrl_varmap}")
-        handler = getattr(self, f"synth_{type(control_label).__name__}")
-        handler(control_label, block)
+        handler = getattr(self, f"synth_{type(label).__name__}")
+        handler(label, block)
 
     def run_inst(self, inst: Instruction):
         """Run a bytecode Instruction
