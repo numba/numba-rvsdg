@@ -45,7 +45,7 @@ class ByteFlowRenderer(object):
     def render_basic_block(self, digraph: "Digraph", label: Label, block: BasicBlock):
         if isinstance(label, PythonBytecodeLabel):
             instlist = block.get_instructions(self.bcmap)
-            body = label.__class__.__name__ + ": " + str(label.index) + "\n\n"
+            body = label.__class__.__name__ + ": " + str(label.index) + "\l"
             body += "\l".join(
                 [f"{inst.offset:3}: {inst.opname}" for inst in instlist] + [""]
             )
@@ -59,8 +59,8 @@ class ByteFlowRenderer(object):
         self, digraph: "Digraph", label: Label, block: BasicBlock
     ):
         if isinstance(label, ControlLabel):
-            body = label.__class__.__name__ + ": " + str(label.index) + "\n"
-            body += "\n".join(
+            body = label.__class__.__name__ + ": " + str(label.index) + "\l"
+            body += "\l".join(
                 (f"{k} = {v}" for k, v in block.variable_assignment.items())
             )
         else:
@@ -78,9 +78,9 @@ class ByteFlowRenderer(object):
                 if hasattr(v, "index"):
                     return v.index
 
-            body = label.__class__.__name__ + ": " + str(label.index) + "\n"
-            body += f"variable: {block.variable}\n"
-            body += "\n".join(
+            body = label.__class__.__name__ + ": " + str(label.index) + "\l"
+            body += f"variable: {block.variable}\l"
+            body += "\l".join(
                 (f"{k}=>{find_index(v)}" for k, v in block.branch_value_table.items())
             )
         else:
