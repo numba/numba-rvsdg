@@ -1,5 +1,5 @@
 
-from numba_rvsdg.tests.testing import MapComparator
+from numba_rvsdg.tests.test_transforms import MapComparator
 from numba_rvsdg.core.datastructures.basic_block import BasicBlock
 from numba_rvsdg.core.datastructures.block_map import BlockMap
 from numba_rvsdg.core.datastructures.labels import ControlLabel
