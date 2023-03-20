@@ -35,7 +35,7 @@ class MapComparator(TestCase):
                 sorted([j.index for j in second_map[key2].backedges]),
             )
 
-    def wrap_id(self, indices: Set[Label]):
+    def wrap_id(self, indices: list[int]):
         return tuple([ControlLabel(i) for i in indices])
 
     def from_yaml(self, yaml_string):
