@@ -6,6 +6,7 @@ from numba_rvsdg.core.datastructures.basic_block import (
     BasicBlock,
     ControlVariableBlock,
     BranchBlock,
+    RegionBlock,
 )
 from numba_rvsdg.core.datastructures.labels import (
     Label,
@@ -31,6 +32,29 @@ class BlockMap:
 
     def __contains__(self, index):
         return index in self.graph
+
+    def __iter__(self):
+        """Graph Iterator"""
+        # initialise housekeeping datastructures
+        to_visit, seen = [self.find_head()], []
+        while to_visit:
+            # get the next label on the list
+            label = to_visit.pop(0)
+            # if we have visited this, we skip it
+            if label in seen:
+                continue
+            else:
+                seen.append(label)
+            # get the corresponding block for the label
+            block = self[label]
+            # yield the label, block combo
+            yield (label, block)
+            # if this is a region, recursively yield everything from that region
+            if type(block) == RegionBlock:
+                for i in block.subregion:
+                    yield i
+            # finally add any jump_targets to the list of labels to visit
+            to_visit.extend(block.jump_targets)
 
     def exclude_blocks(self, exclude_blocks: Set[Label]) -> Iterator[Label]:
         """Iterator over all nodes not in exclude_blocks."""
