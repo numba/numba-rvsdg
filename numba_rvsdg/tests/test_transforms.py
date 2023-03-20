@@ -517,6 +517,81 @@ class TestLoopRotate(MapComparator):
         print(original_block_map.compute_scc())
         self.assertMapEqual(expected_block_map, original_block_map)
 
+    def test_mixed_for_while_loop_with_branch(self):
+        original = """
+        "0":
+            jt: ["1"]
+        "1":
+            jt: ["2", "7"]
+        "2":
+            jt: ["3", "6"]
+        "3":
+            jt: ["4", "5"]
+        "4":
+            jt: ["5"]
+        "5":
+            jt: ["3", "6"]
+        "6":
+            jt: ["1"]
+        "7":
+            jt: []
+        """
+        original_block_map = self.from_yaml(original)
+        # this has two loops, so we need to attempt to rotate twice, first for
+        # the header controlled loop, inserting an additional block
+        expected01 = """
+        "0":
+            jt: ["1"]
+        "1":
+            jt: ["2", "7"]
+        "2":
+            jt: ["3", "6"]
+        "3":
+            jt: ["4", "5"]
+        "4":
+            jt: ["5"]
+        "5":
+            jt: ["3", "6"]
+        "6":
+            jt: ["8"]
+        "7":
+            jt: []
+        "8":
+            jt: ["2", "7"]
+            be: ["2"]
+        """
+        expected01_block_map = self.from_yaml(expected01)
+        loop_rotate(original_block_map,
+                    set((self.wrap_id(map(str,[1, 2, 3, 4, 5, 6])))))
+        self.assertMapEqual(expected01_block_map, original_block_map)
+        # And then, we make sure that the inner-loop remains unchanged, and the
+        # loop rotation will only detect the aditional backedge, from 5 to 3
+        expected02 = """
+        "0":
+            jt: ["1"]
+        "1":
+            jt: ["2", "7"]
+        "2":
+            jt: ["3", "6"]
+        "3":
+            jt: ["4", "5"]
+        "4":
+            jt: ["5"]
+        "5":
+            jt: ["3", "6"]
+            be: ["3"]
+        "6":
+            jt: ["8"]
+        "7":
+            jt: []
+        "8":
+            jt: ["2", "7"]
+            be: ["2"]
+        """
+        expected02_block_map = self.from_yaml(expected02)
+        loop_rotate(original_block_map,
+                    set((self.wrap_id(map(str,[3, 4, 5])))))
+        self.assertMapEqual(expected02_block_map, original_block_map)
 
 if __name__ == "__main__":
     main()
