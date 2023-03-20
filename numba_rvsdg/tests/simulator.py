@@ -163,7 +163,7 @@ class Simulator:
         return the action when we jump out of the region or when we return from
         within the region.
 
-        Sepcial attention is directed at the use of the `region_stack` here.
+        Special attention is directed at the use of the `region_stack` here.
         Since the blocks for the subregion are stored in the `region.subregion`
         graph, we need to use a region aware `get_blocks` in methods such as
         `run_BasicBlock` so that we get the correct `BasicBlock`. The net effect
