@@ -37,11 +37,13 @@ def loop_restructure_helper(bbmap: BlockMap, loop: Set[Label]):
         The loop (strongly connected components) that is to be restructured
 
     """
+
     headers, entries = bbmap.find_headers_and_entries(loop)
     exiting_blocks, exit_blocks = bbmap.find_exiting_and_exits(loop)
     assert len(entries) == 1
     headers_were_unified = False
     loop_head: Label = next(iter(headers))
+
     # If there are multiple headers, insert assignment and control blocks,
     # such that only a single loop header remains.
     if len(headers) > 1:
