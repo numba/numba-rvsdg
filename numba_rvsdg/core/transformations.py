@@ -116,43 +116,41 @@ def loop_rotate_for_loop(bbmap: BlockMap, loop: Set[Label]):
     loop.add(synth_for_iter)
 
 
-def loop_rotate(bbmap: BlockMap, loop: Set[Label]):
-    """Rotate loop.
+def loop_restructure_helper(bbmap: BlockMap, loop: Set[Label]):
+    """Loop Restructuring
 
-    This will convert the loop into "loop canonical form".
+    Applies the algorithm LOOP RESTRUCTURING from section 4.1 of Bahmann2015.
+
+    Note that this will modify both the `bbmap` and the `loop` in-place.
+
+    Parameters
+    ----------
+    bbmap: BlockMap
+        The BlockMap containing the loop
+    loop: Set[Label]
+        The loop (strongly connected components) that is to be restructured
+
     """
     headers, entries = bbmap.find_headers_and_entries(loop)
     exiting_blocks, exit_blocks = bbmap.find_exiting_and_exits(loop)
-    # if len(entries) == 0:
-    #    return
     assert len(entries) == 1
     headers_were_unified = False
-    if len(loop) == 1:
-        # Probably a Python while loop, only find the loop_head
-        loop_head: Label = next(iter(loop))
-    elif len(headers) > 1:
+    loop_head: Label = next(iter(headers))
+    # If there are multiple headers, insert assignment and control blocks,
+    # such that only a single loop header remains.
+    if len(headers) > 1:
         headers_were_unified = True
         solo_head_label = SyntheticHead(bbmap.clg.new_index())
         bbmap.insert_block_and_control_blocks(solo_head_label, entries, headers)
         loop.add(solo_head_label)
         loop_head: Label = solo_head_label
-    elif len(headers) == 1:
-        # TODO join entries
-        loop_head: Label = next(iter(headers))
-        #if len (bbmap.graph[loop_head]._jump_targets) == 2 and not all((jt in loop for jt in bbmap.graph[loop_head]._jump_targets)):
-        #    # Probably a Python for loop
-        #    loop_rotate_for_loop(bbmap, loop)
-        #    headers, entries = bbmap.find_headers_and_entries(loop)
-        #    exiting_blocks, exit_blocks = bbmap.find_exiting_and_exits(loop)
-    else:
-        raise Exception("unreachable")
 
-    backedge_blocks = [
-        block for block in loop if headers.intersection(bbmap[block].jump_targets)
-    ]
     # If there is only a single exiting latch (an exiting block that also has a
     # backedge to the loop header) we can exit early, since the condition for
     # SCFG is fullfilled.
+    backedge_blocks = [
+        block for block in loop if headers.intersection(bbmap[block].jump_targets)
+    ]
     if (len(backedge_blocks) == 1 and len(exiting_blocks) == 1
         and backedge_blocks[0] == next(iter(exiting_blocks))):
         for label in loop:
@@ -320,7 +318,7 @@ def restructure_loop(bbmap: BlockMap):
     )
     # rotate and extract loop
     for loop in loops:
-        loop_rotate(bbmap, loop)
+        loop_restructure_helper(bbmap, loop)
         extract_region(bbmap, loop, "loop")
 
 

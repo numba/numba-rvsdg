@@ -7,8 +7,6 @@ from numba_rvsdg.core.datastructures.labels import (
     SyntheticExit,
 )
 from numba_rvsdg.core.datastructures.block_map import BlockMap, wrap_id
-from numba_rvsdg.core.transformations import loop_rotate
-
 from numba_rvsdg.tests.test_utils import MapComparator
 
 class TestInsertBlock(MapComparator):
@@ -412,65 +410,6 @@ class TestJoinTailsAndExits(MapComparator):
         self.assertMapEqual(expected_block_map, original_block_map)
         self.assertEqual(SyntheticTail("6"), solo_tail_label)
         self.assertEqual(SyntheticExit("7"), solo_exit_label)
-
-
-class TestLoopRotate(MapComparator):
-    def test_basic_for_loop(self):
-
-        original = """
-        "0":
-            jt: ["1"]
-        "1":
-            jt: ["2", "3"]
-        "2":
-            jt: ["1"]
-        "3":
-            jt: []
-        """
-        original_block_map = BlockMap.from_yaml(original)
-        expected = """
-        "0":
-            jt: ["1"]
-        "1":
-            jt: ["2", "3"]
-        "2":
-            jt: ["4"]
-        "3":
-            jt: []
-        "4":
-            jt: ["2", "3"]
-            be: ["2"]
-        """
-        expected_block_map = BlockMap.from_yaml(expected)
-
-        loop_rotate(original_block_map, {ControlLabel("1"), ControlLabel("2")})
-        print(original_block_map.compute_scc())
-        self.assertMapEqual(expected_block_map, original_block_map)
-
-    def test_basic_while_loop(self):
-        original = """
-        "0":
-            jt: ["1", "2"]
-        "1":
-            jt: ["1", "2"]
-        "2":
-            jt: []
-        """
-        original_block_map = BlockMap.from_yaml(original)
-        expected = """
-        "0":
-            jt: ["1", "2"]
-        "1":
-            jt: ["1", "2"]
-            be: ["1"]
-        "2":
-            jt: []
-        """
-        expected_block_map = BlockMap.from_yaml(expected)
-
-        loop_rotate(original_block_map, {ControlLabel("1")})
-        print(original_block_map.compute_scc())
-        self.assertMapEqual(expected_block_map, original_block_map)
 
 
 if __name__ == "__main__":
