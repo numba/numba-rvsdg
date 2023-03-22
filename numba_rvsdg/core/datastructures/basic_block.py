@@ -12,10 +12,10 @@ class BasicBlock:
     label: Label
     """The corresponding Label for this block.  """
 
-    _jump_targets: Tuple[Label]
+    _jump_targets: Tuple[Label] = tuple()
     """Jump targets (branch destinations) for this block"""
 
-    backedges: Tuple[Label]
+    backedges: Tuple[Label] = tuple()
     """Backedges for this block."""
 
     @property
@@ -46,11 +46,11 @@ class BasicBlock:
 
 @dataclass(frozen=True)
 class PythonBytecodeBlock(BasicBlock):
-    begin: int
+    begin: int = None
     """The starting bytecode offset.
     """
 
-    end: int
+    end: int = None
     """The bytecode offset immediate after the last bytecode of the block.
     """
 
@@ -75,13 +75,13 @@ class PythonBytecodeBlock(BasicBlock):
 
 @dataclass(frozen=True)
 class ControlVariableBlock(BasicBlock):
-    variable_assignment: dict
+    variable_assignment: dict = None
 
 
 @dataclass(frozen=True)
 class BranchBlock(BasicBlock):
-    variable: str
-    branch_value_table: dict
+    variable: str = None
+    branch_value_table: dict = None
 
     def replace_jump_targets(self, jump_targets: Tuple) -> "BasicBlock":
         fallthrough = len(jump_targets) == 1
@@ -111,13 +111,13 @@ class BranchBlock(BasicBlock):
 
 @dataclass(frozen=True)
 class RegionBlock(BasicBlock):
-    kind: str
-    headers: Dict[Label, BasicBlock]
+    kind: str = None
+    headers: Dict[Label, BasicBlock] = None
     """The header of the region"""
-    subregion: "BlockMap"
+    subregion: "BlockMap" = None
     """The subgraph excluding the headers
     """
-    exit: Label
+    exit: Label = None
     """The exit node.
     """
 

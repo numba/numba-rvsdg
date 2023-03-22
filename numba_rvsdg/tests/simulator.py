@@ -53,6 +53,8 @@ class Simulator:
         Instruction stack
     region_stack: List[RegionBlocks]
         Stack to hold the recusion level for regions
+    trace: List[Tuple(label, block)]
+        List of label, block combinations visisted
     branch: Boolean
         Flag to be set during execution.
     return_value: Any
@@ -70,6 +72,7 @@ class Simulator:
         self.ctrl_varmap = dict()
         self.stack = []
         self.region_stack = []
+        self.trace = []
         self.branch = None
         self.return_value = None
 
@@ -140,6 +143,7 @@ class Simulator:
         """
         print("AT", label)
         block = self.get_block(label)
+        self.trace.append((label, block))
         if isinstance(block, RegionBlock):
             return self.run_RegionBlock(label)
 
