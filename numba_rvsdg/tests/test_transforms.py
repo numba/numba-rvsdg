@@ -7,7 +7,9 @@ from numba_rvsdg.core.datastructures.labels import (
     SyntheticExit,
 )
 from numba_rvsdg.core.datastructures.block_map import BlockMap, wrap_id
+from numba_rvsdg.core.transformations import loop_restructure_helper
 from numba_rvsdg.tests.test_utils import MapComparator
+
 
 class TestInsertBlock(MapComparator):
     def test_linear(self):
@@ -410,6 +412,62 @@ class TestJoinTailsAndExits(MapComparator):
         self.assertMapEqual(expected_block_map, original_block_map)
         self.assertEqual(SyntheticTail("6"), solo_tail_label)
         self.assertEqual(SyntheticExit("7"), solo_exit_label)
+
+
+class TestLoopRestructure(MapComparator):
+
+    def test_no_op_mono(self):
+        """Loop consists of a single Block."""
+        original = """
+        "0":
+            jt: ["1"]
+        "1":
+            jt: ["1", "2"]
+        "2":
+            jt: []
+        """
+        expected = """
+        "0":
+            jt: ["1"]
+        "1":
+            jt: ["1", "2"]
+            be: ["1"]
+        "2":
+            jt: []
+        """
+        original_block_map = self.from_yaml(original)
+        expected_block_map = self.from_yaml(expected)
+        loop_restructure_helper(original_block_map, set(self.wrap_id({"1"})))
+        self.assertMapEqual(expected_block_map, original_block_map)
+
+
+    def test_no_op(self):
+        """Loop consists of two blocks, but it's in form."""
+        original ="""
+        "0":
+            jt: ["1"]
+        "1":
+            jt: ["2"]
+        "2":
+            jt: ["1", "3"]
+        "3":
+            jt: []
+        """
+        expected ="""
+        "0":
+            jt: ["1"]
+        "1":
+            jt: ["2"]
+        "2":
+            jt: ["1", "3"]
+            be: ["1"]
+        "3":
+            jt: []
+        """
+        original_block_map = self.from_yaml(original)
+        expected_block_map = self.from_yaml(expected)
+        loop_restructure_helper(original_block_map, set(self.wrap_id({"1", "2"})))
+        self.assertMapEqual(expected_block_map, original_block_map)
 
 
 if __name__ == "__main__":
