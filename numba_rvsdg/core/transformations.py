@@ -48,7 +48,7 @@ def loop_restructure_helper(bbmap: BlockMap, loop: Set[Label]):
     # such that only a single loop header remains.
     if len(headers) > 1:
         headers_were_unified = True
-        solo_head_label = SyntheticHead(bbmap.clg.new_index())
+        solo_head_label = SyntheticHead(str(bbmap.clg.new_index()))
         bbmap.insert_block_and_control_blocks(solo_head_label, entries, headers)
         loop.add(solo_head_label)
         loop_head: Label = solo_head_label
@@ -68,12 +68,12 @@ def loop_restructure_helper(bbmap: BlockMap, loop: Set[Label]):
     # The synthetic exiting latch and synthetic exit need to be created
     # based on the state of the cfg. If there are multiple exits, we need a
     # SyntheticExit, otherwise we only need a SyntheticExitingLatch
-    synth_exiting_latch = SyntheticExitingLatch(bbmap.clg.new_index())
+    synth_exiting_latch = SyntheticExitingLatch(str(bbmap.clg.new_index()))
     # Set a flag, this will determine the variable assignment and block
     # insertion later on
     needs_synth_exit = len(exit_blocks) > 1
     if needs_synth_exit:
-        synth_exit = SyntheticExit(bbmap.clg.new_index())
+        synth_exit = SyntheticExit(str(bbmap.clg.new_index()))
 
     # This sets up the various control variables.
     # If there were multiple headers, we must re-use the variable that was used
@@ -121,7 +121,7 @@ def loop_restructure_helper(bbmap: BlockMap, loop: Set[Label]):
                 # If the target is an exit block
                 if jt in exit_blocks:
                     # Create a new assignment label and record it
-                    synth_assign = SynthenticAssignment(bbmap.clg.new_index())
+                    synth_assign = SynthenticAssignment(str(bbmap.clg.new_index()))
                     new_blocks.add(synth_assign)
                     # Setup the table for the variable assignment
                     variable_assignment = {}
@@ -147,7 +147,7 @@ def loop_restructure_helper(bbmap: BlockMap, loop: Set[Label]):
                 # If the target is the loop_head
                 elif jt in headers and label not in doms[jt]:
                     # Create the assignment and record it
-                    synth_assign = SynthenticAssignment(bbmap.clg.new_index())
+                    synth_assign = SynthenticAssignment(str(bbmap.clg.new_index()))
                     new_blocks.add(synth_assign)
                     # Setup the variables in the assignment table to point to
                     # the correct blocks
