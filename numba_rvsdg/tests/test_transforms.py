@@ -440,7 +440,6 @@ class TestLoopRestructure(MapComparator):
         loop_restructure_helper(original_block_map, set(self.wrap_id({"1"})))
         self.assertMapEqual(expected_block_map, original_block_map)
 
-
     def test_no_op(self):
         """Loop consists of two blocks, but it's in form."""
         original ="""
@@ -467,6 +466,81 @@ class TestLoopRestructure(MapComparator):
         original_block_map = self.from_yaml(original)
         expected_block_map = self.from_yaml(expected)
         loop_restructure_helper(original_block_map, set(self.wrap_id({"1", "2"})))
+        self.assertMapEqual(expected_block_map, original_block_map)
+
+    def test_backedge_not_exiting(self):
+        """Loop has a backedge not coming from the exiting block.
+
+        This is the situation with the standard Python for loop.
+        """
+        original = """
+        "0":
+            jt: ["1"]
+        "1":
+            jt: ["2", "3"]
+        "2":
+            jt: ["1"]
+        "3":
+            jt: []
+        """
+        expected = """
+        "0":
+            jt: ["1"]
+        "1":
+            jt: ["2", "6"]
+        "2":
+            jt: ["5"]
+        "3":
+            jt: []
+        "4":
+            jt: ["1", "3"]
+            be: ["1"]
+        "5":
+            jt: ["4"]
+        "6":
+            jt: ["4"]
+        """
+        original_block_map = self.from_yaml(original)
+        expected_block_map = self.from_yaml(expected)
+        loop_restructure_helper(original_block_map, set(self.wrap_id({"1", "2"})))
+        self.assertMapEqual(expected_block_map, original_block_map)
+
+    def test_double_exit(self):
+        """Loop has two exiting blocks.
+
+        For example a loop with a break.
+
+        """
+        original = """
+        "0":
+            jt: ["1"]
+        "1":
+            jt: ["2"]
+        "2":
+            jt: ["3", "4"]
+        "3":
+            jt: ["1", "4"]
+        "4":
+            jt: []
+        """
+        expected = """
+        "0":
+            jt: ["1"]
+        "1":
+            jt: ["2"]
+        "2":
+            jt: ["3", "8"]
+        "3":
+            jt: ["6", "7"]
+        "4":
+            jt: []
+        "5":
+            jt: ["1", "4"]
+            be: ["1"]
+        """
+        original_block_map = self.from_yaml(original)
+        expected_block_map = self.from_yaml(expected)
+        loop_restructure_helper(original_block_map, set(self.wrap_id({"1", "2", "3"})))
         self.assertMapEqual(expected_block_map, original_block_map)
 
 
