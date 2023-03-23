@@ -63,7 +63,7 @@ def loop_restructure_helper(bbmap: BlockMap, loop: Set[Label]):
         and backedge_blocks[0] == next(iter(exiting_blocks))):
         for label in loop:
             bbmap.add_block(bbmap.graph.pop(label).replace_backedge(loop_head))
-        return headers, loop_head, next(iter(exiting_blocks)), next(iter(exit_blocks))
+        return
 
     # The synthetic exiting latch and synthetic exit need to be created
     # based on the state of the cfg. If there are multiple exits, we need a
