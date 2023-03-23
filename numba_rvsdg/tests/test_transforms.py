@@ -529,14 +529,20 @@ class TestLoopRestructure(MapComparator):
         "1":
             jt: ["2"]
         "2":
-            jt: ["3", "8"]
+            jt: ["3", "6"]
         "3":
-            jt: ["6", "7"]
+            jt: ["7", "8"]
         "4":
             jt: []
         "5":
             jt: ["1", "4"]
             be: ["1"]
+        "6":
+            jt: ["5"]
+        "7":
+            jt: ["5"]
+        "8":
+            jt: ["5"]
         """
         original_block_map = self.from_yaml(original)
         expected_block_map = self.from_yaml(expected)
