@@ -487,9 +487,9 @@ class TestLoopRestructure(MapComparator):
         "0":
             jt: ["1"]
         "1":
-            jt: ["2", "6"]
+            jt: ["2", "5"]
         "2":
-            jt: ["5"]
+            jt: ["6"]
         "3":
             jt: []
         "4":
