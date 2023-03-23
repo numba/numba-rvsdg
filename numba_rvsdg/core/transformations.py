@@ -111,7 +111,7 @@ def loop_restructure_helper(bbmap: BlockMap, loop: Set[Label]):
     new_blocks = set()
     doms = _doms(bbmap)
     # For every block in the loop:
-    for label in loop:
+    for label in sorted(loop, key=lambda x: x.index):
         # If the block is an exiting block or a backedge block
         if label in exiting_blocks or label in backedge_blocks:
             # Copy the jump targets, these will be modified
