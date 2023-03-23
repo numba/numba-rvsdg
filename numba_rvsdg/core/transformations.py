@@ -40,9 +40,8 @@ def loop_restructure_helper(bbmap: BlockMap, loop: Set[Label]):
 
     headers, entries = bbmap.find_headers_and_entries(loop)
     exiting_blocks, exit_blocks = bbmap.find_exiting_and_exits(loop)
-    assert len(entries) == 1
+    #assert len(entries) == 1
     headers_were_unified = False
-    loop_head: Label = next(iter(headers))
 
     # If there are multiple headers, insert assignment and control blocks,
     # such that only a single loop header remains.
@@ -52,7 +51,8 @@ def loop_restructure_helper(bbmap: BlockMap, loop: Set[Label]):
         bbmap.insert_block_and_control_blocks(solo_head_label, entries, headers)
         loop.add(solo_head_label)
         loop_head: Label = solo_head_label
-
+    else:
+        loop_head: Label = next(iter(headers))
     # If there is only a single exiting latch (an exiting block that also has a
     # backedge to the loop header) we can exit early, since the condition for
     # SCFG is fullfilled.

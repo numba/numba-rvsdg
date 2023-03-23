@@ -244,7 +244,7 @@ class BlockMap:
             # predecessors to a successor and insert it between the predecessor
             # and the newly created block
             for s in set(jt).intersection(successors):
-                synth_assign = SynthenticAssignment(self.clg.new_index())
+                synth_assign = SynthenticAssignment(str(self.clg.new_index()))
                 variable_assignment = {}
                 variable_assignment[branch_variable] = branch_variable_value
                 synth_assign_block = ControlVariableBlock(
