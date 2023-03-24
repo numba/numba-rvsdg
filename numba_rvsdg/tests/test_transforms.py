@@ -435,9 +435,9 @@ class TestLoopRestructure(MapComparator):
         "2":
             jt: []
         """
-        original_block_map = self.from_yaml(original)
-        expected_block_map = self.from_yaml(expected)
-        loop_restructure_helper(original_block_map, set(self.wrap_id({"1"})))
+        original_block_map = BlockMap.from_yaml(original)
+        expected_block_map = BlockMap.from_yaml(expected)
+        loop_restructure_helper(original_block_map, set(wrap_id({"1"})))
         self.assertMapEqual(expected_block_map, original_block_map)
 
     def test_no_op(self):
@@ -463,9 +463,9 @@ class TestLoopRestructure(MapComparator):
         "3":
             jt: []
         """
-        original_block_map = self.from_yaml(original)
-        expected_block_map = self.from_yaml(expected)
-        loop_restructure_helper(original_block_map, set(self.wrap_id({"1", "2"})))
+        original_block_map = BlockMap.from_yaml(original)
+        expected_block_map = BlockMap.from_yaml(expected)
+        loop_restructure_helper(original_block_map, set(wrap_id({"1", "2"})))
         self.assertMapEqual(expected_block_map, original_block_map)
 
     def test_backedge_not_exiting(self):
@@ -500,9 +500,9 @@ class TestLoopRestructure(MapComparator):
         "6":
             jt: ["4"]
         """
-        original_block_map = self.from_yaml(original)
-        expected_block_map = self.from_yaml(expected)
-        loop_restructure_helper(original_block_map, set(self.wrap_id({"1", "2"})))
+        original_block_map = BlockMap.from_yaml(original)
+        expected_block_map = BlockMap.from_yaml(expected)
+        loop_restructure_helper(original_block_map, set(wrap_id({"1", "2"})))
         self.assertMapEqual(expected_block_map, original_block_map)
 
     def test_double_exit(self):
@@ -544,9 +544,9 @@ class TestLoopRestructure(MapComparator):
         "8":
             jt: ["5"]
         """
-        original_block_map = self.from_yaml(original)
-        expected_block_map = self.from_yaml(expected)
-        loop_restructure_helper(original_block_map, set(self.wrap_id({"1", "2", "3"})))
+        original_block_map = BlockMap.from_yaml(original)
+        expected_block_map = BlockMap.from_yaml(expected)
+        loop_restructure_helper(original_block_map, set(wrap_id({"1", "2", "3"})))
         self.assertMapEqual(expected_block_map, original_block_map)
 
     def test_double_header(self):
@@ -595,9 +595,9 @@ class TestLoopRestructure(MapComparator):
         "12":
             jt: ["9"]
         """
-        original_block_map = self.from_yaml(original)
-        expected_block_map = self.from_yaml(expected)
-        loop_restructure_helper(original_block_map, set(self.wrap_id({"1", "2", "3", "4"})))
+        original_block_map = BlockMap.from_yaml(original)
+        expected_block_map = BlockMap.from_yaml(expected)
+        loop_restructure_helper(original_block_map, set(wrap_id({"1", "2", "3", "4"})))
         self.assertMapEqual(expected_block_map, original_block_map)
 
     def test_double_header_double_exiting(self):
@@ -662,9 +662,9 @@ class TestLoopRestructure(MapComparator):
         "16":
             jt: ["11"]
         """
-        original_block_map = self.from_yaml(original)
-        expected_block_map = self.from_yaml(expected)
-        loop_restructure_helper(original_block_map, set(self.wrap_id({"1", "2", "3", "4"})))
+        original_block_map = BlockMap.from_yaml(original)
+        expected_block_map = BlockMap.from_yaml(expected)
+        loop_restructure_helper(original_block_map, set(wrap_id({"1", "2", "3", "4"})))
         self.assertMapEqual(expected_block_map, original_block_map)
 
 if __name__ == "__main__":
