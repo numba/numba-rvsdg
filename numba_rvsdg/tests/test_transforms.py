@@ -550,6 +550,8 @@ class TestLoopRestructure(MapComparator):
         self.assertMapEqual(expected_block_map, original_block_map)
 
     def test_double_header(self):
+        """ This is like the example from Bahman2015 fig. 3 --
+        but with one exiting block removed."""
         original = """
         "0":
             jt: ["1", "2"]
@@ -599,6 +601,12 @@ class TestLoopRestructure(MapComparator):
         self.assertMapEqual(expected_block_map, original_block_map)
 
     def test_double_header_double_exiting(self):
+        """ This is like the example from Bahman2015 fig. 3.
+
+        Two headers that need to be multiplexed to, on additional branch that
+        becomes the exiting latch and one branch that becomes the exit.
+        
+        """
         original = """
         "0":
             jt: ["1", "2"]
