@@ -355,12 +355,12 @@ class BlockMap:
             jump_target_str= f"""
                 "{str(key.index)}":
                     jt: {jump_targets}"""
-            yaml_string += dedent(jump_target_str)
+
             if back_edges:
                 back_edges = str(back_edges).replace("\'", "\"")
-                back_edge_str = f"""
+                jump_target_str += f"""
                     be: {back_edges}"""
-                yaml_string += dedent(back_edge_str)
+            yaml_string += dedent(jump_target_str)
 
         return yaml_string
 
