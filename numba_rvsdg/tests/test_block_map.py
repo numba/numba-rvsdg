@@ -12,7 +12,7 @@ class TestBlockMapIterator(MapComparator):
                                            _jump_targets=(ControlLabel("1"),))),
             (ControlLabel("1"), BasicBlock(label=ControlLabel("1"))),
         ]
-        block_map = self.from_yaml("""
+        block_map = BlockMap.from_yaml("""
         "0":
             jt: ["1"]
         "1":

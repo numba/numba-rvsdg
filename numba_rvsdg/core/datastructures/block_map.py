@@ -1,4 +1,6 @@
 import dis
+import yaml
+from textwrap import dedent
 from typing import Set, Tuple, Dict, List, Iterator
 from dataclasses import dataclass, field
 
@@ -15,6 +17,7 @@ from numba_rvsdg.core.datastructures.labels import (
     SyntheticExit,
     SyntheticTail,
     SyntheticReturn,
+    ControlLabel
 )
 
 
@@ -318,3 +321,59 @@ class BlockMap:
     @staticmethod
     def bcmap_from_bytecode(bc: dis.Bytecode):
         return {inst.offset: inst for inst in bc}
+
+    @staticmethod
+    def from_yaml(yaml_string):
+        data = yaml.safe_load(yaml_string)
+        return BlockMap.from_dict(data)
+
+    @staticmethod
+    def from_dict(graph_dict):        
+        block_map_graph = {}
+        clg = ControlLabelGenerator()
+        for index, attributes in graph_dict.items():
+            jump_targets = attributes["jt"]
+            backedges = attributes.get("be", ())
+            label = ControlLabel(str(clg.new_index()))
+            block = BasicBlock(
+                label=label,
+                backedges=wrap_id(backedges),
+                _jump_targets=wrap_id(jump_targets),
+            )
+            block_map_graph[label] = block
+        return BlockMap(block_map_graph, clg=clg)
+
+    def to_yaml(self):
+        # Convert to yaml
+        block_map_graph = self.graph
+        yaml_string = """"""
+
+        for key, value in block_map_graph.items():
+            jump_targets = [f"{i.index}" for i in value._jump_targets]
+            jump_targets = str(jump_targets).replace("\'", "\"")
+            back_edges = [f"{i.index}" for i in value.backedges]
+            jump_target_str= f"""
+                "{str(key.index)}":
+                    jt: {jump_targets}"""
+
+            if back_edges:
+                back_edges = str(back_edges).replace("\'", "\"")
+                jump_target_str += f"""
+                    be: {back_edges}"""
+            yaml_string += dedent(jump_target_str)
+
+        return yaml_string
+
+    def to_dict(self):
+        block_map_graph = self.graph
+        graph_dict = {}
+        for key, value in block_map_graph.items():
+            curr_dict = {}
+            curr_dict["jt"] = [f"{i.index}" for i in value._jump_targets]
+            if value.backedges:
+                curr_dict["be"] = [f"{i.index}" for i in value.backedges]
+            graph_dict[str(key.index)] = curr_dict
+        return graph_dict
+
+def wrap_id(indices: Set[Label]):
+    return tuple([ControlLabel(i) for i in indices])
