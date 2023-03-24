@@ -1,5 +1,6 @@
 import dis
 import yaml
+from textwrap import dedent
 from typing import Set, Tuple, Dict, List, Iterator
 from dataclasses import dataclass, field
 
@@ -351,13 +352,16 @@ class BlockMap:
             jump_targets = [f"{i.index}" for i in value._jump_targets]
             jump_targets = str(jump_targets).replace("\'", "\"")
             back_edges = [f"{i.index}" for i in value.backedges]
-            yaml_string += f"""
-    "{str(key.index)}":
-        jt: {jump_targets}"""         
+            jump_target_str= f"""
+                "{str(key.index)}":
+                    jt: {jump_targets}"""
+            yaml_string += dedent(jump_target_str)
             if back_edges:
                 back_edges = str(back_edges).replace("\'", "\"")
-                yaml_string += f"""
-        be: {back_edges}"""
+                back_edge_str = f"""
+                    be: {back_edges}"""
+                yaml_string += dedent(back_edge_str)
+
         return yaml_string
 
     def to_dict(self):

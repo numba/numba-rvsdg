@@ -9,19 +9,19 @@ from numba_rvsdg.tests.test_utils import MapComparator
 class TestBlockMapConversion(MapComparator):
 
     def test_yaml_conversion(self):
-        # Case # 1
+        # Case # 1: Acyclic graph, no back-edges
         cases = ["""
     "0":
         jt: ["1", "2"]
     "1":
         jt: ["3"]
     "2":
-        jt: ["1", "4"]
+        jt: ["4"]
     "3":
-        jt: ["0"]
+        jt: ["4"]
     "4":
         jt: []""",
-        # Case # 2
+        # Case # 2: Cyclic graph, no back edges
         """
     "0":
         jt: ["1", "2"]
@@ -35,7 +35,7 @@ class TestBlockMapConversion(MapComparator):
         jt: []
     "5":
         jt: ["3", "4"]""",
-        # Case # 3
+        # Case # 3: Graph with backedges
         """
     "0":
         jt: ["1"]
@@ -54,19 +54,19 @@ class TestBlockMapConversion(MapComparator):
             self.assertEqual(case, block_map.to_yaml())
     
     def test_dict_conversion(self):
-        # Case # 1
+        # Case # 1: Acyclic graph, no back-edges
         cases = [{
     "0":
         {"jt": ["1", "2"]},
     "1":
         {"jt": ["3"]},
     "2":
-        {"jt": ["1", "4"]},
+        {"jt": ["4"]},
     "3":
-        {"jt": ["0"]},
+        {"jt": ["4"]},
     "4":
         {"jt": []}},
-        # Case # 2
+        # Case # 2: Cyclic graph, no back edges
         {
     "0":
         {"jt": ["1", "2"]},
@@ -80,7 +80,7 @@ class TestBlockMapConversion(MapComparator):
         {"jt": []},
     "5":
         {"jt": ["3", "4"]}},
-        # Case # 3
+        # Case # 3: Graph with backedges
         {
     "0":
         {"jt": ["1"]},
