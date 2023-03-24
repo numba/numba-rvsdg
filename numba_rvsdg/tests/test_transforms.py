@@ -598,5 +598,66 @@ class TestLoopRestructure(MapComparator):
         loop_restructure_helper(original_block_map, set(self.wrap_id({"1", "2", "3", "4"})))
         self.assertMapEqual(expected_block_map, original_block_map)
 
+    def test_double_header_double_exiting(self):
+        original = """
+        "0":
+            jt: ["1", "2"]
+        "1":
+            jt: ["3"]
+        "2":
+            jt: ["4"]
+        "3":
+            jt: ["2", "5"]
+        "4":
+            jt: ["1", "6"]
+        "5":
+            jt: ["7"]
+        "6":
+            jt: ["7"]
+        "7":
+            jt: []
+        """
+        expected = """
+        "0":
+            jt: ["10", "9"]
+        "1":
+            jt: ["3"]
+        "2":
+            jt: ["4"]
+        "3":
+            jt: ["13", "14"]
+        "4":
+            jt: ["15", "16"]
+        "5":
+            jt: ["7"]
+        "6":
+            jt: ["7"]
+        "7":
+            jt: []
+        "8":
+            jt: ["1", "2"]
+        "9":
+            jt: ["8"]
+        "10":
+            jt: ["8"]
+        "11":
+            jt: ["12", "8"]
+            be: ["8"]
+        "12":
+            jt: ["5", "6"]
+        "13":
+            jt: ["11"]
+        "14":
+            jt: ["11"]
+        "15":
+            jt: ["11"]
+        "16":
+            jt: ["11"]
+        """
+        original_block_map = self.from_yaml(original)
+        expected_block_map = self.from_yaml(expected)
+        loop_restructure_helper(original_block_map, set(self.wrap_id({"1", "2", "3", "4"})))
+        self.assertMapEqual(expected_block_map, original_block_map)
+
 if __name__ == "__main__":
     main()
