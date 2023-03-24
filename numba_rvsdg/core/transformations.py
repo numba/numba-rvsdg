@@ -193,7 +193,8 @@ def loop_restructure_helper(bbmap: BlockMap, loop: Set[Label]):
     )
     loop.add(synth_exiting_latch)
     bbmap.add_block(synth_exiting_latch_block)
-    # If an exit is to be created, we do so too, but only add it to the loop
+    # If an exit is to be created, we do so too, but only add it to the bbmap,
+    # since it isn't part of the loop
     if needs_synth_exit:
         synth_exit_block = BranchBlock(
             label=synth_exit,
