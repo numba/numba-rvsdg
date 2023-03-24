@@ -22,157 +22,81 @@ from numba_rvsdg.core.datastructures.basic_block import (
 from numba_rvsdg.core.utils import _logger
 
 
-def loop_rotate_for_loop(bbmap: BlockMap, loop: Set[Label]):
-    """ "Loop-rotate" a Python for loop.
+def loop_restructure_helper(bbmap: BlockMap, loop: Set[Label]):
+    """Loop Restructuring
 
-    This function will convert a header controlled Python for loop into a
-    tail-controlled Python foor loop. The approach taken here is to reuse the
-    `FOR_ITER` bytecode as a loop guard. To implement this, the existing
-    instruction is replicated into a `SyntheticForIter` block and the backedges
-    are updated accordingly.
+    Applies the algorithm LOOP RESTRUCTURING from section 4.1 of Bahmann2015.
 
-    Example
-    -------
+    Note that this will modify both the `bbmap` and the `loop` in-place.
 
-    Consider the following Python for loop:
-
-    .. code-block::
-
-        def foo(n):
-            for i in range(n):
-                pass
-
-
-    This is the initial CFG.
-
-      ┌─────────┐
-      │  ENTRY  │
-      └────┬────┘
-           │
-           │
-           │
-      ┌────▼────┐
-    ┌─►FOR_ITER │
-    │ └────┬────┘
-    │      │
-    │      ├─────────────┐
-    │      │             │
-    │ ┌────▼────┐   ┌────▼────┐
-    └─┤  BODY   │   │  RETURN │
-      └─────────┘   └─────────┘
-
-    After loop-rotation, the backedge no longer points to the FOR_ITER and the
-    SYNTHETIC for-iter block handles the loop condition. The initial FOR_ITER
-    now serves as a loop-guard to determine if the loop should be entred or
-    not.
-
-      ┌─────────┐
-      │  ENTRY  │
-      └────┬────┘
-           │
-           │
-           │
-      ┌────▼────┐
-      │FOR_ITER │
-      └────┬────┘
-           │
-           ├─────────────┐
-           │             │
-      ┌────▼────┐        │
-    ┌─►  BODY   │        │
-    │ └────┬────┘        │
-    │      │             │
-    │      │             │
-    │      │             │
-    │ ┌────▼────┐   ┌────▼────┐
-    └─┤SYNTHETIC├───►  RETURN │
-      └─────────┘   └─────────┘
+    Parameters
+    ----------
+    bbmap: BlockMap
+        The BlockMap containing the loop
+    loop: Set[Label]
+        The loop (strongly connected components) that is to be restructured
 
     """
+
     headers, entries = bbmap.find_headers_and_entries(loop)
     exiting_blocks, exit_blocks = bbmap.find_exiting_and_exits(loop)
-    # Make sure there is only a single header, which is the FOR_ITER block.
-    assert len(headers) == 1
-    for_iter: Label = next(iter(headers))
-    # Create the SyntheticForIter block and replicate the jump targets from the
-    # original FOR_ITER block.
-    synth_for_iter = SyntheticForIter(str(bbmap.clg.new_index()))
-    new_block = BasicBlock(
-        label=synth_for_iter, _jump_targets=bbmap[for_iter].jump_targets, backedges=()
-    )
-    bbmap.add_block(new_block)
-
-    # Remove the FOR_ITER from the set of loop blocks.
-    loop.remove(for_iter)
-    # Rewire incoming edges for FOR_ITER to SyntheticForIter instead.
-    for label in loop:
-        block = bbmap.graph.pop(label)
-        jt = list(block.jump_targets)
-        if for_iter in jt:
-            jt[jt.index(for_iter)] = synth_for_iter
-        bbmap.add_block(block.replace_jump_targets(jump_targets=tuple(jt)))
-
-    # Finally, add the SYNTHETIC_FOR_ITER to the loop.
-    loop.add(synth_for_iter)
-
-
-def loop_rotate(bbmap: BlockMap, loop: Set[Label]):
-    """Rotate loop.
-
-    This will convert the loop into "loop canonical form".
-    """
-    headers, entries = bbmap.find_headers_and_entries(loop)
-    exiting_blocks, exit_blocks = bbmap.find_exiting_and_exits(loop)
-    # if len(entries) == 0:
-    #    return
-    assert len(entries) == 1
+    #assert len(entries) == 1
     headers_were_unified = False
-    if len(loop) == 1:
-        # Probably a Python while loop, only find the loop_head
-        loop_head: Label = next(iter(loop))
-    elif len(headers) > 1:
+
+    # If there are multiple headers, insert assignment and control blocks,
+    # such that only a single loop header remains.
+    if len(headers) > 1:
         headers_were_unified = True
-        solo_head_label = SyntheticHead(bbmap.clg.new_index())
+        solo_head_label = SyntheticHead(str(bbmap.clg.new_index()))
         bbmap.insert_block_and_control_blocks(solo_head_label, entries, headers)
         loop.add(solo_head_label)
         loop_head: Label = solo_head_label
-    elif len(headers) == 1:
-        # TODO join entries
-        # Probably a Python for loop
-        loop_rotate_for_loop(bbmap, loop)
-        headers, entries = bbmap.find_headers_and_entries(loop)
-        exiting_blocks, exit_blocks = bbmap.find_exiting_and_exits(loop)
-        loop_head: Label = next(iter(headers))
     else:
-        raise Exception("unreachable")
-
+        loop_head: Label = next(iter(headers))
+    # If there is only a single exiting latch (an exiting block that also has a
+    # backedge to the loop header) we can exit early, since the condition for
+    # SCFG is fullfilled.
     backedge_blocks = [
         block for block in loop if headers.intersection(bbmap[block].jump_targets)
     ]
-    if len(backedge_blocks) == 1 and len(exiting_blocks) == 1:
-        for label in loop:
-            bbmap.add_block(bbmap.graph.pop(label).replace_backedge(loop_head))
-        return headers, loop_head, next(iter(exiting_blocks)), next(iter(exit_blocks))
+    if (len(backedge_blocks) == 1 and len(exiting_blocks) == 1
+        and backedge_blocks[0] == next(iter(exiting_blocks))):
+        bbmap.add_block(bbmap.graph.pop(backedge_blocks[0]).replace_backedge(loop_head))
+        return
 
-    # TODO: the synthetic exiting latch and synthetic exit need to be created
-    # based on the state of the cfg
-    synth_exiting_latch = SyntheticExitingLatch(bbmap.clg.new_index())
-    synth_exit = SyntheticExit(bbmap.clg.new_index())
+    # The synthetic exiting latch and synthetic exit need to be created
+    # based on the state of the cfg. If there are multiple exits, we need a
+    # SyntheticExit, otherwise we only need a SyntheticExitingLatch
+    synth_exiting_latch = SyntheticExitingLatch(str(bbmap.clg.new_index()))
+    # Set a flag, this will determine the variable assignment and block
+    # insertion later on
+    needs_synth_exit = len(exit_blocks) > 1
+    if needs_synth_exit:
+        synth_exit = SyntheticExit(str(bbmap.clg.new_index()))
 
-    # the entry variable and the exit variable will be re-used
+    # This sets up the various control variables.
+    # If there were multiple headers, we must re-use the variable that was used
+    # for looping as the exit variable
     if headers_were_unified:
         exit_variable = bbmap[solo_head_label].variable
     else:
         exit_variable = bbmap.clg.new_variable()
-    # exit_variable = bbmap.clg.new_variable()
+    # This variable denotes the backedge
     backedge_variable = bbmap.clg.new_variable()
+    # Now we setup the lookup tables for the various control variables,
+    # depending on the state of the CFG and what is needed
     exit_value_table = dict(((i, j) for i, j in enumerate(exit_blocks)))
-    backedge_value_table = dict((i, j) for i, j in enumerate((loop_head, synth_exit)))
+    if needs_synth_exit:
+        backedge_value_table = dict((i, j) for i, j in enumerate((loop_head, synth_exit)))
+    else:
+        backedge_value_table = dict((i, j) for i, j in enumerate((loop_head, next(iter(exit_blocks)))))
     if headers_were_unified:
         header_value_table = bbmap[solo_head_label].branch_value_table
     else:
         header_value_table = {}
 
+    # This does a dictionary reverse lookup, to determine the key for a given
+    # value.
     def reverse_lookup(d, value):
         for k, v in d.items():
             if v == value:
@@ -180,87 +104,106 @@ def loop_rotate(bbmap: BlockMap, loop: Set[Label]):
         else:
             return "UNUSED"
 
+    # Now that everything is in place, we can start to insert blocks, depending
+    # on what is needed
+    # All new blocks are recorded for later insertion into the loop set
     new_blocks = set()
     doms = _doms(bbmap)
-    for label in loop:
+    # For every block in the loop:
+    for label in sorted(loop, key=lambda x: x.index):
+        # If the block is an exiting block or a backedge block
         if label in exiting_blocks or label in backedge_blocks:
+            # Copy the jump targets, these will be modified
             new_jt = list(bbmap[label].jump_targets)
+            # For each jump_target in the blockj
             for jt in bbmap[label].jump_targets:
+                # If the target is an exit block
                 if jt in exit_blocks:
-                    synth_assign = SynthenticAssignment(bbmap.clg.new_index())
+                    # Create a new assignment label and record it
+                    synth_assign = SynthenticAssignment(str(bbmap.clg.new_index()))
                     new_blocks.add(synth_assign)
-                    variable_assignment = dict(
-                        (
-                            (
-                                backedge_variable,
-                                reverse_lookup(backedge_value_table, synth_exit),
-                            ),
-                            (exit_variable, reverse_lookup(exit_value_table, jt)),
-                        )
-                    )
+                    # Setup the table for the variable assignment
+                    variable_assignment = {}
+                    # Setup the variables in the assignment table to point to
+                    # the correct blocks
+                    if needs_synth_exit:
+                        variable_assignment[exit_variable]  = reverse_lookup(exit_value_table, jt)
+                    variable_assignment[backedge_variable]  = reverse_lookup(backedge_value_table,
+                        synth_exit if needs_synth_exit else next(iter(exit_blocks)))
+                    # Create the actual control variable block
                     synth_assign_block = ControlVariableBlock(
                         label=synth_assign,
                         _jump_targets=(synth_exiting_latch,),
                         backedges=(),
                         variable_assignment=variable_assignment,
                     )
+                    # Insert the assignment to the block map
                     bbmap.add_block(synth_assign_block)
+                    # Insert the new block into the new jump_targets making
+                    # sure, that it replaces the correct jump_target, order
+                    # matters in this case.
                     new_jt[new_jt.index(jt)] = synth_assign
+                # If the target is the loop_head
                 elif jt in headers and label not in doms[jt]:
-                    synth_assign = SynthenticAssignment(bbmap.clg.new_index())
+                    # Create the assignment and record it
+                    synth_assign = SynthenticAssignment(str(bbmap.clg.new_index()))
                     new_blocks.add(synth_assign)
-                    variable_assignment = dict(
-                        (
-                            (
-                                backedge_variable,
-                                reverse_lookup(backedge_value_table, loop_head),
-                            ),
-                            (exit_variable, reverse_lookup(header_value_table, jt)),
-                        )
-                    )
-                    # update the backedge block
+                    # Setup the variables in the assignment table to point to
+                    # the correct blocks
+                    variable_assignment = {}
+                    variable_assignment[backedge_variable] = reverse_lookup(backedge_value_table, loop_head)
+                    if needs_synth_exit:
+                        variable_assignment[exit_variable] = reverse_lookup(header_value_table, jt)
+                    # Update the backedge block - remove any existing backedges
+                    # that point to the headers, no need to add a backedge,
+                    # since it will be contained in the SyntheticExitingLatch
+                    # later on.
                     block = bbmap.graph.pop(label)
                     jts = list(block.jump_targets)
-                    # remove any existing backedges that point to the headers,
-                    # no need to add a backedge, since it will be contained in
-                    # the SyntheticExitingLatch later on.
                     for h in headers:
                         if h in jts:
                             jts.remove(h)
                     bbmap.add_block(block.replace_jump_targets(jump_targets=tuple(jts)))
+                    # Setup the assignment block and initialize it with the
+                    # correct jump_targets and variable assignment.
                     synth_assign_block = ControlVariableBlock(
                         label=synth_assign,
                         _jump_targets=(synth_exiting_latch,),
                         backedges=(),
                         variable_assignment=variable_assignment,
                     )
+                    # Add the new block to the BlockMap
                     bbmap.add_block(synth_assign_block)
+                    # Update the jump targets again, order matters
                     new_jt[new_jt.index(jt)] = synth_assign
-            # finally, replace the jump_targets
+            # finally, replace the jump_targets for this block with the new ones
             bbmap.add_block(
                 bbmap.graph.pop(label).replace_jump_targets(jump_targets=tuple(new_jt))
             )
-
+    # Add any new blocks to the loop.
     loop.update(new_blocks)
 
+    # Insert the exiting latch, add it to the loop and to the graph.
     synth_exiting_latch_block = BranchBlock(
         label=synth_exiting_latch,
-        _jump_targets=(synth_exit, loop_head),
+        _jump_targets=(synth_exit if needs_synth_exit else next(iter(exit_blocks)), loop_head),
         backedges=(loop_head,),
         variable=backedge_variable,
         branch_value_table=backedge_value_table,
     )
     loop.add(synth_exiting_latch)
     bbmap.add_block(synth_exiting_latch_block)
-
-    synth_exit_block = BranchBlock(
-        label=synth_exit,
-        _jump_targets=tuple(exit_blocks),
-        backedges=(),
-        variable=exit_variable,
-        branch_value_table=exit_value_table,
-    )
-    bbmap.add_block(synth_exit_block)
+    # If an exit is to be created, we do so too, but only add it to the bbmap,
+    # since it isn't part of the loop
+    if needs_synth_exit:
+        synth_exit_block = BranchBlock(
+            label=synth_exit,
+            _jump_targets=tuple(exit_blocks),
+            backedges=(),
+            variable=exit_variable,
+            branch_value_table=exit_value_table,
+        )
+        bbmap.add_block(synth_exit_block)
 
 
 def restructure_loop(bbmap: BlockMap):
@@ -283,7 +226,7 @@ def restructure_loop(bbmap: BlockMap):
     )
     # rotate and extract loop
     for loop in loops:
-        loop_rotate(bbmap, loop)
+        loop_restructure_helper(bbmap, loop)
         extract_region(bbmap, loop, "loop")
 
 
