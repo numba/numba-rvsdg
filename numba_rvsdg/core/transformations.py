@@ -3,7 +3,6 @@ from typing import Set, Dict, List
 
 from numba_rvsdg.core.datastructures.labels import (
     Label,
-    SyntheticForIter,
     SyntheticBranch,
     SyntheticHead,
     SyntheticExitingLatch,

@@ -57,11 +57,6 @@ class SynthenticAssignment(ControlLabel):
     pass
 
 
-@dataclass(frozen=True, order=True)
-class SyntheticForIter(ControlLabel):
-    pass
-
-
 class ControlLabelGenerator:
     def __init__(self, index=0, variable=97):
         self.index = index
