@@ -11,7 +11,6 @@ from numba_rvsdg.core.datastructures.labels import (
     Label,
     PythonBytecodeLabel,
     ControlLabel,
-    SyntheticForIter,
     SynthenticAssignment,
     SyntheticExitingLatch,
     SyntheticExit,
@@ -258,9 +257,6 @@ class Simulator:
         print(f"stack after: {self.stack}")
 
     ### Synthetic Instructions ###
-    def synth_SyntheticForIter(self, control_label, block):
-        self.op_FOR_ITER(None)
-
     def synth_SynthenticAssignment(self, control_label, block):
         self.ctrl_varmap.update(block.variable_assignment)
 
