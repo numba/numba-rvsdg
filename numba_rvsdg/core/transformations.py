@@ -9,19 +9,19 @@ from numba_rvsdg.core.datastructures.labels import (
     SyntheticExit,
     SynthenticAssignment,
     PythonBytecodeLabel,
+    BlockName
 )
-from numba_rvsdg.core.datastructures.block_map import BlockMap
+from numba_rvsdg.core.datastructures.scfg import SCFG
 from numba_rvsdg.core.datastructures.basic_block import (
     BasicBlock,
     ControlVariableBlock,
     BranchBlock,
-    RegionBlock,
 )
 
 from numba_rvsdg.core.utils import _logger
 
 
-def loop_restructure_helper(bbmap: BlockMap, loop: Set[Label]):
+def loop_restructure_helper(bbmap: SCFG, loop: Set[Label]):
     """Loop Restructuring
 
     Applies the algorithm LOOP RESTRUCTURING from section 4.1 of Bahmann2015.
@@ -30,8 +30,8 @@ def loop_restructure_helper(bbmap: BlockMap, loop: Set[Label]):
 
     Parameters
     ----------
-    bbmap: BlockMap
-        The BlockMap containing the loop
+    bbmap: SCFG
+        The SCFG containing the loop
     loop: Set[Label]
         The loop (strongly connected components) that is to be restructured
 
@@ -171,7 +171,7 @@ def loop_restructure_helper(bbmap: BlockMap, loop: Set[Label]):
                         backedges=(),
                         variable_assignment=variable_assignment,
                     )
-                    # Add the new block to the BlockMap
+                    # Add the new block to the SCFG
                     bbmap.add_block(synth_assign_block)
                     # Update the jump targets again, order matters
                     new_jt[new_jt.index(jt)] = synth_assign
@@ -205,16 +205,16 @@ def loop_restructure_helper(bbmap: BlockMap, loop: Set[Label]):
         bbmap.add_block(synth_exit_block)
 
 
-def restructure_loop(bbmap: BlockMap):
+def restructure_loop(bbmap: SCFG):
     """Inplace restructuring of the given graph to extract loops using
     strongly-connected components
     """
     # obtain a List of Sets of Labels, where all labels in each set are strongly
     # connected, i.e. all reachable from one another by traversing the subset
-    scc: List[Set[Label]] = bbmap.compute_scc()
+    scc: List[Set[SCFG]] = bbmap.compute_scc()
     # loops are defined as strongly connected subsets who have more than a
     # single label and single label loops that point back to to themselves.
-    loops: List[Set[Label]] = [
+    loops: List[Set[SCFG]] = [
         nodes
         for nodes in scc
         if len(nodes) > 1 or next(iter(nodes)) in bbmap[next(iter(nodes))].jump_targets
@@ -229,7 +229,7 @@ def restructure_loop(bbmap: BlockMap):
         extract_region(bbmap, loop, "loop")
 
 
-def find_head_blocks(bbmap: BlockMap, begin: Label) -> Set[Label]:
+def find_head_blocks(bbmap: SCFG, begin: Label) -> Set[Label]:
     head = bbmap.find_head()
     head_region_blocks = set()
     current_block = head
@@ -246,7 +246,7 @@ def find_head_blocks(bbmap: BlockMap, begin: Label) -> Set[Label]:
     return head_region_blocks
 
 
-def find_branch_regions(bbmap: BlockMap, begin: Label, end: Label) -> Set[Label]:
+def find_branch_regions(bbmap: SCFG, begin: Label, end: Label) -> Set[Label]:
     # identify branch regions
     doms = _doms(bbmap)
     postdoms = _post_doms(bbmap)
@@ -271,7 +271,7 @@ def find_branch_regions(bbmap: BlockMap, begin: Label, end: Label) -> Set[Label]
     return branch_regions
 
 
-def _find_branch_regions(bbmap: BlockMap, begin: Label, end: Label) -> Set[Label]:
+def _find_branch_regions(bbmap: SCFG, begin: Label, end: Label) -> Set[Label]:
     # identify branch regions
     branch_regions = []
     for bra_start in bbmap[begin].jump_targets:
@@ -281,7 +281,7 @@ def _find_branch_regions(bbmap: BlockMap, begin: Label, end: Label) -> Set[Label
 
 
 def find_tail_blocks(
-    bbmap: BlockMap, begin: Set[Label], head_region_blocks, branch_regions
+    bbmap: SCFG, begin: Set[Label], head_region_blocks, branch_regions
 ):
     tail_subregion = set((b for b in bbmap.graph.keys()))
     tail_subregion.difference_update(head_region_blocks)
@@ -305,8 +305,8 @@ def extract_region(bbmap, region_blocks, region_kind):
     region_header = next(iter(headers))
     region_exiting = next(iter(exiting_blocks))
 
-    head_subgraph = BlockMap(
-        {label: bbmap.graph[label] for label in region_blocks}, clg=bbmap.clg
+    head_subgraph = SCFG(
+        {label: bbmap.graph[label] for label in region_blocks}, name_gen=bbmap.name_gen
     )
 
     if isinstance(bbmap[region_exiting], RegionBlock):
@@ -327,7 +327,7 @@ def extract_region(bbmap, region_blocks, region_kind):
     bbmap.graph[region_header] = subregion
 
 
-def restructure_branch(bbmap: BlockMap):
+def restructure_branch(bbmap: SCFG):
     print("restructure_branch", bbmap.graph)
     doms = _doms(bbmap)
     postdoms = _post_doms(bbmap)
@@ -351,7 +351,7 @@ def restructure_branch(bbmap: BlockMap):
     # Unify headers of tail subregion if need be.
     headers, entries = bbmap.find_headers_and_entries(tail_region_blocks)
     if len(headers) > 1:
-        end = SyntheticHead(bbmap.clg.new_index())
+        end = SyntheticHead(bbmap.name_gen.new_index())
         bbmap.insert_block_and_control_blocks(end, entries, headers)
 
     # Recompute regions.
@@ -376,7 +376,7 @@ def restructure_branch(bbmap: BlockMap):
         else:
             # Insert SyntheticBranch
             tail_headers, _ = bbmap.find_headers_and_entries(tail_region_blocks)
-            synthetic_branch_block_label = SyntheticBranch(str(bbmap.clg.new_index()))
+            synthetic_branch_block_label = SyntheticBranch(str(bbmap.name_gen.new_index()))
             bbmap.insert_block(synthetic_branch_block_label, (begin,), tail_headers)
 
     # Recompute regions.
@@ -397,7 +397,7 @@ def restructure_branch(bbmap: BlockMap):
 
 
 def _iter_branch_regions(
-    bbmap: BlockMap, immdoms: Dict[Label, Label], postimmdoms: Dict[Label, Label]
+    bbmap: SCFG, immdoms: Dict[Label, Label], postimmdoms: Dict[Label, Label]
 ):
     for begin, node in [i for i in bbmap.graph.items()]:
         if len(node.jump_targets) > 1:
@@ -428,7 +428,7 @@ def _imm_doms(doms: Dict[Label, Set[Label]]) -> Dict[Label, Label]:
     return out
 
 
-def _doms(bbmap: BlockMap):
+def _doms(bbmap: SCFG):
     # compute dom
     entries = set()
     preds_table = defaultdict(set)
@@ -450,7 +450,7 @@ def _doms(bbmap: BlockMap):
     )
 
 
-def _post_doms(bbmap: BlockMap):
+def _post_doms(bbmap: SCFG):
     # compute post dom
     entries = set()
     for k, v in bbmap.graph.items():
@@ -481,13 +481,13 @@ def _find_dominators_internal(entries, nodes, preds_table, succs_table):
     # in http://pages.cs.wisc.edu/~fischer/cs701.f08/finding.loops.html
 
     # if post:
-    #     entries = set(self._exit_points)
-    #     preds_table = self._succs
-    #     succs_table = self._preds
+    #     entries = set(scfg._exit_points)
+    #     preds_table = scfg._succs
+    #     succs_table = scfg._preds
     # else:
-    #     entries = set([self._entry_point])
-    #     preds_table = self._preds
-    #     succs_table = self._succs
+    #     entries = set([scfg._entry_point])
+    #     preds_table = scfg._preds
+    #     succs_table = scfg._succs
 
     import functools
 
@@ -517,3 +517,108 @@ def _find_dominators_internal(entries, nodes, preds_table, succs_table):
             doms[n] = new_doms
             todo.extend(succs_table[n])
     return doms
+
+
+def insert_block_and_control_blocks(
+    scfg, label: Label, predecessors: Set[BlockName], successors: Set[BlockName]
+):  
+    # TODO: needs a diagram and documentaion
+    # name of the variable for this branching assignment
+    branch_variable = scfg.name_gen.new_name(label)
+    # initialize new block, which will hold the branching table
+    new_block = BranchBlock(
+        label=label,
+        _jump_targets=tuple(successors),
+        backedges=set(),
+        variable=branch_variable,
+        branch_value_table=branch_value_table,
+        name_gen=scfg.name_gen
+    )
+    # initial value of the assignment
+    branch_variable_value = 0
+    # store for the mapping from variable value to blockname
+    branch_value_table = {}
+    # Replace any arcs from any of predecessors to any of successors with
+    # an arc through the to be inserted block instead.
+    for name in predecessors:
+        block = scfg.graph[name]
+        jt = list(block.out_edges)
+        # Need to create synthetic assignments for each arc from a
+        # predecessors to a successor and insert it between the predecessor
+        # and the newly created block
+        for s in set(jt).intersection(successors):
+            synth_assign = SynthenticAssignment()
+            variable_assignment = {}
+            variable_assignment[branch_variable] = branch_variable_value
+            synth_assign_block = ControlVariableBlock(
+                label=synth_assign,
+                _jump_targets=(branch_variable,),
+                backedges=(),
+                variable_assignment=variable_assignment,
+                name_gen=scfg.name_gen
+            )
+            # add block
+            scfg.add_block(synth_assign_block)
+            # update branching table
+            branch_value_table[branch_variable_value] = s
+            # update branching variable
+            branch_variable_value += 1
+            # replace previous successor with synth_assign
+            jt[jt.index(s)] = synth_assign
+        # finally, replace the out_edges
+        scfg.add_block(
+            scfg.graph.pop(name).replace_jump_targets(out_edges=tuple(jt))
+        )
+
+    assert new_block.block_name == branch_variable
+    # add block to scfg
+    scfg.add_block(new_block)
+
+
+def join_returns(scfg):
+    """Close the CFG.
+
+    A closed CFG is a CFG with a unique entry and exit node that have no
+    predescessors and no successors respectively.
+    """
+    # for all nodes that contain a return
+    return_nodes = [node for node in scfg.blocks if scfg.blocks[node].is_exiting]
+    # close if more than one is found
+    if len(return_nodes) > 1:
+        return_solo_label = SyntheticReturn()
+        scfg.insert_block(return_solo_label, return_nodes, tuple())
+
+
+def join_tails_and_exits(scfg, tails: Set[BlockName], exits: Set[BlockName]):
+    if len(tails) == 1 and len(exits) == 1:
+        # no-op
+        solo_tail_name = next(iter(tails))
+        solo_exit_name = next(iter(exits))
+        return solo_tail_name, solo_exit_name
+
+    if len(tails) == 1 and len(exits) == 2:
+        # join only exits
+        solo_tail_name = next(iter(tails))
+        solo_exit_label = SyntheticExit()
+        exit_block = scfg.insert_block(solo_exit_label, tails, exits)
+        solo_exit_name = exit_block.block_name
+        return solo_tail_name, solo_exit_name
+
+    if len(tails) >= 2 and len(exits) == 1:
+        # join only tails
+        solo_tail_label = SyntheticTail()
+        solo_exit_name = next(iter(exits))
+        tail_block = scfg.insert_block(solo_tail_label, tails, exits)
+        solo_tail_name = tail_block.block_name
+        return solo_tail_name, solo_exit_name
+
+    if len(tails) >= 2 and len(exits) >= 2:
+        # join both tails and exits
+        solo_tail_label = SyntheticTail()
+        solo_exit_label = SyntheticExit()
+        tail_block = scfg.insert_block(solo_tail_label, tails, exits)
+        solo_tail_name = tail_block.block_name
+        exit_block = scfg.insert_block(solo_exit_label, set((solo_tail_label,)), exits)
+        solo_exit_name = exit_block.block_name
+        return solo_tail_name, solo_exit_name
+

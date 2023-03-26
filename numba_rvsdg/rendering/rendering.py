@@ -1,12 +1,11 @@
 import logging
 from numba_rvsdg.core.datastructures.basic_block import (
     BasicBlock,
-    RegionBlock,
     PythonBytecodeBlock,
     ControlVariableBlock,
     BranchBlock,
 )
-from numba_rvsdg.core.datastructures.block_map import BlockMap
+from numba_rvsdg.core.datastructures.scfg import SCFG
 from numba_rvsdg.core.datastructures.labels import (
     Label,
     PythonBytecodeLabel,
@@ -24,7 +23,7 @@ class ByteFlowRenderer(object):
         self.g = Digraph()
 
     def render_region_block(
-        self, digraph: "Digraph", label: Label, regionblock: RegionBlock
+        self, digraph: "Digraph", label: Label
     ):
         # render subgraph
         graph = regionblock.get_full_graph()
@@ -135,7 +134,7 @@ class ByteFlowRenderer(object):
         return self.g
 
     def bcmap_from_bytecode(self, bc: dis.Bytecode):
-        self.bcmap: Dict[int, dis.Instruction] = BlockMap.bcmap_from_bytecode(bc)
+        self.bcmap: Dict[int, dis.Instruction] = SCFG.bcmap_from_bytecode(bc)
 
 
 logging.basicConfig(level=logging.DEBUG)

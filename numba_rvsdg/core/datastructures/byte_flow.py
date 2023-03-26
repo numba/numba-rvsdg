@@ -1,19 +1,17 @@
 import dis
-from copy import deepcopy
 from dataclasses import dataclass
 
-from numba_rvsdg.core.datastructures.block_map import BlockMap
-from numba_rvsdg.core.datastructures.basic_block import RegionBlock
+from numba_rvsdg.core.datastructures.scfg import SCFG
 from numba_rvsdg.core.datastructures.flow_info import FlowInfo
 from numba_rvsdg.core.utils import _logger, _LogWrap
 
-from numba_rvsdg.core.transformations import restructure_loop, restructure_branch
+from numba_rvsdg.core.transformations import restructure_loop, restructure_branch, join_returns
 
 
 @dataclass(frozen=True)
 class ByteFlow:
     bc: dis.Bytecode
-    bbmap: "BlockMap"
+    bbmap: SCFG
 
     @staticmethod
     def from_bytecode(code) -> "ByteFlow":
@@ -25,41 +23,23 @@ class ByteFlow:
         return ByteFlow(bc=bc, bbmap=bbmap)
 
     def _join_returns(self):
-        bbmap = deepcopy(self.bbmap)
-        bbmap.join_returns()
-        return ByteFlow(bc=self.bc, bbmap=bbmap)
+        join_returns(self.bbmap)
 
     def _restructure_loop(self):
-        bbmap = deepcopy(self.bbmap)
-        restructure_loop(bbmap)
-        for region in _iter_subregions(bbmap):
-            restructure_loop(region.subregion)
-        return ByteFlow(bc=self.bc, bbmap=bbmap)
+        restructure_loop(self.bbmap)
 
     def _restructure_branch(self):
-        bbmap = deepcopy(self.bbmap)
-        restructure_branch(bbmap)
-        for region in _iter_subregions(bbmap):
-            restructure_branch(region.subregion)
-        return ByteFlow(bc=self.bc, bbmap=bbmap)
+        restructure_branch(self.bbmap)
 
     def restructure(self):
-        bbmap = deepcopy(self.bbmap)
         # close
-        bbmap.join_returns()
+        join_returns(self.bbmap)
         # handle loop
-        restructure_loop(bbmap)
-        for region in _iter_subregions(bbmap):
-            restructure_loop(region.subregion)
+        restructure_loop(self.bbmap)
         # handle branch
-        restructure_branch(bbmap)
-        for region in _iter_subregions(bbmap):
-            restructure_branch(region.subregion)
-        return ByteFlow(bc=self.bc, bbmap=bbmap)
+        restructure_branch(self.bbmap)
 
+    @staticmethod
+    def bcmap_from_bytecode(bc: dis.Bytecode):
+        return {inst.offset: inst for inst in bc}
 
-def _iter_subregions(bbmap: "BlockMap"):
-    for node in bbmap.graph.values():
-        if isinstance(node, RegionBlock):
-            yield node
-            yield from _iter_subregions(node.subregion)

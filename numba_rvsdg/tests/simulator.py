@@ -1,7 +1,7 @@
 from collections import ChainMap
 from dis import Instruction
 from numba_rvsdg.core.datastructures.byte_flow import ByteFlow
-from numba_rvsdg.core.datastructures.block_map import BlockMap
+from numba_rvsdg.core.datastructures.scfg import SCFG
 from numba_rvsdg.core.datastructures.basic_block import (
     BasicBlock,
     PythonBytecodeBlock,
@@ -23,7 +23,7 @@ import builtins
 
 
 class Simulator:
-    """BlockMap simulator.
+    """SCFG simulator.
 
     This is a simulator utility to be used for testing.
 
