@@ -12,6 +12,7 @@ from numba_rvsdg.core.datastructures.basic_block import (
 )
 from numba_rvsdg.core.datastructures.region import Region
 from numba_rvsdg.core.datastructures.labels import (
+    Label,
     BlockName,
     NameGenerator,
     RegionName,
@@ -197,6 +198,12 @@ class SCFG:
                 if block in self.blocks:
                     to_vist.extend(self.out_edges[self.blocks[block]])
 
+    def is_exiting(self, block_name: BlockName):
+        return len(self.out_edges[block_name]) == 0
+
+    def is_fallthrough(self, block_name: BlockName):
+        return len(self.out_edges[block_name]) == 1
+
     def check_graph(self):
         pass
 
@@ -209,10 +216,11 @@ class SCFG:
     #         del self.in_edges[name]
     #     self.check_graph()
 
-    def insert_block(self, predecessors: Set[BlockName], successors: Set[BlockName], block_type: type = BasicBlock, **block_args):
+    def insert_block(self, predecessors: Set[BlockName], successors: Set[BlockName], block_type: str = 'basic', block_label: Label = Label(), **block_args):
         # TODO: needs a diagram and documentaion
         # initialize new block
 
+        block_type = get_block_class(block_type)
         new_block_name = self.add_block(block_type, **block_args)
         # Replace any arcs from any of predecessors to any of successors with
         # an arc through the inserted block instead.
@@ -238,10 +246,11 @@ class SCFG:
         self.check_graph()
         return new_block_name
 
-    def add_block(self, block_type: str = 'basic', **block_args):
+    def add_block(self, block_type: str = 'basic', block_label: Label = Label(), **block_args):
         block_type = get_block_class(block_type)
         new_block = block_type(
             **block_args,
+            label=block_label,
             name_gen=self.name_gen
         )
 
@@ -316,13 +325,13 @@ class SCFG:
 
         return yaml_string
 
-    def to_dict(self):
-        block_map_graph = self.graph
-        graph_dict = {}
-        for key, value in block_map_graph.items():
-            curr_dict = {}
-            curr_dict["jt"] = [f"{i.index}" for i in value._out_edges]
-            if value.backedges:
-                curr_dict["be"] = [f"{i.index}" for i in value.backedges]
-            graph_dict[str(key.index)] = curr_dict
-        return graph_dict
+    # def to_dict(self):
+    #     block_map_graph = self.graph
+    #     graph_dict = {}
+    #     for key, value in block_map_graph.items():
+    #         curr_dict = {}
+    #         curr_dict["jt"] = [f"{i.index}" for i in value._out_edges]
+    #         if value.backedges:
+    #             curr_dict["be"] = [f"{i.index}" for i in value.backedges]
+    #         graph_dict[str(key.index)] = curr_dict
+    #     return graph_dict

@@ -77,10 +77,10 @@ class FlowInfo:
             end_offset = _next_inst_offset(self.last_offset)
 
         for begin, end in zip(offsets, [*offsets[1:], end_offset]):
-            names[begin] = scfg.add_block(block_type=PythonBytecodeBlock,
+            names[begin] = scfg.add_block(block_type='python_bytecode',
+                                          block_label=PythonBytecodeLabel(),
                                           begin=begin,
-                                          end=end,
-                                          label=PythonBytecodeLabel())
+                                          end=end)
 
         for begin, end in zip(offsets, [*offsets[1:], end_offset]):
             targets: Tuple[BlockName, ...]

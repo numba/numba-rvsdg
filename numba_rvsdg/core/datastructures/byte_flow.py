@@ -11,7 +11,7 @@ from numba_rvsdg.core.transformations import restructure_loop, restructure_branc
 @dataclass(frozen=True)
 class ByteFlow:
     bc: dis.Bytecode
-    bbmap: SCFG
+    scfg: SCFG
 
     @staticmethod
     def from_bytecode(code) -> "ByteFlow":
@@ -19,25 +19,25 @@ class ByteFlow:
         _logger.debug("Bytecode\n%s", _LogWrap(lambda: bc.dis()))
 
         flowinfo = FlowInfo.from_bytecode(bc)
-        bbmap = flowinfo.build_basicblocks()
-        return ByteFlow(bc=bc, bbmap=bbmap)
+        scfg = flowinfo.build_basicblocks()
+        return ByteFlow(bc=bc, scfg=scfg)
 
     def _join_returns(self):
-        join_returns(self.bbmap)
+        join_returns(self.scfg)
 
     def _restructure_loop(self):
-        restructure_loop(self.bbmap)
+        restructure_loop(self.scfg)
 
     def _restructure_branch(self):
-        restructure_branch(self.bbmap)
+        restructure_branch(self.scfg)
 
     def restructure(self):
         # close
-        join_returns(self.bbmap)
+        join_returns(self.scfg)
         # handle loop
-        restructure_loop(self.bbmap)
+        restructure_loop(self.scfg)
         # handle branch
-        restructure_branch(self.bbmap)
+        restructure_branch(self.scfg)
 
     @staticmethod
     def bcmap_from_bytecode(bc: dis.Bytecode):

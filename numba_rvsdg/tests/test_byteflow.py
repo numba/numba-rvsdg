@@ -263,15 +263,15 @@ class TestByteFlow(unittest.TestCase):
     def test_constructor(self):
         byteflow = ByteFlow([], [])
         self.assertEqual(len(byteflow.bc), 0)
-        self.assertEqual(len(byteflow.bbmap), 0)
+        self.assertEqual(len(byteflow.scfg), 0)
 
     def test_from_bytecode(self):
-        bbmap = SCFG()
+        scfg = SCFG()
 
-        bbmap.add_block('python_bytecode', begin=0, end=10, label=get_label_class('python_bytecode')())
-        expected = ByteFlow(bc=bytecode, bbmap=bbmap)
+        scfg.add_block('python_bytecode', begin=0, end=10, label=get_label_class('python_bytecode')())
+        expected = ByteFlow(bc=bytecode, scfg=scfg)
         received = ByteFlow.from_bytecode(fun)
-        self.assertEqual(expected.bbmap, received.bbmap)
+        self.assertEqual(expected.scfg, received.scfg)
 
 
 if __name__ == "__main__":
