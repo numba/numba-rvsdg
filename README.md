@@ -74,6 +74,9 @@ branch-restructuring.
 
 ```python
 # Example: for loop with branch and early exit
+
+from numba_rvsdg.rendering.rendering import render_func
+
 def foo(n):
     c = 0
     for i in range(n):
@@ -82,17 +85,8 @@ def foo(n):
             break
     return c
 
-flow = ByteFlow.from_bytecode(foo)
-ByteFlowRenderer().render_byteflow(flow).view("initial")
+render_func(foo)
 
-cflow = flow._join_returns()
-ByteFlowRenderer().render_byteflow(cflow).view("closed")
-
-lflow = cflow._restructure_loop()
-ByteFlowRenderer().render_byteflow(lflow).view("loop restructured")
-
-bflow = lflow._restructure_branch()
-ByteFlowRenderer().render_byteflow(bflow).view("branch restructured")
 ```
 
 ![initial](docs/images/initial.png "initial")
