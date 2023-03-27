@@ -1,5 +1,5 @@
 import dis
-from typing import Set, Tuple, Dict, Sequence
+from typing import Set, Tuple, Dict, Sequence, List
 from dataclasses import dataclass, field
 
 from numba_rvsdg.core.datastructures.basic_block import PythonBytecodeBlock
@@ -85,13 +85,13 @@ class FlowInfo:
             )
 
         for begin, end in zip(offsets, [*offsets[1:], end_offset]):
-            targets: Tuple[BlockName, ...]
+            targets: List[BlockName]
             term_offset = _prev_inst_offset(end)
             if term_offset not in self.jump_insts:
                 # implicit jump
                 targets = (names[end],)
             else:
-                targets = tuple(names[o] for o in self.jump_insts[term_offset])
+                targets = [names[o] for o in self.jump_insts[term_offset]]
 
             block_name = names[begin]
             scfg.add_connections(block_name, targets, [])

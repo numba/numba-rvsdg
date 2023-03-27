@@ -11,7 +11,7 @@ from numba_rvsdg.core.datastructures.labels import (
 from numba_rvsdg.core.datastructures.byte_flow import ByteFlow
 from numba_rvsdg.core.datastructures.scfg import SCFG
 from numba_rvsdg.core.datastructures.flow_info import FlowInfo
-
+from numba_rvsdg.tests.test_utils import SCFGComparator
 
 def fun():
     x = 1
@@ -24,7 +24,7 @@ bytecode = Bytecode(fun)
 class TestBCMapFromBytecode(unittest.TestCase):
     def test(self):
         # If the function definition line changes, just change the variable below, rest of it will adjust as long as function remains the same
-        func_def_line = 11
+        func_def_line = 16
         expected = {
             0: Instruction(
                 opname="RESUME",
@@ -118,47 +118,23 @@ class TestPythonBytecodeBlock(unittest.TestCase):
             label=PythonBytecodeLabel(),
             begin=0,
             end=8,
-            _jump_targets=(),
-            backedges=(),
             name_gen=name_gen,
         )
         self.assertEqual(block.label, PythonBytecodeLabel())
         self.assertEqual(block.begin, 0)
         self.assertEqual(block.end, 8)
-        self.assertFalse(block.fallthrough)
-        self.assertTrue(block.is_exiting)
-        self.assertEqual(block.jump_targets, ())
-        self.assertEqual(block.backedges, ())
 
         block_name = BlockName("pythonbytecodelabel_0")
         self.assertEqual(block.block_name, block_name)
 
-    def test_is_jump_target(self):
-        name_gen = NameGenerator(index=0)
-        label = PythonBytecodeLabel()
-
-        block = PythonBytecodeBlock(
-            label=label,
-            begin=0,
-            end=8,
-            _jump_targets=(name_gen.new_block_name(label),),
-            backedges=(),
-            name_gen=name_gen,
-        )
-        self.assertEqual(block.block_name, BlockName(name="pythonbytecodelabel_1"))
-        self.assertEqual(block.jump_targets, (BlockName(name="pythonbytecodelabel_0"),))
-        self.assertFalse(block.is_exiting)
-
     def test_get_instructions(self):
         # If the function definition line changes, just change the variable below, rest of it will adjust as long as function remains the same
-        func_def_line = 11
+        func_def_line = 16
         name_gen = NameGenerator(index=0)
         block = PythonBytecodeBlock(
             label=PythonBytecodeLabel(),
             begin=0,
             end=8,
-            _jump_targets=(),
-            backedges=(),
             name_gen=name_gen,
         )
         expected = [
@@ -228,7 +204,7 @@ class TestPythonBytecodeBlock(unittest.TestCase):
             ),
         ]
 
-        received = block.get_instructions(SCFG.bcmap_from_bytecode(bytecode))
+        received = block.get_instructions(ByteFlow.bcmap_from_bytecode(bytecode))
         self.assertEqual(expected, received)
 
 
@@ -246,23 +222,15 @@ class TestFlowInfo(unittest.TestCase):
         self.assertEqual(expected, received)
 
     def test_build_basic_blocks(self):
-        name_gen = NameGenerator(index=0)
-        expected = SCFG(graph={})
-        block = PythonBytecodeBlock(
-            label=PythonBytecodeLabel(),
-            begin=0,
-            end=10,
-            _jump_targets=(),
-            backedges=(),
-            name_gen=name_gen,
-        )
-        expected.add_block(block)
+        expected = SCFG()
+        expected.add_block("python_bytecode", get_label_class("python_bytecode")(),
+                            begin=0, end=10)
 
         received = FlowInfo.from_bytecode(bytecode).build_basicblocks()
         self.assertEqual(expected, received)
 
 
-class TestByteFlow(unittest.TestCase):
+class TestByteFlow(SCFGComparator):
     def test_constructor(self):
         byteflow = ByteFlow([], [])
         self.assertEqual(len(byteflow.bc), 0)
@@ -272,14 +240,14 @@ class TestByteFlow(unittest.TestCase):
         scfg = SCFG()
 
         scfg.add_block(
-            "python_bytecode",
+            block_type="python_bytecode",
+            block_label=get_label_class("python_bytecode")(),
             begin=0,
             end=10,
-            label=get_label_class("python_bytecode")(),
         )
         expected = ByteFlow(bc=bytecode, scfg=scfg)
         received = ByteFlow.from_bytecode(fun)
-        self.assertEqual(expected.scfg, received.scfg)
+        self.assertSCFGEqual(expected.scfg, received.scfg)
 
 
 if __name__ == "__main__":

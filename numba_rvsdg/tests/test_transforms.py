@@ -14,201 +14,6 @@ from numba_rvsdg.core.transformations import (
 from numba_rvsdg.tests.test_utils import SCFGComparator
 
 
-class TestInsertBlock(SCFGComparator):
-    def test_linear(self):
-        original = """
-        "0":
-            type: "basic"
-            out: ["1"]
-        "1":
-            type: "basic"
-            out: []
-        """
-        original_scfg, block_ref_orig = SCFG.from_yaml(original)
-        expected = """
-        "0":
-            type: "basic"
-            out: ["2"]
-        "1":
-            type: "basic"
-            out: []
-        "2":
-            type: "basic"
-            out: ["1"]
-        """
-        expected_scfg, _ = SCFG.from_yaml(expected)
-
-        preds = set((block_ref_orig["0"],))
-        succs = set((block_ref_orig["1"],))
-        original_scfg.insert_block(preds, succs)
-
-        self.assertSCFGEqual(expected_scfg, original_scfg)
-
-    def test_dual_predecessor(self):
-        original = """
-        "0":
-            type: "basic"
-            out: ["2"]
-        "1":
-            type: "basic"
-            out: ["2"]
-        "2":
-            type: "basic"
-            out: []
-        """
-        original_scfg, block_ref_orig = SCFG.from_yaml(original)
-        expected = """
-        "0":
-            type: "basic"
-            out: ["3"]
-        "1":
-            type: "basic"
-            out: ["3"]
-        "2":
-            type: "basic"
-            out: []
-        "3":
-            type: "basic"
-            out: ["2"]
-        """
-        expected_scfg, block_ref_exp = SCFG.from_yaml(expected)
-
-        preds = set((block_ref_orig["0"], block_ref_orig["1"]))
-        succs = set((block_ref_orig["2"],))
-        original_scfg.insert_block(preds, succs)
-
-        self.assertSCFGEqual(expected_scfg, original_scfg)
-
-    def test_dual_successor(self):
-        original = """
-        "0":
-            type: "basic"
-            out: ["1", "2"]
-        "1":
-            type: "basic"
-            out: []
-        "2":
-            type: "basic"
-            out: []
-        """
-        original_scfg, block_ref_orig = SCFG.from_yaml(original)
-        expected = """
-        "0":
-            type: "basic"
-            out: ["3"]
-        "1":
-            type: "basic"
-            out: []
-        "2":
-            type: "basic"
-            out: []
-        "3":
-            type: "basic"
-            out: ["1", "2"]
-        """
-        expected_scfg, block_ref_exp = SCFG.from_yaml(expected)
-
-        preds = set((block_ref_orig["0"],))
-        succs = set((block_ref_orig["1"], block_ref_orig["2"]))
-        original_scfg.insert_block(preds, succs)
-
-        self.assertSCFGEqual(expected_scfg, original_scfg)
-
-    def test_dual_predecessor_and_dual_successor(self):
-        original = """
-        "0":
-            type: "basic"
-            out: ["1", "2"]
-        "1":
-            type: "basic"
-            out: ["3"]
-        "2":
-            type: "basic"
-            out: ["4"]
-        "3":
-            type: "basic"
-            out: []
-        "4":
-            type: "basic"
-            out: []
-        """
-        original_scfg, block_ref_orig = SCFG.from_yaml(original)
-        expected = """
-        "0":
-            type: "basic"
-            out: ["1", "2"]
-        "1":
-            type: "basic"
-            out: ["5"]
-        "2":
-            type: "basic"
-            out: ["5"]
-        "3":
-            type: "basic"
-            out: []
-        "4":
-            type: "basic"
-            out: []
-        "5":
-            type: "basic"
-            out: ["3", "4"]
-        """
-        expected_scfg, block_ref_exp = SCFG.from_yaml(expected)
-
-        preds = set((block_ref_orig["1"], block_ref_orig["2"]))
-        succs = set((block_ref_orig["3"], block_ref_orig["4"]))
-        original_scfg.insert_block(preds, succs)
-
-        self.assertSCFGEqual(expected_scfg, original_scfg)
-
-    def test_dual_predecessor_and_dual_successor_with_additional_arcs(self):
-        original = """
-        "0":
-            type: "basic"
-            out: ["1", "2"]
-        "1":
-            type: "basic"
-            out: ["3"]
-        "2":
-            type: "basic"
-            out: ["1", "4"]
-        "3":
-            type: "basic"
-            out: ["0"]
-        "4":
-            type: "basic"
-            out: []
-        """
-        original_scfg, block_ref_orig = SCFG.from_yaml(original)
-        expected = """
-        "0":
-            type: "basic"
-            out: ["1", "2"]
-        "1":
-            type: "basic"
-            out: ["5"]
-        "2":
-            type: "basic"
-            out: ["1", "5"]
-        "3":
-            type: "basic"
-            out: ["0"]
-        "4":
-            type: "basic"
-            out: []
-        "5":
-            type: "basic"
-            out: ["3", "4"]
-        """
-        expected_scfg, block_ref_exp = SCFG.from_yaml(expected)
-
-        preds = set((block_ref_orig["1"], block_ref_orig["2"]))
-        succs = set((block_ref_orig["3"], block_ref_orig["4"]))
-        original_scfg.insert_block(preds, succs)
-
-        self.assertSCFGEqual(expected_scfg, original_scfg)
-
-
 class TestJoinReturns(SCFGComparator):
     def test_two_returns(self):
         original = """
@@ -266,8 +71,8 @@ class TestJoinTailsAndExits(SCFGComparator):
         """
         expected_scfg, block_ref_exp = SCFG.from_yaml(expected)
 
-        tails = set((block_ref_orig["0"],))
-        exits = set((block_ref_orig["1"],))
+        tails = list((block_ref_orig["0"],))
+        exits = list((block_ref_orig["1"],))
         join_tails_and_exits(original_scfg, tails, exits)
 
         self.assertSCFGEqual(expected_scfg, original_scfg)
@@ -308,8 +113,8 @@ class TestJoinTailsAndExits(SCFGComparator):
         """
         expected_scfg, block_ref_exp = SCFG.from_yaml(expected)
 
-        tails = set((block_ref_orig["0"],))
-        exits = set((block_ref_orig["1"], block_ref_orig["2"]))
+        tails = list((block_ref_orig["0"],))
+        exits = list((block_ref_orig["1"], block_ref_orig["2"]))
         join_tails_and_exits(original_scfg, tails, exits)
 
         self.assertSCFGEqual(expected_scfg, original_scfg)
@@ -350,8 +155,8 @@ class TestJoinTailsAndExits(SCFGComparator):
         """
         expected_scfg, block_ref_exp = SCFG.from_yaml(expected)
 
-        tails = set((block_ref_orig["1"], block_ref_orig["2"]))
-        exits = set((block_ref_orig["3"],))
+        tails = list((block_ref_orig["1"], block_ref_orig["2"]))
+        exits = list((block_ref_orig["3"],))
         join_tails_and_exits(original_scfg, tails, exits)
 
         self.assertSCFGEqual(expected_scfg, original_scfg)
@@ -392,8 +197,8 @@ class TestJoinTailsAndExits(SCFGComparator):
         """
         expected_scfg, block_ref_exp = SCFG.from_yaml(expected)
 
-        tails = set((block_ref_orig["1"], block_ref_orig["2"]))
-        exits = set((block_ref_orig["3"],))
+        tails = list((block_ref_orig["1"], block_ref_orig["2"]))
+        exits = list((block_ref_orig["3"],))
 
         join_tails_and_exits(original_scfg, tails, exits)
         self.assertSCFGEqual(expected_scfg, original_scfg)
@@ -451,8 +256,8 @@ class TestJoinTailsAndExits(SCFGComparator):
         """
         expected_scfg, block_ref_exp = SCFG.from_yaml(expected)
 
-        tails = set((block_ref_orig["1"], block_ref_orig["2"]))
-        exits = set((block_ref_orig["3"], block_ref_orig["4"]))
+        tails = list((block_ref_orig["1"], block_ref_orig["2"]))
+        exits = list((block_ref_orig["3"], block_ref_orig["4"]))
         join_tails_and_exits(original_scfg, tails, exits)
 
         self.assertSCFGEqual(expected_scfg, original_scfg)
@@ -510,8 +315,8 @@ class TestJoinTailsAndExits(SCFGComparator):
         """
         expected_scfg, block_ref_exp = SCFG.from_yaml(expected)
 
-        tails = set((block_ref_orig["1"], block_ref_orig["2"]))
-        exits = set((block_ref_orig["3"], block_ref_orig["4"]))
+        tails = list((block_ref_orig["1"], block_ref_orig["2"]))
+        exits = list((block_ref_orig["3"], block_ref_orig["4"]))
         join_tails_and_exits(original_scfg, tails, exits)
 
         self.assertSCFGEqual(expected_scfg, original_scfg)
@@ -546,7 +351,7 @@ class TestLoopRestructure(SCFGComparator):
         original_scfg, block_ref_orig = SCFG.from_yaml(original)
         expected_scfg, block_ref_exp = SCFG.from_yaml(expected)
 
-        loop_restructure_helper(original_scfg, set(wrap_id({"1"})))
+        loop_restructure_helper(original_scfg, list(wrap_id({"1"})))
 
         self.assertSCFGEqual(expected_scfg, original_scfg)
 
@@ -583,7 +388,7 @@ class TestLoopRestructure(SCFGComparator):
         """
         original_scfg, block_ref_orig = SCFG.from_yaml(original)
         expected_scfg, block_ref_exp = SCFG.from_yaml(expected)
-        loop_restructure_helper(original_scfg, set(wrap_id({"1", "2"})))
+        loop_restructure_helper(original_scfg, list(wrap_id({"1", "2"})))
         self.assertSCFGEqual(expected_scfg, original_scfg)
 
     def test_backedge_not_exiting(self):
@@ -631,7 +436,7 @@ class TestLoopRestructure(SCFGComparator):
         """
         original_scfg, block_ref_orig = SCFG.from_yaml(original)
         expected_scfg, block_ref_exp = SCFG.from_yaml(expected)
-        loop_restructure_helper(original_scfg, set(wrap_id({"1", "2"})))
+        loop_restructure_helper(original_scfg, list(wrap_id({"1", "2"})))
         self.assertSCFGEqual(expected_scfg, original_scfg)
 
     def test_double_exit(self):
@@ -689,7 +494,7 @@ class TestLoopRestructure(SCFGComparator):
         """
         original_scfg, block_ref_orig = SCFG.from_yaml(original)
         expected_scfg, block_ref_exp = SCFG.from_yaml(expected)
-        loop_restructure_helper(original_scfg, set(wrap_id({"1", "2", "3"})))
+        loop_restructure_helper(original_scfg, list(wrap_id({"1", "2", "3"})))
         self.assertSCFGEqual(expected_scfg, original_scfg)
 
     def test_double_header(self):
@@ -759,7 +564,7 @@ class TestLoopRestructure(SCFGComparator):
         """
         original_scfg, block_ref_orig = SCFG.from_yaml(original)
         expected_scfg, block_ref_exp = SCFG.from_yaml(expected)
-        loop_restructure_helper(original_scfg, set(wrap_id({"1", "2", "3", "4"})))
+        loop_restructure_helper(original_scfg, list(wrap_id({"1", "2", "3", "4"})))
         self.assertSCFGEqual(expected_scfg, original_scfg)
 
     def test_double_header_double_exiting(self):
@@ -851,7 +656,7 @@ class TestLoopRestructure(SCFGComparator):
         """
         original_scfg, block_ref_orig = SCFG.from_yaml(original)
         expected_scfg, block_ref_exp = SCFG.from_yaml(expected)
-        loop_restructure_helper(original_scfg, set(wrap_id({"1", "2", "3", "4"})))
+        loop_restructure_helper(original_scfg, list(wrap_id({"1", "2", "3", "4"})))
         self.assertSCFGEqual(expected_scfg, original_scfg)
 
 

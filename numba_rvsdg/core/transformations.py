@@ -609,7 +609,7 @@ def join_returns(scfg: SCFG):
     # close if more than one is found
     if len(return_nodes) > 1:
         return_solo_label = SyntheticReturn()
-        scfg.insert_block(set(return_nodes), set(), block_label=return_solo_label)
+        scfg.insert_block(return_nodes, [], block_label=return_solo_label)
 
 
 def join_tails_and_exits(scfg: SCFG, tails: Set[BlockName], exits: Set[BlockName]):

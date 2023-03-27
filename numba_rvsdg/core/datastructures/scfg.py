@@ -5,7 +5,7 @@ from textwrap import dedent
 from typing import Set, Tuple, Dict, List, Iterator
 from dataclasses import dataclass, field
 
-from numba_rvsdg.core.datastructures.basic_block import BasicBlock, get_block_class
+from numba_rvsdg.core.datastructures.basic_block import BasicBlock, get_block_class, get_block_class_str
 from numba_rvsdg.core.datastructures.region import Region
 from numba_rvsdg.core.datastructures.labels import (
     Label,
@@ -24,9 +24,9 @@ class SCFG:
 
     blocks: Dict[BlockName, BasicBlock] = field(default_factory=dict)
 
-    out_edges: Dict[BlockName, Set[BlockName]] = field(default_factory=dict)
-    back_edges: Dict[BlockName, Set[BlockName]] = field(default_factory=dict)
-    in_edges: Dict[BlockName, Set[BlockName]] = field(
+    out_edges: Dict[BlockName, List[BlockName]] = field(default_factory=dict)
+    back_edges: Dict[BlockName, List[BlockName]] = field(default_factory=dict)
+    in_edges: Dict[BlockName, List[BlockName]] = field(
         default_factory=dict
     )  # Design question
 
@@ -217,8 +217,8 @@ class SCFG:
 
     def insert_block(
         self,
-        predecessors: Set[BlockName],
-        successors: Set[BlockName],
+        predecessors: List[BlockName],
+        successors: List[BlockName],
         block_type: str = "basic",
         block_label: Label = Label(),
         **block_args,
@@ -234,20 +234,24 @@ class SCFG:
         for pred_name in predecessors:
             # For every predecessor
             # Remove all successors from its out edges
-            self.out_edges[pred_name].difference_update(successors)
+            for successor in successors:
+                if successor in self.out_edges[pred_name]:
+                    self.out_edges[pred_name].remove(successor)
             # Add the inserted block as out edge
-            self.out_edges[pred_name].add(new_block_name)
+            self.out_edges[pred_name].append(new_block_name)
             # For inserted block, the predecessor in an in-edge
-            self.in_edges[new_block_name].add(pred_name)
+            self.in_edges[new_block_name].append(pred_name)
 
         for success_name in successors:
             # For every sucessor
             # Remove all predecessors from it's in edges
-            self.in_edges[success_name].difference_update(predecessors)
+            for pred in predecessors:
+                if pred in self.in_edges[success_name]:
+                    self.in_edges[success_name].remove(pred)
             # Add the inserted block as in edge
-            self.in_edges[success_name].add(new_block_name)
+            self.in_edges[success_name].append(new_block_name)
             # For inserted block, the sucessor in an out-edge
-            self.out_edges[new_block_name].add(success_name)
+            self.out_edges[new_block_name].append(success_name)
 
         self.check_graph()
         return new_block_name
@@ -256,23 +260,23 @@ class SCFG:
         self, block_type: str = "basic", block_label: Label = Label(), **block_args
     ) -> BlockName:
         block_type = get_block_class(block_type)
-        new_block = block_type(**block_args, label=block_label, name_gen=self.name_gen)
+        new_block: BlockName = block_type(**block_args, label=block_label, name_gen=self.name_gen)
 
         name = new_block.block_name
         self.blocks[name] = new_block
 
-        self.in_edges[name] = set()
-        self.back_edges[name] = set()
-        self.out_edges[name] = set()
+        self.in_edges[name] = []
+        self.back_edges[name] = []
+        self.out_edges[name] = []
 
         return name
 
-    def add_connections(self, block_name, out_edges=(), back_edges=()):
+    def add_connections(self, block_name, out_edges=[], back_edges=[]):
         self.out_edges[block_name] = out_edges
         self.back_edges[block_name] = back_edges
 
         for edge in itertools.chain(out_edges, back_edges):
-            self.in_edges[edge].add(block_name)
+            self.in_edges[edge].append(block_name)
 
         self.check_graph()
 
@@ -296,12 +300,12 @@ class SCFG:
             ref_dict[block_ref] = block_name
 
         for block_ref, block_attrs in graph_dict.items():
-            out_refs = block_attrs.get("out", set())
-            back_refs = block_attrs.get("back", set())
+            out_refs = block_attrs.get("out", list())
+            back_refs = block_attrs.get("back", list())
 
             block_name = ref_dict[block_ref]
-            out_edges = set(ref_dict[out_ref] for out_ref in out_refs)
-            back_edges = set(ref_dict[back_ref] for back_ref in back_refs)
+            out_edges = list(ref_dict[out_ref] for out_ref in out_refs)
+            back_edges = list(ref_dict[back_ref] for back_ref in back_refs)
             scfg.add_connections(block_name, out_edges, back_edges)
 
         scfg.check_graph()
@@ -313,15 +317,15 @@ class SCFG:
 
         for key, value in self.blocks.items():
             out_edges = [f"{i}" for i in self.out_edges[key]]
-            out_edges = str(out_edges).replace("'", '"')
+            # out_edges = str(out_edges).replace("'", '"')
             back_edges = [f"{i}" for i in self.back_edges[key]]
             jump_target_str = f"""
                 "{str(key)}":
-                    type: {type(value)}
+                    type: "{get_block_class_str(value)}"
                     out: {out_edges}"""
 
             if back_edges:
-                back_edges = str(back_edges).replace("'", '"')
+                # back_edges = str(back_edges).replace("'", '"')
                 jump_target_str += f"""
                     back: {back_edges}"""
             yaml_string += dedent(jump_target_str)

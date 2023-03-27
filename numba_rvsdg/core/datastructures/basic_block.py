@@ -73,8 +73,15 @@ block_types = {
 }
 
 
-def get_block_class(block_type_string):
+def get_block_class(block_type_string: str):
     if block_type_string in block_types:
         return block_types[block_type_string]
     else:
         raise TypeError(f"Block Type {block_type_string} not recognized.")
+
+def get_block_class_str(basic_block: BasicBlock):
+    for key, value in block_types.items():
+        if isinstance(basic_block, value):
+            return key
+    else:
+        raise TypeError(f"Block Type of {basic_block} not recognized.")
