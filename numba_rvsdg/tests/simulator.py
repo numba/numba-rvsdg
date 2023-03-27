@@ -5,6 +5,8 @@ from numba_rvsdg.core.datastructures.scfg import SCFG
 from numba_rvsdg.core.datastructures.basic_block import (
     BasicBlock,
     PythonBytecodeBlock,
+    ControlVariableBlock,
+    BranchBlock,
 )
 from numba_rvsdg.core.datastructures.labels import (
     Label,
@@ -16,7 +18,7 @@ from numba_rvsdg.core.datastructures.labels import (
     SyntheticHead,
     SyntheticTail,
     SyntheticReturn,
-    BlockName
+    BlockName,
 )
 
 import builtins
@@ -73,7 +75,7 @@ class Simulator:
         self.branch = None
         self.return_value = None
 
-    def get_block(self, name:BlockName):
+    def get_block(self, name: BlockName):
         """Return the BasicBlock object for a give name.
 
         This method is aware of the recusion level of the `Simulator` into the
@@ -197,44 +199,58 @@ class Simulator:
         print(f"stack after: {self.stack}")
 
     ### Synthetic Instructions ###
-    def synth_SynthenticAssignment(self, control_label, block):
+    def synth_SynthenticAssignment(
+        self, control_label: BlockName, block: ControlVariableBlock
+    ):
         self.ctrl_varmap.update(block.variable_assignment)
 
-    def _synth_branch(self, control_label, block):
+    def _synth_branch(self, control_label: BlockName, block: BranchBlock):
         jump_target = block.branch_value_table[self.ctrl_varmap[block.variable]]
         self.branch = bool(block._jump_targets.index(jump_target))
 
-    def synth_SyntheticExitingLatch(self, control_label, block):
+    def synth_SyntheticExitingLatch(
+        self, control_label: BlockName, block: ControlVariableBlock
+    ):
         self._synth_branch(control_label, block)
 
-    def synth_SyntheticHead(self, control_label, block):
+    def synth_SyntheticHead(
+        self, control_label: BlockName, block: ControlVariableBlock
+    ):
         self._synth_branch(control_label, block)
 
-    def synth_SyntheticExit(self, control_label, block):
+    def synth_SyntheticExit(
+        self, control_label: BlockName, block: ControlVariableBlock
+    ):
         self._synth_branch(control_label, block)
 
-    def synth_SyntheticReturn(self, control_label, block):
+    def synth_SyntheticReturn(
+        self, control_label: BlockName, block: ControlVariableBlock
+    ):
         pass
 
-    def synth_SyntheticTail(self, control_label, block):
+    def synth_SyntheticTail(
+        self, control_label: BlockName, block: ControlVariableBlock
+    ):
         pass
 
-    def synth_SyntheticBranch(self, control_label, block):
+    def synth_SyntheticBranch(
+        self, control_label: BlockName, block: ControlVariableBlock
+    ):
         pass
 
     ### Bytecode Instructions ###
-    def op_LOAD_CONST(self, inst):
+    def op_LOAD_CONST(self, inst: Instruction):
         self.stack.append(inst.argval)
 
-    def op_COMPARE_OP(self, inst):
+    def op_COMPARE_OP(self, inst: Instruction):
         arg1 = self.stack.pop()
         arg2 = self.stack.pop()
         self.stack.append(eval(f"{arg2} {inst.argval} {arg1}"))
 
-    def op_LOAD_FAST(self, inst):
+    def op_LOAD_FAST(self, inst: Instruction):
         self.stack.append(self.varmap[inst.argval])
 
-    def op_LOAD_GLOBAL(self, inst):
+    def op_LOAD_GLOBAL(self, inst: Instruction):
         v = self.globals[inst.argval]
         if inst.argrepr.startswith("NULL"):
             append_null = True
@@ -243,22 +259,22 @@ class Simulator:
         else:
             raise NotImplementedError
 
-    def op_STORE_FAST(self, inst):
+    def op_STORE_FAST(self, inst: Instruction):
         val = self.stack.pop()
         self.varmap[inst.argval] = val
 
-    def op_CALL_FUNCTION(self, inst):
+    def op_CALL_FUNCTION(self, inst: Instruction):
         args = [self.stack.pop() for _ in range(inst.argval)][::-1]
         fn = self.stack.pop()
         res = fn(*args)
         self.stack.append(res)
 
-    def op_GET_ITER(self, inst):
+    def op_GET_ITER(self, inst: Instruction):
         val = self.stack.pop()
         res = iter(val)
         self.stack.append(res)
 
-    def op_FOR_ITER(self, inst):
+    def op_FOR_ITER(self, inst: Instruction):
         tos = self.stack[-1]
         try:
             ind = next(tos)
@@ -269,58 +285,58 @@ class Simulator:
             self.branch = False
             self.stack.append(ind)
 
-    def op_INPLACE_ADD(self, inst):
+    def op_INPLACE_ADD(self, inst: Instruction):
         rhs = self.stack.pop()
         lhs = self.stack.pop()
         lhs += rhs
         self.stack.append(lhs)
 
-    def op_RETURN_VALUE(self, inst):
+    def op_RETURN_VALUE(self, inst: Instruction):
         v = self.stack.pop()
         self.return_value = v
 
-    def op_JUMP_ABSOLUTE(self, inst):
+    def op_JUMP_ABSOLUTE(self, inst: Instruction):
         pass
 
-    def op_JUMP_FORWARD(self, inst):
+    def op_JUMP_FORWARD(self, inst: Instruction):
         pass
 
-    def op_POP_JUMP_IF_FALSE(self, inst):
+    def op_POP_JUMP_IF_FALSE(self, inst: Instruction):
         self.branch = not self.stack.pop()
 
-    def op_POP_JUMP_IF_TRUE(self, inst):
+    def op_POP_JUMP_IF_TRUE(self, inst: Instruction):
         self.branch = bool(self.stack.pop())
 
-    def op_JUMP_IF_TRUE_OR_POP(self, inst):
+    def op_JUMP_IF_TRUE_OR_POP(self, inst: Instruction):
         if self.stack[-1]:
             self.branch = True
         else:
             self.stack.pop()
             self.branch = False
 
-    def op_JUMP_IF_FALSE_OR_POP(self, inst):
+    def op_JUMP_IF_FALSE_OR_POP(self, inst: Instruction):
         if not self.stack[-1]:
             self.branch = True
         else:
             self.stack.pop()
             self.branch = False
 
-    def op_POP_TOP(self, inst):
+    def op_POP_TOP(self, inst: Instruction):
         self.stack.pop()
 
-    def op_RESUME(self, inst):
+    def op_RESUME(self, inst: Instruction):
         pass
 
-    def op_PRECALL(self, inst):
+    def op_PRECALL(self, inst: Instruction):
         pass
 
-    def op_CALL_FUNCTION(self, inst):
+    def op_CALL_FUNCTION(self, inst: Instruction):
         args = [self.stack.pop() for _ in range(inst.argval)][::-1]
         fn = self.stack.pop()
         res = fn(*args)
         self.stack.append(res)
 
-    def op_CALL(self, inst):
+    def op_CALL(self, inst: Instruction):
         args = [self.stack.pop() for _ in range(inst.argval)][::-1]
         first, second = self.stack.pop(), self.stack.pop()
         if first == None:
@@ -330,42 +346,42 @@ class Simulator:
         res = func(*args)
         self.stack.append(res)
 
-    def op_BINARY_OP(self, inst):
+    def op_BINARY_OP(self, inst: Instruction):
         rhs, lhs, op = self.stack.pop(), self.stack.pop(), inst.argrepr
         op = op if len(op) == 1 else op[0]
         self.stack.append(eval(f"{lhs} {op} {rhs}"))
 
-    def op_JUMP_BACKWARD(self, inst):
+    def op_JUMP_BACKWARD(self, inst: Instruction):
         pass
 
-    def op_POP_JUMP_FORWARD_IF_TRUE(self, inst):
+    def op_POP_JUMP_FORWARD_IF_TRUE(self, inst: Instruction):
         self.branch = self.stack[-1]
         self.stack.pop()
 
-    def op_POP_JUMP_BACKWARD_IF_TRUE(self, inst):
+    def op_POP_JUMP_BACKWARD_IF_TRUE(self, inst: Instruction):
         self.branch = self.stack[-1]
         self.stack.pop()
 
-    def op_POP_JUMP_FORWARD_IF_FALSE(self, inst):
+    def op_POP_JUMP_FORWARD_IF_FALSE(self, inst: Instruction):
         self.branch = not self.stack[-1]
         self.stack.pop()
 
-    def op_POP_JUMP_BACKWARD_IF_FALSE(self, inst):
+    def op_POP_JUMP_BACKWARD_IF_FALSE(self, inst: Instruction):
         self.branch = not self.stack[-1]
         self.stack.pop()
 
-    def op_POP_JUMP_FORWARD_IF_NOT_NONE(self, inst):
+    def op_POP_JUMP_FORWARD_IF_NOT_NONE(self, inst: Instruction):
         self.branch = self.stack[-1] is not None
         self.stack.pop()
 
-    def op_POP_JUMP_BACKWARD_IF_NOT_NONE(self, inst):
+    def op_POP_JUMP_BACKWARD_IF_NOT_NONE(self, inst: Instruction):
         self.branch = self.stack[-1] is not None
         self.stack.pop()
 
-    def op_POP_JUMP_FORWARD_IF_NONE(self, inst):
+    def op_POP_JUMP_FORWARD_IF_NONE(self, inst: Instruction):
         self.branch = self.stack[-1] is None
         self.stack.pop()
 
-    def op_POP_JUMP_BACKWARD_IF_NONE(self, inst):
+    def op_POP_JUMP_BACKWARD_IF_NONE(self, inst: Instruction):
         self.branch = self.stack[-1] is None
         self.stack.pop()

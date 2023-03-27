@@ -21,7 +21,7 @@ class BasicBlock:
 
     def __post_init__(self, name_gen):
         block_name = name_gen.new_block_name(label=self.label)
-        object.__setattr__(self, 'block_name', block_name)
+        object.__setattr__(self, "block_name", block_name)
 
 
 @dataclass(frozen=True)
@@ -63,12 +63,13 @@ class BranchBlock(BasicBlock):
     variable: str = None
     branch_value_table: dict = None
 
+
 # Maybe we can register new blocks over here instead of static lists
 block_types = {
-    'basic': BasicBlock,
-    'python_bytecode': PythonBytecodeBlock,
-    'control_variable': ControlVariableBlock,
-    'branch': BranchBlock
+    "basic": BasicBlock,
+    "python_bytecode": PythonBytecodeBlock,
+    "control_variable": ControlVariableBlock,
+    "branch": BranchBlock,
 }
 
 
@@ -77,4 +78,3 @@ def get_block_class(block_type_string):
         return block_types[block_type_string]
     else:
         raise TypeError(f"Block Type {block_type_string} not recognized.")
-

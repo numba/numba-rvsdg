@@ -2,7 +2,12 @@ from dis import Bytecode, Instruction, Positions
 
 import unittest
 from numba_rvsdg.core.datastructures.basic_block import PythonBytecodeBlock
-from numba_rvsdg.core.datastructures.labels import PythonBytecodeLabel, NameGenerator, BlockName, get_label_class
+from numba_rvsdg.core.datastructures.labels import (
+    PythonBytecodeLabel,
+    NameGenerator,
+    BlockName,
+    get_label_class,
+)
 from numba_rvsdg.core.datastructures.byte_flow import ByteFlow
 from numba_rvsdg.core.datastructures.scfg import SCFG
 from numba_rvsdg.core.datastructures.flow_info import FlowInfo
@@ -115,7 +120,7 @@ class TestPythonBytecodeBlock(unittest.TestCase):
             end=8,
             _jump_targets=(),
             backedges=(),
-            name_gen=name_gen
+            name_gen=name_gen,
         )
         self.assertEqual(block.label, PythonBytecodeLabel())
         self.assertEqual(block.begin, 0)
@@ -125,23 +130,23 @@ class TestPythonBytecodeBlock(unittest.TestCase):
         self.assertEqual(block.jump_targets, ())
         self.assertEqual(block.backedges, ())
 
-        block_name = BlockName('pythonbytecodelabel_0')
+        block_name = BlockName("pythonbytecodelabel_0")
         self.assertEqual(block.block_name, block_name)
 
     def test_is_jump_target(self):
         name_gen = NameGenerator(index=0)
         label = PythonBytecodeLabel()
-        
+
         block = PythonBytecodeBlock(
             label=label,
             begin=0,
             end=8,
             _jump_targets=(name_gen.new_block_name(label),),
             backedges=(),
-            name_gen=name_gen
+            name_gen=name_gen,
         )
-        self.assertEqual(block.block_name, BlockName(name='pythonbytecodelabel_1'))
-        self.assertEqual(block.jump_targets, (BlockName(name='pythonbytecodelabel_0'),))
+        self.assertEqual(block.block_name, BlockName(name="pythonbytecodelabel_1"))
+        self.assertEqual(block.jump_targets, (BlockName(name="pythonbytecodelabel_0"),))
         self.assertFalse(block.is_exiting)
 
     def test_get_instructions(self):
@@ -154,7 +159,7 @@ class TestPythonBytecodeBlock(unittest.TestCase):
             end=8,
             _jump_targets=(),
             backedges=(),
-            name_gen=name_gen
+            name_gen=name_gen,
         )
         expected = [
             Instruction(
@@ -242,17 +247,15 @@ class TestFlowInfo(unittest.TestCase):
 
     def test_build_basic_blocks(self):
         name_gen = NameGenerator(index=0)
-        expected = SCFG(
-            graph={}
-        )
+        expected = SCFG(graph={})
         block = PythonBytecodeBlock(
-                    label=PythonBytecodeLabel(),
-                    begin=0,
-                    end=10,
-                    _jump_targets=(),
-                    backedges=(),
-                    name_gen=name_gen
-                )
+            label=PythonBytecodeLabel(),
+            begin=0,
+            end=10,
+            _jump_targets=(),
+            backedges=(),
+            name_gen=name_gen,
+        )
         expected.add_block(block)
 
         received = FlowInfo.from_bytecode(bytecode).build_basicblocks()
@@ -268,7 +271,12 @@ class TestByteFlow(unittest.TestCase):
     def test_from_bytecode(self):
         scfg = SCFG()
 
-        scfg.add_block('python_bytecode', begin=0, end=10, label=get_label_class('python_bytecode')())
+        scfg.add_block(
+            "python_bytecode",
+            begin=0,
+            end=10,
+            label=get_label_class("python_bytecode")(),
+        )
         expected = ByteFlow(bc=bytecode, scfg=scfg)
         received = ByteFlow.from_bytecode(fun)
         self.assertEqual(expected.scfg, received.scfg)

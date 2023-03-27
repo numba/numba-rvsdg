@@ -5,7 +5,11 @@ from numba_rvsdg.core.datastructures.scfg import SCFG
 from numba_rvsdg.core.datastructures.flow_info import FlowInfo
 from numba_rvsdg.core.utils import _logger, _LogWrap
 
-from numba_rvsdg.core.transformations import restructure_loop, restructure_branch, join_returns
+from numba_rvsdg.core.transformations import (
+    restructure_loop,
+    restructure_branch,
+    join_returns,
+)
 
 
 @dataclass(frozen=True)
@@ -42,4 +46,3 @@ class ByteFlow:
     @staticmethod
     def bcmap_from_bytecode(bc: dis.Bytecode):
         return {inst.offset: inst for inst in bc}
-

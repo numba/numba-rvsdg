@@ -10,7 +10,7 @@ from numba_rvsdg.core.datastructures.labels import (
     Label,
     PythonBytecodeLabel,
     ControlLabel,
-    BlockName
+    BlockName,
 )
 from numba_rvsdg.core.datastructures.byte_flow import ByteFlow
 import dis
@@ -65,7 +65,7 @@ class ByteFlowRenderer(object):
 
     def render_control_variable_block(self, block_name: BlockName):
         block = self.scfg[block_name]
-        
+
         if isinstance(block.label, ControlLabel):
             body = str(block_name) + "\l"
             body += "\l".join(
@@ -79,6 +79,7 @@ class ByteFlowRenderer(object):
         block = self.scfg[block_name]
 
         if isinstance(block.label, ControlLabel):
+
             def find_index(v):
                 if hasattr(v, "offset"):
                     return v.offset
@@ -108,14 +109,20 @@ class ByteFlowRenderer(object):
                 raise Exception("unreachable")
 
     def render_edges(self):
-        
+
         for block_name, out_edges in self.scfg.out_edges.items():
             for out_edge in out_edges:
                 self.g.edge(str(block_name), str(out_edge))
 
         for block_name, back_edges in self.scfg.back_edges.items():
             for back_edge in back_edges:
-                self.g.edge(str(block_name), str(back_edge), style="dashed", color="grey", constraint="0")
+                self.g.edge(
+                    str(block_name),
+                    str(back_edge),
+                    style="dashed",
+                    color="grey",
+                    constraint="0",
+                )
 
     def bcmap_from_bytecode(self, bc: dis.Bytecode):
         self.bcmap: Dict[int, dis.Instruction] = ByteFlow.bcmap_from_bytecode(bc)

@@ -1,21 +1,21 @@
 from unittest import TestCase
 
-class MapComparator(TestCase):
-    def assertMapEqual(self, first_map, second_map):
+from numba_rvsdg.core.datastructures.scfg import SCFG
+
+
+class SCFGComparator(TestCase):
+    def assertSCFGEqual(self, first_scfg: SCFG, second_scfg: SCFG):
 
         for key1, key2 in zip(
-            sorted(first_map.graph.keys(), key=lambda x: x.index),
-            sorted(second_map.graph.keys(), key=lambda x: x.index),
+            sorted(first_scfg.blocks.keys(), key=lambda x: x.name),
+            sorted(second_scfg.blocks.keys(), key=lambda x: x.name),
         ):
-            # compare indices of labels
-            self.assertEqual(key1.index, key2.index)
-            # compare indices of jump_targets
-            self.assertEqual(
-                sorted([j.index for j in first_map[key1]._jump_targets]),
-                sorted([j.index for j in second_map[key2]._jump_targets]),
-            )
-            # compare indices of backedges
-            self.assertEqual(
-                sorted([j.index for j in first_map[key1].backedges]),
-                sorted([j.index for j in second_map[key2].backedges]),
-            )
+            block_1 = first_scfg[key1]
+            block_2 = second_scfg[key2]
+
+            # compare labels
+            self.assertEqual(type(block_1.label), type(block_2.label))
+            # compare edges
+            self.assertEqual(first_scfg.out_edges[key1], second_scfg.out_edges[key2])
+            self.assertEqual(first_scfg.in_edges[key1], second_scfg.in_edges[key2])
+            self.assertEqual(first_scfg.back_edges[key1], second_scfg.back_edges[key2])

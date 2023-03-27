@@ -61,17 +61,17 @@ class SynthenticAssignment(ControlLabel):
 
 # Maybe we can register new labels over here instead of static lists
 label_types = {
-    'label': Label,
-    'python_bytecode': PythonBytecodeLabel,
-    'control': ControlLabel,
-    'synth_branch': SyntheticBranch,
-    'synth_tail': SyntheticTail,
-    'synth_exit': SyntheticExit,
-    'synth_head': SyntheticHead,
-    'synth_return': SyntheticReturn,
-    'synth_latch': SyntheticLatch,
-    'synth_exit_latch': SyntheticExitingLatch,
-    'synth_assign': SynthenticAssignment
+    "label": Label,
+    "python_bytecode": PythonBytecodeLabel,
+    "control": ControlLabel,
+    "synth_branch": SyntheticBranch,
+    "synth_tail": SyntheticTail,
+    "synth_exit": SyntheticExit,
+    "synth_head": SyntheticHead,
+    "synth_return": SyntheticReturn,
+    "synth_latch": SyntheticLatch,
+    "synth_exit_latch": SyntheticExitingLatch,
+    "synth_assign": SynthenticAssignment,
 }
 
 
@@ -82,16 +82,17 @@ def get_label_class(label_type_string):
         raise TypeError(f"Block Type {label_type_string} not recognized.")
 
 
-
 @dataclass(frozen=True, order=True)
 class BlockName:
     name: str
     ...
 
+
 @dataclass(frozen=True, order=True)
 class RegionName:
     name: str
     ...
+
 
 @dataclass
 class NameGenerator:
