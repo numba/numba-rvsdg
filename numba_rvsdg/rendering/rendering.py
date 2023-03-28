@@ -32,21 +32,17 @@ class ByteFlowRenderer(object):
 
     def render_regions(self):
         # render subgraph
-        # graph = regionblock.get_full_graph()
-        # with digraph.subgraph(name=f"cluster_{label}") as subg:
-        #     color = "blue"
-        #     if regionblock.kind == "branch":
-        #         color = "green"
-        #     if regionblock.kind == "tail":
-        #         color = "purple"
-        #     if regionblock.kind == "head":
-        #         color = "red"
-        #     subg.attr(color=color, label=regionblock.kind)
-        #     for label, block in graph.items():
-        #         self.render_block(subg, label, block)
-        # # render edges within this region
-        # self.render_edges(graph)
-        pass
+        for region_name, region in self.scfg.regions.items():
+            graph = region.get_full_graph()
+            with self.g.subgraph(name=f"cluster_{label}") as subg:
+                color = "blue"
+                if region.kind == "branch":
+                    color = "green"
+                if region.kind == "tail":
+                    color = "purple"
+                if region.kind == "head":
+                    color = "red"
+                subg.attr(color=color, label=region.kind)
 
     def render_basic_block(self, block_name: BlockName):
         block = self.scfg[block_name]
@@ -68,9 +64,9 @@ class ByteFlowRenderer(object):
 
         if isinstance(block.label, ControlLabel):
             body = str(block_name) + "\l"
-            body += "\l".join(
-                (f"{k} = {v}" for k, v in block.variable_assignment.items())
-            )
+            # body += "\l".join(
+            #     (f"{k} = {v}" for k, v in block.variable_assignment.items())
+            # )
         else:
             raise Exception("Unknown label type: " + block.label)
         self.g.node(str(block_name), shape="rect", label=body)
@@ -87,10 +83,10 @@ class ByteFlowRenderer(object):
                     return v.index
 
             body = str(block_name) + "\l"
-            body += f"variable: {block.variable}\l"
-            body += "\l".join(
-                (f"{k}=>{find_index(v)}" for k, v in block.branch_value_table.items())
-            )
+            # body += f"variable: {block.variable}\l"
+            # body += "\l".join(
+            #     (f" {k} => {find_index(v)}" for k, v in block.branch_value_table.items())
+            # )
         else:
             raise Exception("Unknown label type: " + block.label)
         self.g.node(str(block_name), shape="rect", label=body)

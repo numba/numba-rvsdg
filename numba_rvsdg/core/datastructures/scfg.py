@@ -26,18 +26,14 @@ class SCFG:
 
     out_edges: Dict[BlockName, List[BlockName]] = field(default_factory=dict)
     back_edges: Dict[BlockName, List[BlockName]] = field(default_factory=dict)
-    in_edges: Dict[BlockName, List[BlockName]] = field(
-        default_factory=dict
-    )  # Design question
-
     regions: Dict[RegionName, Region] = field(default_factory=dict)
 
     name_gen: NameGenerator = field(default_factory=NameGenerator, compare=False)
 
-    def __getitem__(self, index):
+    def __getitem__(self, index: BlockName) -> BasicBlock:
         return self.blocks[index]
 
-    def __contains__(self, index):
+    def __contains__(self, index: BlockName) -> bool:
         return index in self.blocks
 
     def __iter__(self):
@@ -92,7 +88,7 @@ class SCFG:
                 self.graph = graph
 
             def __getitem__(self, vertex):
-                out = out_edges[self.graph[vertex]]
+                out = out_edges[vertex]
                 # Exclude node outside of the subgraph
                 return [k for k in out if k in self.graph]
 
@@ -115,7 +111,7 @@ class SCFG:
                 self.subgraph = subgraph
 
             def __getitem__(self, vertex):
-                out = out_edges[self.graph[vertex]]
+                out = out_edges[vertex]
                 # Exclude node outside of the subgraph
                 return [k for k in out if k in subgraph]
 
@@ -142,7 +138,7 @@ class SCFG:
 
         for outside in self.exclude_blocks(subgraph):
             nodes_jump_in_loop = subgraph.intersection(
-                self.out_edges[self.blocks[outside]]
+                self.out_edges[outside]
             )
             headers.update(nodes_jump_in_loop)
             if nodes_jump_in_loop:
@@ -169,19 +165,19 @@ class SCFG:
         exits: Set[BlockName] = set()
         for inside in subgraph:
             # any node inside that points outside the loop
-            for jt in self.out_edges[self.blocks[inside]]:
+            for jt in self.out_edges[inside]:
                 if jt not in subgraph:
                     exiting.add(inside)
                     exits.add(jt)
             # any returns
-            if self.is_exiting(self.blocks[inside]):
+            if self.is_exiting(inside):
                 exiting.add(inside)
         return exiting, exits
 
     def is_reachable_dfs(self, begin: BlockName, end: BlockName):  # -> TypeGuard:
         """Is end reachable from begin."""
         seen = set()
-        to_vist = list(self.out_edges[self.blocks[begin]])
+        to_vist = list(self.out_edges[begin])
         while True:
             if to_vist:
                 block = to_vist.pop()
@@ -195,7 +191,7 @@ class SCFG:
             elif block not in seen:
                 seen.add(block)
                 if block in self.blocks:
-                    to_vist.extend(self.out_edges[self.blocks[block]])
+                    to_vist.extend(self.out_edges[block])
 
     def is_exiting(self, block_name: BlockName):
         return len(self.out_edges[block_name]) == 0
@@ -212,73 +208,60 @@ class SCFG:
     #         del self.blocks[name]
     #         del self.out_edges[name]
     #         del self.back_edges[name]
-    #         del self.in_edges[name]
     #     self.check_graph()
 
-    def insert_block(
+    def insert_block_between(
         self,
+        block_name: BlockName,
         predecessors: List[BlockName],
-        successors: List[BlockName],
-        block_type: str = "basic",
-        block_label: Label = Label(),
-        **block_args,
+        successors: List[BlockName]
     ):
-        # TODO: needs a diagram and documentaion
-        # initialize new block
-
-        new_block_name = self.add_block(
-            block_type, block_label=block_label, **block_args
-        )
         # Replace any arcs from any of predecessors to any of successors with
         # an arc through the inserted block instead.
         for pred_name in predecessors:
             # For every predecessor
-            # Remove all successors from its out edges
-            for successor in successors:
-                if successor in self.out_edges[pred_name]:
-                    self.out_edges[pred_name].remove(successor)
             # Add the inserted block as out edge
-            self.out_edges[pred_name].append(new_block_name)
-            # For inserted block, the predecessor in an in-edge
-            self.in_edges[new_block_name].append(pred_name)
+            for idx, _out in enumerate(self.out_edges[pred_name]):
+                if _out in successors:
+                    self.out_edges[pred_name][idx] = block_name
+
+            if block_name not in self.out_edges[pred_name]:
+                self.out_edges[pred_name].append(block_name)
+            
+            self.out_edges[pred_name] = list(dict.fromkeys(self.out_edges[pred_name]))
 
         for success_name in successors:
             # For every sucessor
-            # Remove all predecessors from it's in edges
-            for pred in predecessors:
-                if pred in self.in_edges[success_name]:
-                    self.in_edges[success_name].remove(pred)
-            # Add the inserted block as in edge
-            self.in_edges[success_name].append(new_block_name)
             # For inserted block, the sucessor in an out-edge
-            self.out_edges[new_block_name].append(success_name)
+            self.out_edges[block_name].append(success_name)
 
         self.check_graph()
-        return new_block_name
 
     def add_block(
         self, block_type: str = "basic", block_label: Label = Label(), **block_args
     ) -> BlockName:
         block_type = get_block_class(block_type)
-        new_block: BlockName = block_type(**block_args, label=block_label, name_gen=self.name_gen)
+        new_block: BasicBlock = block_type(**block_args, label=block_label, name_gen=self.name_gen)
 
         name = new_block.block_name
         self.blocks[name] = new_block
 
-        self.in_edges[name] = []
         self.back_edges[name] = []
         self.out_edges[name] = []
 
         return name
 
     def add_connections(self, block_name, out_edges=[], back_edges=[]):
+        assert self.out_edges[block_name] == []
+        assert self.back_edges[block_name] == []
         self.out_edges[block_name] = out_edges
         self.back_edges[block_name] = back_edges
 
-        for edge in itertools.chain(out_edges, back_edges):
-            self.in_edges[edge].append(block_name)
-
         self.check_graph()
+    
+    def add_region(self, region_head, region_exit, kind):
+        new_region = Region(self.name_gen, kind, region_head, region_exit)
+        self.regions[new_region.region_name] = new_region
 
     @staticmethod
     def from_yaml(yaml_string):
@@ -332,13 +315,15 @@ class SCFG:
 
         return yaml_string
 
-    # def to_dict(self):
-    #     scfg_graph = self.graph
-    #     graph_dict = {}
-    #     for key, value in scfg_graph.items():
-    #         curr_dict = {}
-    #         curr_dict["jt"] = [f"{i.index}" for i in value._out_edges]
-    #         if value.backedges:
-    #             curr_dict["be"] = [f"{i.index}" for i in value.backedges]
-    #         graph_dict[str(key.index)] = curr_dict
-    #     return graph_dict
+    def to_dict(self):
+        graph_dict = {}
+        for key, value in self.blocks.items():
+            curr_dict = {}
+            curr_dict["type"] = get_block_class_str(value)
+            curr_dict["out"] = [f"{i}" for i in self.out_edges[key]]
+            back_edges = [f"{i}" for i in self.back_edges[key]]
+            if back_edges:
+                curr_dict["back"] = back_edges
+            graph_dict[str(key)] = curr_dict
+
+        return graph_dict
