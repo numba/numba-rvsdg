@@ -32,17 +32,18 @@ class ByteFlowRenderer(object):
 
     def render_regions(self):
         # render subgraph
-        for region_name, region in self.scfg.regions.items():
-            graph = region.get_full_graph()
-            with self.g.subgraph(name=f"cluster_{label}") as subg:
-                color = "blue"
-                if region.kind == "branch":
-                    color = "green"
-                if region.kind == "tail":
-                    color = "purple"
-                if region.kind == "head":
-                    color = "red"
-                subg.attr(color=color, label=region.kind)
+        # for region_name, region in self.scfg.regions.items():
+        #     graph = region.get_full_graph()
+        #     with self.g.subgraph(name=f"cluster_{label}") as subg:
+        #         color = "blue"
+        #         if region.kind == "branch":
+        #             color = "green"
+        #         if region.kind == "tail":
+        #             color = "purple"
+        #         if region.kind == "head":
+        #             color = "red"
+        #         subg.attr(color=color, label=region.kind)
+        pass
 
     def render_basic_block(self, block_name: BlockName):
         block = self.scfg[block_name]

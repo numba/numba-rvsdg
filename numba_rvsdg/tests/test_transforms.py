@@ -425,6 +425,7 @@ class TestLoopRestructure(SCFGComparator):
             out: []
         "4":
             type: "basic"
+            label_type: "synth_exit_latch"
             out: ["1", "3"]
             back: ["1"]
         "5":
@@ -560,7 +561,7 @@ class TestLoopRestructure(SCFGComparator):
         "9":
             type: "basic"
             label_type: "synth_exit_latch"
-            out: ["5", "6"]
+            out: ["6", "5"]
             back: ["6"]
         "10":
             type: "basic"
@@ -616,7 +617,7 @@ class TestLoopRestructure(SCFGComparator):
         expected = """
         "0":
             type: "basic"
-            out: ["10", "9"]
+            out: ["9", "10"]
         "1":
             type: "basic"
             out: ["3"]
@@ -653,28 +654,28 @@ class TestLoopRestructure(SCFGComparator):
         "11":
             type: "basic"
             label_type: "synth_exit"
-            out: ["12", "8"]
-            back: ["8"]
+            out: ["5", "6"]
         "12":
             type: "basic"
             label_type: "synth_exit_latch"
-            out: ["5", "6"]
+            out: ["8", "11"]
+            back: ["8"]
         "13":
             type: "basic"
             label_type: "synth_assign"
-            out: ["11"]
+            out: ["12"]
         "14":
             type: "basic"
             label_type: "synth_assign"
-            out: ["11"]
+            out: ["12"]
         "15":
             type: "basic"
             label_type: "synth_assign"
-            out: ["11"]
+            out: ["12"]
         "16":
             type: "basic"
             label_type: "synth_assign"
-            out: ["11"]
+            out: ["12"]
         """
         original_scfg, block_ref_orig = SCFG.from_yaml(original)
         expected_scfg, block_ref_exp = SCFG.from_yaml(expected)

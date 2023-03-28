@@ -43,13 +43,14 @@ def loop_restructure_helper(scfg: SCFG, loop: Set[BlockName]):
     exiting_blocks, exit_blocks = scfg.find_exiting_and_exits(loop)
     # assert len(entries) == 1
     headers_were_unified = False
+    exit_blocks = list(sorted(exit_blocks))
 
     # If there are multiple headers, insert assignment and control blocks,
     # such that only a single loop header remains.
     if len(headers) > 1:
         headers_were_unified = True
         solo_head_label = SyntheticHead()
-        loop_head: BlockName = insert_block_and_control_blocks(scfg, list(entries), list(headers), block_label=solo_head_label)
+        loop_head: BlockName = insert_block_and_control_blocks(scfg, list(sorted(entries)), list(sorted(headers)), block_label=solo_head_label)
         loop.add(loop_head)
     else:
         loop_head: BlockName = next(iter(headers))
@@ -122,7 +123,7 @@ def loop_restructure_helper(scfg: SCFG, loop: Set[BlockName]):
     # on what is needed
 
     # For every block in the loop:
-    for _name in loop.copy():
+    for _name in sorted(loop):
         # If the block is an exiting block or a backedge block
         if _name in exiting_blocks or _name in backedge_blocks:
             # For each jump_target in the block
@@ -170,14 +171,18 @@ def loop_restructure_helper(scfg: SCFG, loop: Set[BlockName]):
 
                     scfg.out_edges[_name][scfg.out_edges[_name].index(jt)] = synth_assign
     loop.add(synth_exiting_latch)
+
+    # Add the back_edge
+    scfg.out_edges[synth_exiting_latch].append(loop_head)
+    scfg.back_edges[synth_exiting_latch].append(loop_head)
+
     # scfg.insert_block_between(synth_exiting_latch, list(exiting_blocks), list(exit_blocks))
     # If an exit is to be created, we do so too, but only add it to the scfg,
     # since it isn't part of the loop
     if needs_synth_exit:
         scfg.insert_block_between(synth_exit, [synth_exiting_latch], list(exit_blocks))
-
-    # Add the back_edge
-    scfg.back_edges[synth_exiting_latch].append(loop_head)
+    else:
+        scfg.out_edges[synth_exiting_latch].append(list(exit_blocks)[0])
 
 
 def restructure_loop(scfg: SCFG):
