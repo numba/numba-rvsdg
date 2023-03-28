@@ -26,5 +26,21 @@ class SCFGComparator(TestCase):
 
         self.assertEqual(first_yaml, second_yaml)
     
-    def assertDictEquals(self, first_dict: str, second_dict: str, ref_dict: Dict):
+    def assertDictEquals(self, first_dict: dict, second_dict: dict, ref_dict: dict):
+
+        def replace_with_refs(scfg_dict: dict):
+            new_dict = {}
+            for key, value in scfg_dict.items():
+                key = str(ref_dict[key])
+                _new_dict = {}
+                for _key, _value in value.items():
+                    if isinstance(_value, list):
+                        for i in range(len(_value)):
+                            _value[i] = str(ref_dict[_value[i]])
+                    _new_dict[_key] = _value
+                new_dict[key] = _new_dict
+
+            return new_dict
+
+        first_dict = replace_with_refs(first_dict)
         self.assertEqual(first_dict, second_dict)
