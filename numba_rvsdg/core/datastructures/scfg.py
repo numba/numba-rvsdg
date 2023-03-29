@@ -22,13 +22,15 @@ class SCFG:
     And stores the jump targets and back edges for
     blocks within the graph."""
 
-    blocks: Dict[BlockName, BasicBlock] = field(default_factory=dict)
+    blocks: Dict[BlockName, BasicBlock] = field(default_factory=dict, init=False)
 
-    out_edges: Dict[BlockName, List[BlockName]] = field(default_factory=dict)
-    back_edges: Dict[BlockName, List[BlockName]] = field(default_factory=dict)
-    regions: Dict[RegionName, Region] = field(default_factory=dict)
+    out_edges: Dict[BlockName, List[BlockName]] = field(default_factory=dict, init=False)
+    back_edges: Dict[BlockName, List[BlockName]] = field(default_factory=dict, init=False)
 
-    name_gen: NameGenerator = field(default_factory=NameGenerator, compare=False)
+    regions: Dict[RegionName, Region] = field(default_factory=dict, init=False)
+    region_headers: Dict[BlockName, List[RegionName]] = field(default_factory=dict, init=False)
+
+    name_gen: NameGenerator = field(default_factory=NameGenerator, compare=False, init=False)
 
     def __getitem__(self, index: BlockName) -> BasicBlock:
         return self.blocks[index]
@@ -51,7 +53,7 @@ class SCFG:
             # get the corresponding block for the block_name
             block = self[block_name]
             # yield the block_name, block combo
-            yield (block_name, block)
+            yield block_name
             # finally add any out_edges to the list of block_names to visit
             to_visit.extend(self.out_edges[block_name])
 
@@ -296,8 +298,13 @@ class SCFG:
         self.check_graph()
 
     def add_region(self, region_head, region_exit, kind):
-        new_region = Region(self.name_gen, kind, region_head, region_exit)
-        self.regions[new_region.region_name] = new_region
+        new_region = Region(self.name_gen, kind, region_head, region_exit, self)
+        region_name = new_region.region_name
+        self.regions[region_name] = new_region
+        if region_head in self.region_headers:
+            self.region_headers[region_head].append(region_name)
+        else:
+            self.region_headers[region_head] = [region_name]
 
     @staticmethod
     def from_yaml(yaml_string):

@@ -26,26 +26,12 @@ class ByteFlowRenderer(object):
         self.scfg = byte_flow.scfg
         self.bcmap_from_bytecode(byte_flow.bc)
 
-        self.render_blocks()
+        self.rendered_blocks = set()
+        self.rendered_regions = set()
+        self.render_region(self.g, None)
         self.render_edges()
-        self.render_regions()
 
-    def render_regions(self):
-        # render subgraph
-        # for region_name, region in self.scfg.regions.items():
-        #     graph = region.get_full_graph()
-        #     with self.g.subgraph(name=f"cluster_{label}") as subg:
-        #         color = "blue"
-        #         if region.kind == "branch":
-        #             color = "green"
-        #         if region.kind == "tail":
-        #             color = "purple"
-        #         if region.kind == "head":
-        #             color = "red"
-        #         subg.attr(color=color, label=region.kind)
-        pass
-
-    def render_basic_block(self, block_name: BlockName):
+    def render_basic_block(self, graph, block_name: BlockName):
         block = self.scfg[block_name]
 
         if isinstance(block.label, PythonBytecodeLabel):
@@ -58,9 +44,9 @@ class ByteFlowRenderer(object):
             body = str(block_name)
         else:
             raise Exception("Unknown label type: " + block.label)
-        self.g.node(str(block_name), shape="rect", label=body)
+        graph.node(str(block_name), shape="rect", label=body)
 
-    def render_control_variable_block(self, block_name: BlockName):
+    def render_control_variable_block(self, graph, block_name: BlockName):
         block = self.scfg[block_name]
 
         if isinstance(block.label, ControlLabel):
@@ -70,9 +56,9 @@ class ByteFlowRenderer(object):
             # )
         else:
             raise Exception("Unknown label type: " + block.label)
-        self.g.node(str(block_name), shape="rect", label=body)
+        graph.node(str(block_name), shape="rect", label=body)
 
-    def render_branching_block(self, block_name: BlockName):
+    def render_branching_block(self, graph, block_name: BlockName):
         block = self.scfg[block_name]
 
         if isinstance(block.label, ControlLabel):
@@ -90,20 +76,61 @@ class ByteFlowRenderer(object):
             # )
         else:
             raise Exception("Unknown label type: " + block.label)
-        self.g.node(str(block_name), shape="rect", label=body)
+        graph.node(str(block_name), shape="rect", label=body)
 
-    def render_blocks(self):
-        for block_name, block in self.scfg.blocks.items():
-            if type(block) == BasicBlock:
-                self.render_basic_block(block_name)
-            elif type(block) == PythonBytecodeBlock:
-                self.render_basic_block(block_name)
-            elif type(block) == ControlVariableBlock:
-                self.render_control_variable_block(block_name)
-            elif type(block) == BranchBlock:
-                self.render_branching_block(block_name)
-            else:
-                raise Exception("unreachable")
+    def render_region(self, graph, region_name):
+        # If region name is none, we're in the 'root' region
+        # that is the graph itself.
+        if region_name is None:
+            region_headers = self.scfg.region_headers
+            all_blocks = list(self.scfg)
+        else:
+            region = self.scfg.regions[region_name]
+            region_headers = region.sub_region_headers
+            all_blocks = list(region)
+        
+
+        # If subregions exist within this region we render them first
+        if region_headers:
+            for _, regions in region_headers.items():
+                for _region_name in regions:
+                    _region = self.scfg.regions[_region_name]
+                    with graph.subgraph(name=f"cluster_{_region_name}") as subg:
+                        color = "blue"
+                        if _region.kind == "branch":
+                            color = "green"
+                        if _region.kind == "tail":
+                            color = "purple"
+                        if _region.kind == "head":
+                            color = "red"
+                        subg.attr(color=color, label=_region.kind)
+                        self.render_region(subg, _region_name)
+
+        # If there are no further subregions then we render the blocks
+        for block_name in all_blocks:
+            self.render_block(graph, block_name, self.scfg[block_name])
+
+    def render_block(self, graph, block_name, block):
+        if block_name in self.rendered_blocks:
+            return
+
+        if block_name in self.scfg.region_headers.keys():
+            for region in self.scfg.region_headers[block_name]:
+                if region not in self.rendered_regions:
+                    self.rendered_regions.add(region)
+                    self.render_region(graph, region)
+
+        if type(block) == BasicBlock:
+            self.render_basic_block(graph, block_name)
+        elif type(block) == PythonBytecodeBlock:
+            self.render_basic_block(graph, block_name)
+        elif type(block) == ControlVariableBlock:
+            self.render_control_variable_block(graph, block_name)
+        elif type(block) == BranchBlock:
+            self.render_branching_block(graph, block_name)
+        else:
+            raise Exception("unreachable")
+        self.rendered_blocks.add(block_name)
 
     def render_edges(self):
 
