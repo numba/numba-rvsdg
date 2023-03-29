@@ -227,7 +227,7 @@ class SCFG:
 
             if block_name not in self.out_edges[pred_name]:
                 self.out_edges[pred_name].append(block_name)
-            
+
             self.out_edges[pred_name] = list(dict.fromkeys(self.out_edges[pred_name]))
 
         for success_name in successors:
@@ -258,7 +258,7 @@ class SCFG:
         self.back_edges[block_name] = back_edges
 
         self.check_graph()
-    
+
     def add_region(self, region_head, region_exit, kind):
         new_region = Region(self.name_gen, kind, region_head, region_exit)
         self.regions[new_region.region_name] = new_region

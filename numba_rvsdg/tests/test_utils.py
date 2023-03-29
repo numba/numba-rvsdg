@@ -25,7 +25,7 @@ class SCFGComparator(TestCase):
             second_yaml = second_yaml.replace(repr(value), key)
 
         self.assertEqual(first_yaml, second_yaml)
-    
+
     def assertDictEquals(self, first_dict: dict, second_dict: dict, ref_dict: dict):
 
         def replace_with_refs(scfg_dict: dict):

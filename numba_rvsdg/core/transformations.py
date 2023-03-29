@@ -41,7 +41,6 @@ def loop_restructure_helper(scfg: SCFG, loop: Set[BlockName]):
 
     headers, entries = scfg.find_headers_and_entries(loop)
     exiting_blocks, exit_blocks = scfg.find_exiting_and_exits(loop)
-    # assert len(entries) == 1
     headers_were_unified = False
     exit_blocks = list(sorted(exit_blocks))
 
@@ -176,7 +175,6 @@ def loop_restructure_helper(scfg: SCFG, loop: Set[BlockName]):
     scfg.out_edges[synth_exiting_latch].append(loop_head)
     scfg.back_edges[synth_exiting_latch].append(loop_head)
 
-    # scfg.insert_block_between(synth_exiting_latch, list(exiting_blocks), list(exit_blocks))
     # If an exit is to be created, we do so too, but only add it to the scfg,
     # since it isn't part of the loop
     if needs_synth_exit:
@@ -282,7 +280,7 @@ def extract_region(scfg: SCFG, region_blocks, region_kind):
     assert len(exiting_blocks) == 1
     region_header = next(iter(headers))
     region_exiting = next(iter(exiting_blocks))
-    
+
     scfg.add_region(region_header, region_exiting, region_kind)
 
 
@@ -525,12 +523,12 @@ def insert_block_and_control_blocks(
                 # update branching variable
                 branch_variable_value += 1
                 control_blocks[control_block_name] = pred_name
-    
+
     scfg.insert_block_between(branch_block_name, predecessors, successors)
 
     for _synth_assign, _pred in control_blocks.items():
         scfg.insert_block_between(_synth_assign, [_pred], [branch_block_name])
- 
+
     return branch_block_name
 
 
