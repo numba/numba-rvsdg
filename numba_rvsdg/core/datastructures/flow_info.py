@@ -1,13 +1,11 @@
 import dis
-
-from typing import Set, Tuple, Dict, Sequence
+from typing import Set, Tuple, Dict, Sequence, List
 from dataclasses import dataclass, field
 
 from numba_rvsdg.core.datastructures.basic_block import PythonBytecodeBlock
-from numba_rvsdg.core.datastructures.block_map import BlockMap
+from numba_rvsdg.core.datastructures.scfg import SCFG
 from numba_rvsdg.core.datastructures.labels import (
-    Label,
-    ControlLabelGenerator,
+    BlockName,
     PythonBytecodeLabel,
 )
 from numba_rvsdg.core.utils import (
@@ -34,10 +32,6 @@ class FlowInfo:
     last_offset: int = field(default=0)
     """Offset of the last bytecode instruction.
     """
-
-    clg: ControlLabelGenerator = field(
-        default_factory=ControlLabelGenerator, compare=False
-    )
 
     def _add_jump_inst(self, offset: int, targets: Sequence[int]):
         """Add jump instruction to FlowInfo."""
@@ -71,33 +65,36 @@ class FlowInfo:
         flowinfo.last_offset = inst.offset
         return flowinfo
 
-    def build_basicblocks(self: "FlowInfo", end_offset=None) -> "BlockMap":
+    def build_basicblocks(self: "FlowInfo", end_offset=None) -> "SCFG":
         """
         Build a graph of basic-blocks
         """
         offsets = sorted(self.block_offsets)
-        # enumerate labels
-        labels = dict(
-            (offset, PythonBytecodeLabel(self.clg.new_index())) for offset in offsets
-        )
+        scfg = SCFG()
+
+        names = {}
         if end_offset is None:
             end_offset = _next_inst_offset(self.last_offset)
-        bbmap = BlockMap(graph={}, clg=self.clg)
+
         for begin, end in zip(offsets, [*offsets[1:], end_offset]):
-            label = labels[begin]
-            targets: Tuple[Label, ...]
+            names[begin] = scfg.add_block(
+                block_type="python_bytecode",
+                block_label=PythonBytecodeLabel(),
+                begin=begin,
+                end=end,
+            )
+
+        for begin, end in zip(offsets, [*offsets[1:], end_offset]):
+            targets: List[BlockName]
             term_offset = _prev_inst_offset(end)
             if term_offset not in self.jump_insts:
                 # implicit jump
-                targets = (labels[end],)
+                targets = (names[end],)
             else:
-                targets = tuple(labels[o] for o in self.jump_insts[term_offset])
-            block = PythonBytecodeBlock(
-                label=label,
-                begin=begin,
-                end=end,
-                _jump_targets=targets,
-                backedges=(),
-            )
-            bbmap.add_block(block)
-        return bbmap
+                targets = [names[o] for o in self.jump_insts[term_offset]]
+
+            block_name = names[begin]
+            scfg.add_connections(block_name, targets, [])
+
+        scfg.check_graph()
+        return scfg

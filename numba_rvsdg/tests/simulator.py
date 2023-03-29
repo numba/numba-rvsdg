@@ -1,11 +1,12 @@
 from collections import ChainMap
 from dis import Instruction
 from numba_rvsdg.core.datastructures.byte_flow import ByteFlow
-from numba_rvsdg.core.datastructures.block_map import BlockMap
+from numba_rvsdg.core.datastructures.scfg import SCFG
 from numba_rvsdg.core.datastructures.basic_block import (
     BasicBlock,
     PythonBytecodeBlock,
-    RegionBlock,
+    ControlVariableBlock,
+    BranchBlock,
 )
 from numba_rvsdg.core.datastructures.labels import (
     Label,
@@ -17,13 +18,14 @@ from numba_rvsdg.core.datastructures.labels import (
     SyntheticHead,
     SyntheticTail,
     SyntheticReturn,
+    BlockName,
 )
 
 import builtins
 
 
 class Simulator:
-    """BlockMap simulator.
+    """SCFG simulator.
 
     This is a simulator utility to be used for testing.
 
@@ -50,10 +52,8 @@ class Simulator:
         Control variable map
     stack: List[Instruction]
         Instruction stack
-    region_stack: List[RegionBlocks]
-        Stack to hold the recusion level for regions
-    trace: List[Tuple(label, block)]
-        List of label, block combinations visisted
+    trace: List[Tuple(name, block)]
+        List of names, block combinations visisted
     branch: Boolean
         Flag to be set during execution.
     return_value: Any
@@ -64,19 +64,19 @@ class Simulator:
     def __init__(self, flow: ByteFlow, globals: dict):
 
         self.flow = flow
+        self.scfg = flow.scfg
         self.globals = ChainMap(globals, builtins.__dict__)
 
         self.bcmap = {inst.offset: inst for inst in flow.bc}
         self.varmap = dict()
         self.ctrl_varmap = dict()
         self.stack = []
-        self.region_stack = []
         self.trace = []
         self.branch = None
         self.return_value = None
 
-    def get_block(self, label:Label):
-        """Return the BasicBlock object for a give label.
+    def get_block(self, name: BlockName):
+        """Return the BasicBlock object for a give name.
 
         This method is aware of the recusion level of the `Simulator` into the
         `region_stack`. That is to say, if we have recursed into regions, the
@@ -87,8 +87,8 @@ class Simulator:
 
         Parameters
         ----------
-        label: Label
-            The label for which to fetch the BasicBlock
+        name: BlockName
+            The name for which to fetch the BasicBlock
 
         Return
         ------
@@ -96,12 +96,7 @@ class Simulator:
             The requested block
 
         """
-        # Recursed into regions, return block from region
-        if self.region_stack:
-            return self.region_stack[-1].subregion[label]
-        # Not recursed into regions, return block from ByteFlow
-        else:
-            return self.flow.bbmap[label]
+        return self.flow.scfg[name]
 
     def run(self, args):
         """Run the given simulator with given args.
@@ -118,20 +113,20 @@ class Simulator:
 
         """
         self.varmap.update(args)
-        label = PythonBytecodeLabel(index=0)
+        name = self.flow.scfg.find_head()
         while True:
-            action = self.run_BasicBlock(label)
+            action = self.run_BasicBlock(name)
             if "return" in action:
                 return action["return"]
-            label = action["jumpto"]
+            name = action["jumpto"]
 
-    def run_BasicBlock(self, label: Label):
+    def run_BasicBlock(self, name: BlockName):
         """Run a BasicBlock.
 
         Paramters
         ---------
-        label: Label
-            The Label of the BasicBlock
+        name: BlockName
+            The BlockName of the BasicBlock
 
         Returns
         -------
@@ -140,104 +135,51 @@ class Simulator:
             BasicBlock.
 
         """
-        print("AT", label)
-        block = self.get_block(label)
-        self.trace.append((label, block))
-        if isinstance(block, RegionBlock):
-            return self.run_RegionBlock(label)
+        print("AT", name)
+        block = self.get_block(name)
+        self.trace.append((name, block))
 
-        if isinstance(label, ControlLabel):
-            self.run_synth_block(label)
-        elif isinstance(label, PythonBytecodeLabel):
-            self.run_PythonBytecodeBlock(label)
-        if block.fallthrough:
-            [label] = block.jump_targets
-            return {"jumpto": label}
-        elif len(block._jump_targets) == 2:
-            [br_false, br_true] = block._jump_targets
+        if isinstance(block.label, ControlLabel):
+            self.run_synth_block(name)
+        elif isinstance(block.label, PythonBytecodeLabel):
+            self.run_PythonBytecodeBlock(name)
+        if len(self.scfg.out_edges[name]) == 1:
+            [name] = self.scfg.out_edges[name]
+            return {"jumpto": name}
+        elif len(self.scfg.out_edges[name]) == 2:
+            [br_false, br_true] = self.scfg.out_edges[name]
             return {"jumpto": br_true if self.branch else br_false}
         else:
             return {"return": self.return_value}
 
-    def run_RegionBlock(self, label: Label):
-        """Run region.
-
-        Execute all BasicBlocks in this region. Stay within the region, only
-        return the action when we jump out of the region or when we return from
-        within the region.
-
-        Special attention is directed at the use of the `region_stack` here.
-        Since the blocks for the subregion are stored in the `region.subregion`
-        graph, we need to use a region aware `get_blocks` in methods such as
-        `run_BasicBlock` so that we get the correct `BasicBlock`. The net effect
-        of placing the `region` onto the `region_stack` is that `run_BasicBlock`
-        will be able to fetch the correct label from the `region.subregion`
-        graph, and thus be able to run the correct sequence of blocks.
-
-        Parameters
-        ----------
-        label: Label
-            The Label for the RegionBlock
-
-        Returns
-        -------
-        action: Dict[Str: Int or Boolean or Any]
-            The action to be taken as a result of having executed the
-            BasicBlock.
-
-        """
-        # Get the RegionBlock and place it onto the region_stack
-        region: RegionBlock = self.get_block(label)
-        self.region_stack.append(region)
-        while True:
-            # Execute the first block of the region.
-            action = self.run_BasicBlock(label)
-            # If we need to return, break and do so
-            if "return" in action:
-                break  # break and return action
-            elif "jumpto" in action:
-                label = action["jumpto"]
-                # Otherwise check if we stay in the region and break otherwise
-                if label in region.subregion.graph:
-                    continue  # stay in the region
-                else:
-                    break  # break and return action
-            else:
-                assert False, "unreachable" # in case of coding errors
-        # Pop the region from the region stack again and return the final
-        # action for this region
-        popped = self.region_stack.pop()
-        assert(popped == region)
-        return action
-
-    def run_PythonBytecodeBlock(self, label: PythonBytecodeLabel):
+    def run_PythonBytecodeBlock(self, name: BlockName):
         """Run PythonBytecodeBlock
 
         Parameters
         ----------
-        label: PythonBytecodeLabel
-            The Label for the block.
+        name: BlockName
+            The BlockName for the block.
 
         """
-        block: PythonBytecodeBlock = self.get_block(label)
+        block: PythonBytecodeBlock = self.get_block(name)
         assert type(block) is PythonBytecodeBlock
         for inst in block.get_instructions(self.bcmap):
             self.run_inst(inst)
 
-    def run_synth_block(self, label: ControlLabel):
+    def run_synth_block(self, name: BlockName):
         """Run a SyntheticBlock
 
         Paramaters
         ----------
-        label: ControlLabel
-            The Label for the block.
+        name: BlockName
+            The BlockName for the block.
 
         """
-        print("----", label)
+        print("----", name)
         print(f"control variable map: {self.ctrl_varmap}")
-        block = self.get_block(label)
-        handler = getattr(self, f"synth_{type(label).__name__}")
-        handler(label, block)
+        block = self.get_block(name)
+        handler = getattr(self, f"synth_{type(name).__name__}")
+        handler(name, block)
 
     def run_inst(self, inst: Instruction):
         """Run a bytecode Instruction
@@ -257,44 +199,58 @@ class Simulator:
         print(f"stack after: {self.stack}")
 
     ### Synthetic Instructions ###
-    def synth_SynthenticAssignment(self, control_label, block):
+    def synth_SynthenticAssignment(
+        self, control_label: BlockName, block: ControlVariableBlock
+    ):
         self.ctrl_varmap.update(block.variable_assignment)
 
-    def _synth_branch(self, control_label, block):
+    def _synth_branch(self, control_label: BlockName, block: BranchBlock):
         jump_target = block.branch_value_table[self.ctrl_varmap[block.variable]]
         self.branch = bool(block._jump_targets.index(jump_target))
 
-    def synth_SyntheticExitingLatch(self, control_label, block):
+    def synth_SyntheticExitingLatch(
+        self, control_label: BlockName, block: ControlVariableBlock
+    ):
         self._synth_branch(control_label, block)
 
-    def synth_SyntheticHead(self, control_label, block):
+    def synth_SyntheticHead(
+        self, control_label: BlockName, block: ControlVariableBlock
+    ):
         self._synth_branch(control_label, block)
 
-    def synth_SyntheticExit(self, control_label, block):
+    def synth_SyntheticExit(
+        self, control_label: BlockName, block: ControlVariableBlock
+    ):
         self._synth_branch(control_label, block)
 
-    def synth_SyntheticReturn(self, control_label, block):
+    def synth_SyntheticReturn(
+        self, control_label: BlockName, block: ControlVariableBlock
+    ):
         pass
 
-    def synth_SyntheticTail(self, control_label, block):
+    def synth_SyntheticTail(
+        self, control_label: BlockName, block: ControlVariableBlock
+    ):
         pass
 
-    def synth_SyntheticBranch(self, control_label, block):
+    def synth_SyntheticBranch(
+        self, control_label: BlockName, block: ControlVariableBlock
+    ):
         pass
 
     ### Bytecode Instructions ###
-    def op_LOAD_CONST(self, inst):
+    def op_LOAD_CONST(self, inst: Instruction):
         self.stack.append(inst.argval)
 
-    def op_COMPARE_OP(self, inst):
+    def op_COMPARE_OP(self, inst: Instruction):
         arg1 = self.stack.pop()
         arg2 = self.stack.pop()
         self.stack.append(eval(f"{arg2} {inst.argval} {arg1}"))
 
-    def op_LOAD_FAST(self, inst):
+    def op_LOAD_FAST(self, inst: Instruction):
         self.stack.append(self.varmap[inst.argval])
 
-    def op_LOAD_GLOBAL(self, inst):
+    def op_LOAD_GLOBAL(self, inst: Instruction):
         v = self.globals[inst.argval]
         if inst.argrepr.startswith("NULL"):
             append_null = True
@@ -303,22 +259,22 @@ class Simulator:
         else:
             raise NotImplementedError
 
-    def op_STORE_FAST(self, inst):
+    def op_STORE_FAST(self, inst: Instruction):
         val = self.stack.pop()
         self.varmap[inst.argval] = val
 
-    def op_CALL_FUNCTION(self, inst):
+    def op_CALL_FUNCTION(self, inst: Instruction):
         args = [self.stack.pop() for _ in range(inst.argval)][::-1]
         fn = self.stack.pop()
         res = fn(*args)
         self.stack.append(res)
 
-    def op_GET_ITER(self, inst):
+    def op_GET_ITER(self, inst: Instruction):
         val = self.stack.pop()
         res = iter(val)
         self.stack.append(res)
 
-    def op_FOR_ITER(self, inst):
+    def op_FOR_ITER(self, inst: Instruction):
         tos = self.stack[-1]
         try:
             ind = next(tos)
@@ -329,58 +285,58 @@ class Simulator:
             self.branch = False
             self.stack.append(ind)
 
-    def op_INPLACE_ADD(self, inst):
+    def op_INPLACE_ADD(self, inst: Instruction):
         rhs = self.stack.pop()
         lhs = self.stack.pop()
         lhs += rhs
         self.stack.append(lhs)
 
-    def op_RETURN_VALUE(self, inst):
+    def op_RETURN_VALUE(self, inst: Instruction):
         v = self.stack.pop()
         self.return_value = v
 
-    def op_JUMP_ABSOLUTE(self, inst):
+    def op_JUMP_ABSOLUTE(self, inst: Instruction):
         pass
 
-    def op_JUMP_FORWARD(self, inst):
+    def op_JUMP_FORWARD(self, inst: Instruction):
         pass
 
-    def op_POP_JUMP_IF_FALSE(self, inst):
+    def op_POP_JUMP_IF_FALSE(self, inst: Instruction):
         self.branch = not self.stack.pop()
 
-    def op_POP_JUMP_IF_TRUE(self, inst):
+    def op_POP_JUMP_IF_TRUE(self, inst: Instruction):
         self.branch = bool(self.stack.pop())
 
-    def op_JUMP_IF_TRUE_OR_POP(self, inst):
+    def op_JUMP_IF_TRUE_OR_POP(self, inst: Instruction):
         if self.stack[-1]:
             self.branch = True
         else:
             self.stack.pop()
             self.branch = False
 
-    def op_JUMP_IF_FALSE_OR_POP(self, inst):
+    def op_JUMP_IF_FALSE_OR_POP(self, inst: Instruction):
         if not self.stack[-1]:
             self.branch = True
         else:
             self.stack.pop()
             self.branch = False
 
-    def op_POP_TOP(self, inst):
+    def op_POP_TOP(self, inst: Instruction):
         self.stack.pop()
 
-    def op_RESUME(self, inst):
+    def op_RESUME(self, inst: Instruction):
         pass
 
-    def op_PRECALL(self, inst):
+    def op_PRECALL(self, inst: Instruction):
         pass
 
-    def op_CALL_FUNCTION(self, inst):
+    def op_CALL_FUNCTION(self, inst: Instruction):
         args = [self.stack.pop() for _ in range(inst.argval)][::-1]
         fn = self.stack.pop()
         res = fn(*args)
         self.stack.append(res)
 
-    def op_CALL(self, inst):
+    def op_CALL(self, inst: Instruction):
         args = [self.stack.pop() for _ in range(inst.argval)][::-1]
         first, second = self.stack.pop(), self.stack.pop()
         if first == None:
@@ -390,42 +346,42 @@ class Simulator:
         res = func(*args)
         self.stack.append(res)
 
-    def op_BINARY_OP(self, inst):
+    def op_BINARY_OP(self, inst: Instruction):
         rhs, lhs, op = self.stack.pop(), self.stack.pop(), inst.argrepr
         op = op if len(op) == 1 else op[0]
         self.stack.append(eval(f"{lhs} {op} {rhs}"))
 
-    def op_JUMP_BACKWARD(self, inst):
+    def op_JUMP_BACKWARD(self, inst: Instruction):
         pass
 
-    def op_POP_JUMP_FORWARD_IF_TRUE(self, inst):
+    def op_POP_JUMP_FORWARD_IF_TRUE(self, inst: Instruction):
         self.branch = self.stack[-1]
         self.stack.pop()
 
-    def op_POP_JUMP_BACKWARD_IF_TRUE(self, inst):
+    def op_POP_JUMP_BACKWARD_IF_TRUE(self, inst: Instruction):
         self.branch = self.stack[-1]
         self.stack.pop()
 
-    def op_POP_JUMP_FORWARD_IF_FALSE(self, inst):
+    def op_POP_JUMP_FORWARD_IF_FALSE(self, inst: Instruction):
         self.branch = not self.stack[-1]
         self.stack.pop()
 
-    def op_POP_JUMP_BACKWARD_IF_FALSE(self, inst):
+    def op_POP_JUMP_BACKWARD_IF_FALSE(self, inst: Instruction):
         self.branch = not self.stack[-1]
         self.stack.pop()
 
-    def op_POP_JUMP_FORWARD_IF_NOT_NONE(self, inst):
+    def op_POP_JUMP_FORWARD_IF_NOT_NONE(self, inst: Instruction):
         self.branch = self.stack[-1] is not None
         self.stack.pop()
 
-    def op_POP_JUMP_BACKWARD_IF_NOT_NONE(self, inst):
+    def op_POP_JUMP_BACKWARD_IF_NOT_NONE(self, inst: Instruction):
         self.branch = self.stack[-1] is not None
         self.stack.pop()
 
-    def op_POP_JUMP_FORWARD_IF_NONE(self, inst):
+    def op_POP_JUMP_FORWARD_IF_NONE(self, inst: Instruction):
         self.branch = self.stack[-1] is None
         self.stack.pop()
 
-    def op_POP_JUMP_BACKWARD_IF_NONE(self, inst):
+    def op_POP_JUMP_BACKWARD_IF_NONE(self, inst: Instruction):
         self.branch = self.stack[-1] is None
         self.stack.pop()

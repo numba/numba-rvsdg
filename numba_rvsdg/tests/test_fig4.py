@@ -28,5 +28,5 @@ def make_flow():
         dis.Instruction("RETURN_VALUE", 1, None, None, "", 18, None, False),
     ]
     flow = FlowInfo.from_bytecode(bc)
-    bbmap = flow.build_basicblocks()
-    return ByteFlow(bc=bc, bbmap=bbmap)
+    scfg = flow.build_basicblocks()
+    return ByteFlow(bc=bc, scfg=scfg)
