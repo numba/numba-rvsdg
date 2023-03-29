@@ -4,10 +4,22 @@ import unittest
 
 
 class SimulatorTest(unittest.TestCase):
+
+    def setUp(self):
+        """Initialize simulator. """
+        self.sim = None
+
     def _run(self, func, flow, kwargs):
+        """Run function func. """
+        # lazily initialize the simulator
+        if self.sim is None:
+            self.sim = Simulator(flow, func.__globals__)
+
         with self.subTest():
-            sim = Simulator(flow, func.__globals__)
-            self.assertEqual(sim.run(kwargs), func(**kwargs))
+            self.assertEqual(self.sim.run(kwargs), func(**kwargs))
+
+    def _check_trace(self, flow):
+        self.assertEqual(self.sim.trace, set(flow.scfg.blocks.keys()))
 
     def test_simple_branch(self):
         def foo(x):
@@ -26,6 +38,9 @@ class SimulatorTest(unittest.TestCase):
         # else case
         self._run(foo, flow, {"x": 0})
 
+        # check the trace
+        self._check_trace(flow)
+
     def test_simple_for_loop(self):
         def foo(x):
             c = 0
@@ -42,6 +57,9 @@ class SimulatorTest(unittest.TestCase):
         self._run(foo, flow, {"x": 2})
         # extended loop case
         self._run(foo, flow, {"x": 100})
+
+        # check the trace
+        self._check_trace(flow)
 
     def test_simple_while_loop(self):
         def foo(x):
@@ -62,6 +80,9 @@ class SimulatorTest(unittest.TestCase):
         # extended loop case
         self._run(foo, flow, {"x": 100})
 
+        # check the trace
+        self._check_trace(flow)
+
     def test_for_loop_with_exit(self):
         def foo(x):
             c = 0
@@ -80,6 +101,9 @@ class SimulatorTest(unittest.TestCase):
         self._run(foo, flow, {"x": 2})
         # break case
         self._run(foo, flow, {"x": 15})
+
+        # check the trace
+        self._check_trace(flow)
 
     def test_nested_for_loop_with_break_and_continue(self):
         def foo(x):
@@ -107,6 +131,9 @@ class SimulatorTest(unittest.TestCase):
         # will break
         self._run(foo, flow, {"x": 5})
 
+        # check the trace
+        self._check_trace(flow)
+
     def test_for_loop_with_multiple_backedges(self):
         def foo(x):
             c = 0
@@ -130,6 +157,9 @@ class SimulatorTest(unittest.TestCase):
         self._run(foo, flow, {"x": 4})
         # adding 1000, via the elif clause
         self._run(foo, flow, {"x": 7})
+
+        # check the trace
+        self._check_trace(flow)
 
     def test_andor(self):
         def foo(x, y):
@@ -166,6 +196,8 @@ class SimulatorTest(unittest.TestCase):
         # mutiple iterations
         self._run(foo, flow, {"s": 23, "e": 28})
 
+        # check the trace
+        self._check_trace(flow)
 
 if __name__ == "__main__":
     unittest.main()
