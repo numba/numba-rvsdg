@@ -49,7 +49,11 @@ def loop_restructure_helper(scfg: SCFG, loop: Set[BlockName]):
     if len(headers) > 1:
         headers_were_unified = True
         solo_head_label = SyntheticHead()
-        loop_head: BlockName = insert_block_and_control_blocks(scfg, list(sorted(entries)), list(sorted(headers)), block_label=solo_head_label)
+        loop_head: BlockName = insert_block_and_control_blocks(
+            scfg,
+            list(sorted(entries)),
+            list(sorted(headers)),
+            block_label=solo_head_label)
         loop.add(loop_head)
     else:
         loop_head: BlockName = next(iter(headers))
@@ -57,7 +61,8 @@ def loop_restructure_helper(scfg: SCFG, loop: Set[BlockName]):
     # backedge to the loop header) we can exit early, since the condition for
     # SCFG is fullfilled.
     backedge_blocks = [
-        block for block in loop if set(headers).intersection(scfg.out_edges[block])
+        block for block in loop
+        if set(headers).intersection(scfg.out_edges[block])
     ]
     if (
         len(backedge_blocks) == 1
@@ -87,7 +92,11 @@ def loop_restructure_helper(scfg: SCFG, loop: Set[BlockName]):
     exit_value_table = dict(((i, j) for i, j in enumerate(exit_blocks)))
     if needs_synth_exit:
         synth_exit_label = SyntheticExit()
-        synth_exit = scfg.add_block("branch", block_label=synth_exit_label, variable=exit_variable, branch_value_table=exit_value_table)
+        synth_exit = scfg.add_block(
+            "branch",
+            block_label=synth_exit_label,
+            variable=exit_variable,
+            branch_value_table=exit_value_table)
 
     # Now we setup the lookup tables for the various control variables,
     # depending on the state of the CFG and what is needed
@@ -107,7 +116,11 @@ def loop_restructure_helper(scfg: SCFG, loop: Set[BlockName]):
     synth_latch_label = SyntheticExitingLatch()
     # This variable denotes the backedge
     backedge_variable = scfg.name_gen.new_var_name()
-    synth_exiting_latch = scfg.add_block("branch", block_label=synth_latch_label, variable=backedge_variable, branch_value_table=backedge_value_table)
+    synth_exiting_latch = scfg.add_block(
+        "branch",
+        block_label=synth_latch_label,
+        variable=backedge_variable,
+        branch_value_table=backedge_value_table)
 
     # This does a dictionary reverse lookup, to determine the key for a given
     # value.
@@ -126,9 +139,9 @@ def loop_restructure_helper(scfg: SCFG, loop: Set[BlockName]):
         # If the block is an exiting block or a backedge block
         if _name in exiting_blocks or _name in backedge_blocks:
             # For each jump_target in the block
-            for jt in scfg.out_edges[_name]:
+            for out_target in scfg.out_edges[_name]:
                 # If the target is an exit block
-                if jt in exit_blocks:
+                if out_target in exit_blocks:
                     # Create a new assignment name and record it
                     synth_assign = SynthenticAssignment()
 
@@ -138,20 +151,28 @@ def loop_restructure_helper(scfg: SCFG, loop: Set[BlockName]):
                     # the correct blocks
                     if needs_synth_exit:
                         variable_assignment[exit_variable] = reverse_lookup(
-                            exit_value_table, jt
+                            exit_value_table, out_target
                         )
                     variable_assignment[backedge_variable] = reverse_lookup(
                         backedge_value_table,
                         synth_exit if needs_synth_exit else next(iter(exit_blocks)),
                     )
                     # Insert the assignment to the block map
-                    synth_assign = scfg.add_block("control_variable", synth_assign, variable_assignment=variable_assignment)
-                    scfg.add_connections(synth_assign, [synth_exiting_latch], [])
+                    synth_assign = scfg.add_block(
+                        "control_variable",
+                        synth_assign,
+                        variable_assignment=variable_assignment)
+                    scfg.add_connections(
+                        synth_assign,
+                        [synth_exiting_latch],
+                        [])
                     loop.add(synth_assign)
-
-                    scfg.out_edges[_name][scfg.out_edges[_name].index(jt)] = synth_assign
+                    # Update the edge from the out_target to point to the new
+                    # assignment block
+                    out_edges = scfg.out_edges[_name]
+                    out_edges[out_edges.index(out_target)] = synth_assign
                 # If the target is the loop_head
-                elif jt in headers and _name not in doms[jt]:
+                elif out_target in headers and _name not in doms[out_target]:
                     # Create the assignment and record it
                     synth_assign = SynthenticAssignment()
                     # Setup the variables in the assignment table to point to
@@ -162,13 +183,24 @@ def loop_restructure_helper(scfg: SCFG, loop: Set[BlockName]):
                     )
                     if needs_synth_exit:
                         variable_assignment[exit_variable] = reverse_lookup(
-                            header_value_table, jt
+                            header_value_table, out_target
                         )
-                    synth_assign = scfg.add_block("control_variable", synth_assign, variable_assignment=variable_assignment)
-                    scfg.add_connections(synth_assign, [synth_exiting_latch], [])
+                    synth_assign = scfg.add_block(
+                        "control_variable",
+                        synth_assign,
+                        variable_assignment=variable_assignment)
+                    scfg.add_connections(
+                        synth_assign,
+                        [synth_exiting_latch],
+                        [])
                     loop.add(synth_assign)
 
-                    scfg.out_edges[_name][scfg.out_edges[_name].index(jt)] = synth_assign
+                    # Update the edge from the out_target to point to the new
+                    # assignment block
+                    out_edges = scfg.out_edges[_name]
+                    out_edges[out_edges.index(out_target)] = synth_assign
+
+    # Finally, add the synthetic exiting latch to loop
     loop.add(synth_exiting_latch)
 
     # Add the back_edge
@@ -178,7 +210,10 @@ def loop_restructure_helper(scfg: SCFG, loop: Set[BlockName]):
     # If an exit is to be created, we do so too, but only add it to the scfg,
     # since it isn't part of the loop
     if needs_synth_exit:
-        scfg.insert_block_between(synth_exit, [synth_exiting_latch], list(exit_blocks))
+        scfg.insert_block_between(
+            synth_exit,
+            [synth_exiting_latch],
+            list(exit_blocks))
     else:
         scfg.out_edges[synth_exiting_latch].append(list(exit_blocks)[0])
 
@@ -218,9 +253,9 @@ def find_head_blocks(scfg: SCFG, begin: BlockName) -> Set[BlockName]:
         if current_block == begin:
             break
         else:
-            jt = scfg.out_edges[current_block]
-            assert len(jt) == 1
-            current_block = next(iter(jt))
+            out_targets = scfg.out_edges[current_block]
+            assert len(out_targets) == 1
+            current_block = out_targets[0]
     return head_region_blocks
 
 
@@ -231,10 +266,11 @@ def find_branch_regions(scfg: SCFG, begin: BlockName, end: BlockName) -> Set[Blo
     postimmdoms = _imm_doms(postdoms)
     immdoms = _imm_doms(doms)
     branch_regions = []
-    jump_targets = scfg.out_edges[begin]
-    for bra_start in jump_targets:
-        for jt in jump_targets:
-            if jt != bra_start and scfg.is_reachable_dfs(jt, bra_start):
+    out_targets = scfg.out_edges[begin]
+    for bra_start in out_targets:
+        for out_targets in jump_targets:
+            if (out_targets != bra_start
+               and scfg.is_reachable_dfs(out_targets, bra_start)):
                 branch_regions.append(tuple())
                 break
         else:
