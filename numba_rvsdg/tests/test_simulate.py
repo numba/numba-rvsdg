@@ -100,7 +100,7 @@ class SimulatorTest(unittest.TestCase):
         # loop case
         self._run(foo, flow, {"x": 2})
         # break case
-        self._run(foo, flow, {"x": 15})
+        self._run(foo, flow, {"x": 101})
 
         # check the trace
         self._check_trace(flow)
