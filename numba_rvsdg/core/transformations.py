@@ -231,10 +231,11 @@ def find_branch_regions(scfg: SCFG, begin: BlockName, end: BlockName) -> Set[Blo
     postimmdoms = _imm_doms(postdoms)
     immdoms = _imm_doms(doms)
     branch_regions = []
-    jump_targets = scfg.out_edges[begin]
-    for bra_start in jump_targets:
-        for jt in jump_targets:
-            if jt != bra_start and scfg.is_reachable_dfs(jt, bra_start):
+    out_targets = scfg.out_edges[begin]
+    for bra_start in out_targets:
+        for out_targets in jump_targets:
+            if (out_targets != bra_start
+               and scfg.is_reachable_dfs(out_targets, bra_start)):
                 branch_regions.append(tuple())
                 break
         else:
