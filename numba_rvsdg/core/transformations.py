@@ -218,9 +218,9 @@ def find_head_blocks(scfg: SCFG, begin: BlockName) -> Set[BlockName]:
         if current_block == begin:
             break
         else:
-            jt = scfg.out_edges[current_block]
-            assert len(jt) == 1
-            current_block = next(iter(jt))
+            out_targets = scfg.out_edges[current_block]
+            assert len(out_targets) == 1
+            current_block = out_targets[0]
     return head_region_blocks
 
 
