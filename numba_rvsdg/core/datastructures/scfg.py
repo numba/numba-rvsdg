@@ -298,7 +298,7 @@ class SCFG:
         self.check_graph()
 
     def add_region(self, region_head, region_exit, kind):
-        new_region = Region(self.name_gen, kind, region_head, region_exit, self)
+        new_region = Region(self.name_gen, kind, region_head, region_exit)
         region_name = new_region.region_name
         self.regions[region_name] = new_region
         if region_head in self.region_headers:
@@ -370,3 +370,23 @@ class SCFG:
             graph_dict[str(key)] = curr_dict
 
         return graph_dict
+
+    def iterate_region(self, region_name):
+        region = self.regions[region_name]
+        """Region Iterator"""
+        # initialise housekeeping datastructures
+        to_visit, seen = [region.header], []
+        while to_visit:
+            # get the next block_name on the list
+            block_name = to_visit.pop(0)
+            # if we have visited this, we skip it
+            if block_name in seen:
+                continue
+            else:
+                seen.append(block_name)
+            # yield the block_name
+            yield block_name
+            if block_name is region.exiting:
+                continue
+            # finally add any out_edges to the list of block_names to visit
+            to_visit.extend(self.out_edges[block_name])

@@ -83,12 +83,11 @@ class ByteFlowRenderer(object):
         # that is the graph itself.
         if region_name is None:
             region_headers = self.scfg.region_headers
-            all_blocks = list(self.scfg)
+            all_blocks_iterator = self.scfg
         else:
             region = self.scfg.regions[region_name]
             region_headers = region.sub_region_headers
-            all_blocks = list(region)
-        
+            all_blocks_iterator = self.scfg.iterate_region(region_name)
 
         # If subregions exist within this region we render them first
         if region_headers:
@@ -107,7 +106,7 @@ class ByteFlowRenderer(object):
                         self.render_region(subg, _region_name)
 
         # If there are no further subregions then we render the blocks
-        for block_name in all_blocks:
+        for block_name in all_blocks_iterator:
             self.render_block(graph, block_name, self.scfg[block_name])
 
     def render_block(self, graph, block_name, block):
