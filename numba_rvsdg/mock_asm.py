@@ -10,6 +10,7 @@ from pprint import pprint
 from io import StringIO
 from typing import IO
 import random
+import textwrap
 
 
 class Opcode(IntEnum):
@@ -199,16 +200,16 @@ class VM:
 
 
 def test_mock_asm():
-    asm = """
-    print Start
-    goto A
-label A
-    print A
-    ctr 10
-    brctr A B
-label B
-    print B
-    """
+    asm = textwrap.dedent("""
+            print Start
+            goto A
+        label A
+            print A
+            ctr 10
+            brctr A B
+        label B
+            print B
+    """)
 
     instlist = parse(asm)
     assert instlist[0].operands.text == "Start"
@@ -228,19 +229,19 @@ label B
 
 
 def test_double_exchange_loop():
-    asm = """
-    print Start
-label A
-    print A
-    ctr 4
-    brctr B Exit
-label B
-    print B
-    ctr 5
-    brctr A Exit
-label Exit
-    print Exit
-    """
+    asm = textwrap.dedent("""
+            print Start
+        label A
+            print A
+            ctr 4
+            brctr B Exit
+        label B
+            print B
+            ctr 5
+            brctr A Exit
+        label Exit
+            print Exit
+    """)
     instlist = parse(asm)
     with StringIO() as buf:
         VM(buf).run(instlist)
