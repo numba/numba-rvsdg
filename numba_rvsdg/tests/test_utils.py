@@ -22,7 +22,7 @@ class SCFGComparator(TestCase):
 
     def assertYAMLEquals(self, first_yaml: str, second_yaml: str, ref_dict: Dict):
         for key, value in ref_dict.items():
-            second_yaml = second_yaml.replace(repr(value), key)
+            first_yaml = first_yaml.replace(key, value.name)
 
         self.assertEqual(first_yaml, second_yaml)
 

@@ -343,7 +343,7 @@ class SCFG:
 
         for key, value in self.blocks.items():
             out_edges = [f"{i}" for i in self.out_edges[key]]
-            # out_edges = str(out_edges).replace("'", '"')
+            out_edges = str(out_edges).replace("'", '"')
             back_edges = [f"{i}" for i in self.back_edges[key]]
             jump_target_str = f"""
                 "{str(key)}":
@@ -351,7 +351,7 @@ class SCFG:
                     out: {out_edges}"""
 
             if back_edges:
-                # back_edges = str(back_edges).replace("'", '"')
+                back_edges = str(back_edges).replace("'", '"')
                 jump_target_str += f"""
                     back: {back_edges}"""
             yaml_string += dedent(jump_target_str)
