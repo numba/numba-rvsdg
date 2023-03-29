@@ -96,21 +96,33 @@ class RegionName:
 
 @dataclass
 class NameGenerator:
-    index: int = 0
-    var_index: int = 0
+    """Name generator for various element names.
+
+    Attributes
+    ----------
+
+    block_index : int
+        The starting index for blocks
+    variable_index: int
+        The starting index for control variables
+    region_index : int
+        The starting index for regions
+    """
+    block_index: int = 0
+    variable_index: int = 97  # Variables start at lowercase 'a'
     region_index: int = 0
 
-    def new_block_name(self, label):
-        ret = self.index
-        self.index += 1
+    def new_block_name(self, label: str) -> BlockName:
+        ret = self.block_index
+        self.block_index += 1
         return BlockName(str(label).lower().split("(")[0] + "_" + str(ret))
 
-    def new_region_name(self, kind):
+    def new_region_name(self, kind: str) -> RegionName:
         ret = self.region_index
         self.region_index += 1
         return RegionName(str(kind).lower().split("(")[0] + "_" + str(ret))
 
-    def new_var_name(self):
-        var_name = chr(self.var_index)
-        self.var_index = self.var_index + 1
-        return str(var_name)
+    def new_var_name(self) -> str:
+        variable_name = chr(self.variable_index)
+        self.variable_index += 1
+        return str(variable_name)

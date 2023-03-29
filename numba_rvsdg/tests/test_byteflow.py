@@ -113,7 +113,7 @@ class TestBCMapFromBytecode(unittest.TestCase):
 
 class TestPythonBytecodeBlock(unittest.TestCase):
     def test_constructor(self):
-        name_gen = NameGenerator(index=0)
+        name_gen = NameGenerator()
         block = PythonBytecodeBlock(
             label=PythonBytecodeLabel(),
             begin=0,
@@ -130,7 +130,7 @@ class TestPythonBytecodeBlock(unittest.TestCase):
     def test_get_instructions(self):
         # If the function definition line changes, just change the variable below, rest of it will adjust as long as function remains the same
         func_def_line = 16
-        name_gen = NameGenerator(index=0)
+        name_gen = NameGenerator()
         block = PythonBytecodeBlock(
             label=PythonBytecodeLabel(),
             begin=0,
