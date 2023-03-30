@@ -121,8 +121,9 @@ class SCFG:
         return list(scc(GraphWrap(self.blocks, subgraph)))
 
     def find_headers_and_entries(
-        self, subgraph: Set[BlockName]
-    ) -> Tuple[Set[BlockName], Set[BlockName]]:
+            self,
+            subgraph: set[BlockName]
+            ) -> Tuple[list[BlockName], list[BlockName]]:
         """Find entries and headers in a given subgraph.
 
         Entries are blocks outside the subgraph that have an edge pointing to
@@ -131,23 +132,40 @@ class SCFG:
         subgraph. Entries point to headers and headers are pointed to by
         entries.
 
+        Parameters
+        ----------
+        subgraph: set of BlockName
+            The subgraph for which to find the headers and entries
+
+        Returns
+        -------
+        headers: list of BlockName
+            The headers for this subgraph
+        entries:
+            The entries for this subgraph
+
+        Notes
+        -----
+        The returned lists of headers and entries are sorted.
         """
         outside: BlockName
-        entries: Set[BlockName] = set()
-        headers: Set[BlockName] = set()
-
+        entries: Set[BlockName] = list()
+        headers: Set[BlockName] = list()
+        # Iterate over all blocks in the graph, excluding any blocks inside the
+        # subgraph.
         for outside in self.exclude_blocks(subgraph):
-            nodes_jump_in_loop = subgraph.intersection(
-                self.out_edges[outside]
-            )
-            headers.update(nodes_jump_in_loop)
-            if nodes_jump_in_loop:
-                entries.add(outside)
+            # Check if the current block points to any blocks that are inside
+            # the subgraph.
+            targets_in_loop = subgraph.intersection(self.out_edges[outside])
+            # Record both headers and entries
+            if targets_in_loop:
+                headers.extend(targets_in_loop)
+                entries.append(outside)
         # If the loop has no headers or entries, the only header is the head of
         # the CFG.
         if not headers:
-            headers = {self.find_head()}
-        return headers, entries
+            headers = headers.append(self.find_head())
+        return sorted(headers), sorted(entries)
 
     def find_exiting_and_exits(
         self, subgraph: Set[BlockName]

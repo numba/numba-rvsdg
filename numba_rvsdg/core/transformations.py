@@ -51,12 +51,12 @@ def loop_restructure_helper(scfg: SCFG, loop: Set[BlockName]):
         solo_head_label = SyntheticHead()
         loop_head: BlockName = insert_block_and_control_blocks(
             scfg,
-            list(sorted(entries)),
-            list(sorted(headers)),
+            entries,
+            headers,
             block_label=solo_head_label)
         loop.add(loop_head)
     else:
-        loop_head: BlockName = next(iter(headers))
+        loop_head: BlockName = headers[0]
     # If there is only a single exiting latch (an exiting block that also has a
     # backedge to the loop header) we can exit early, since the condition for
     # SCFG is fullfilled.
@@ -314,8 +314,8 @@ def extract_region(scfg: SCFG, region_blocks, region_kind):
     exiting_blocks, exit_blocks = scfg.find_exiting_and_exits(region_blocks)
     assert len(headers) == 1
     assert len(exiting_blocks) == 1
-    region_header = next(iter(headers))
-    region_exiting = next(iter(exiting_blocks))
+    region_header = headers[0]
+    region_exiting = exiting_blocks[0]
 
     scfg.add_region(region_header, region_exiting, region_kind)
 
