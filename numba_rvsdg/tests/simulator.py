@@ -52,7 +52,7 @@ class Simulator:
         Control variable map
     stack: List[Instruction]
         Instruction stack
-    trace: List[Tuple(name, block)]
+    trace: Set[BlockName]
         List of names, block combinations visisted
     branch: Boolean
         Flag to be set during execution.
@@ -71,7 +71,7 @@ class Simulator:
         self.varmap = dict()
         self.ctrl_varmap = dict()
         self.stack = []
-        self.trace = []
+        self.trace = set()
         self.branch = None
         self.return_value = None
 
@@ -137,7 +137,7 @@ class Simulator:
         """
         print("AT", name)
         block = self.get_block(name)
-        self.trace.append((name, block))
+        self.trace.add(name)
 
         if isinstance(block.label, ControlLabel):
             self.run_synth_block(name)
