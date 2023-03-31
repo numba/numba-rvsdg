@@ -394,9 +394,6 @@ class SCFG:
         return graph_dict
 
     def iterate_region(self, region_name, region_view=False):
-        if region_name == self.meta_region and not region_view:
-            return iter(self)
-
         region = self.regions[region_name]
         """Region Iterator"""
         region_head = region.header if region_name is not self.meta_region else self.find_head()
@@ -416,7 +413,10 @@ class SCFG:
             if region_name is not self.meta_region and block_name is region.exiting:
                 continue
             # finally add any out_edges to the list of block_names to visit
-            outs = self.out_edges[block_name]
+            if isinstance(block_name, RegionName):
+                outs = self.out_edges[self.regions[block_name].exiting]
+            else:
+                outs = self.out_edges[block_name]
 
             if not region_view:
                 for idx, _out in enumerate(outs):

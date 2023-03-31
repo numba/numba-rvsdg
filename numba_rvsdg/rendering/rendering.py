@@ -88,7 +88,7 @@ class ByteFlowRenderer(object):
         else:
             region = self.scfg.regions[region_name]
 
-        all_blocks = self.scfg.iterate_region(region_name)
+        all_blocks = list(self.scfg.iterate_region(region_name, region_view=True))
 
         with graph.subgraph(name=f"cluster_{region_name}") as subg:
             if isinstance(region, LoopRegion):
