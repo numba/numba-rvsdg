@@ -6,12 +6,13 @@ from typing import Set, Tuple, Dict, List, Iterator
 from dataclasses import dataclass, field
 
 from numba_rvsdg.core.datastructures.basic_block import BasicBlock, get_block_class, get_block_class_str
-from numba_rvsdg.core.datastructures.region import Region
+from numba_rvsdg.core.datastructures.region import MetaRegion, Region, LoopRegion, get_region_class
 from numba_rvsdg.core.datastructures.labels import (
     Label,
     BlockName,
     NameGenerator,
     RegionName,
+    MetaRegionLabel, LoopRegionLabel, RegionLabel,
     get_label_class,
 )
 
@@ -25,12 +26,20 @@ class SCFG:
     blocks: Dict[BlockName, BasicBlock] = field(default_factory=dict, init=False)
 
     out_edges: Dict[BlockName, List[BlockName]] = field(default_factory=dict, init=False)
-    back_edges: Dict[BlockName, List[BlockName]] = field(default_factory=dict, init=False)
+    back_edges: set[tuple[BlockName, BlockName]] = field(default_factory=set, init=False)
 
     regions: Dict[RegionName, Region] = field(default_factory=dict, init=False)
-    region_headers: Dict[BlockName, List[RegionName]] = field(default_factory=dict, init=False)
+    meta_region: RegionName = field(init=False)
+    region_tree: Dict[BlockName, List[RegionName]] = field(default_factory=dict, init=False)
 
     name_gen: NameGenerator = field(default_factory=NameGenerator, compare=False, init=False)
+
+    def __post_init__(self):
+        new_region = MetaRegion(name_gen = self.name_gen, label = MetaRegionLabel())
+        region_name = new_region.region_name
+        self.regions[region_name] = new_region
+        self.region_tree[region_name] = []
+        object.__setattr__(self, "meta_region", region_name)
 
     def __getitem__(self, index: BlockName) -> BasicBlock:
         return self.blocks[index]
@@ -43,19 +52,20 @@ class SCFG:
         # initialise housekeeping datastructures
         to_visit, seen = [self.find_head()], []
         while to_visit:
-            # get the next block_name on the list
-            block_name = to_visit.pop(0)
+            # get the next name on the list
+            name = to_visit.pop(0)
             # if we have visited this, we skip it
-            if block_name in seen:
+            if name in seen:
                 continue
             else:
-                seen.append(block_name)
-            # get the corresponding block for the block_name
-            block = self[block_name]
-            # yield the block_name, block combo
-            yield block_name
-            # finally add any out_edges to the list of block_names to visit
-            to_visit.extend(self.out_edges[block_name])
+                seen.append(name)
+            # get the corresponding block for the name
+            if isinstance(name, RegionName):
+                name = self.regions[name].header
+            # yield the name, block combo
+            yield name
+            # finally add any out_edges to the list of names to visit
+            to_visit.extend(self.out_edges[name])
 
     def exclude_blocks(self, exclude_blocks: Set[BlockName]) -> Iterator[BlockName]:
         """Iterator over all nodes not in exclude_blocks."""
@@ -74,6 +84,9 @@ class SCFG:
         for name in self.blocks.keys():
             for jt in self.out_edges[name]:
                 heads.discard(jt)
+        for _, region in self.regions.items():
+            if hasattr(region, "header"):
+                heads.discard(region.header)
         assert len(heads) == 1
         return next(iter(heads))
 
@@ -151,8 +164,8 @@ class SCFG:
         The returned lists of headers and entries are sorted.
         """
         outside: BlockName
-        entries: Set[BlockName] = list()
-        headers: Set[BlockName] = list()
+        entries: set[BlockName] = set()
+        headers: set[BlockName] = set()
         # Iterate over all blocks in the graph, excluding any blocks inside the
         # subgraph.
         for outside in self.exclude_blocks(subgraph):
@@ -161,13 +174,13 @@ class SCFG:
             targets_in_loop = subgraph.intersection(self.out_edges[outside])
             # Record both headers and entries
             if targets_in_loop:
-                headers.extend(targets_in_loop)
-                entries.append(outside)
+                headers.update(targets_in_loop)
+                entries.add(outside)
         # If the loop has no headers or entries, the only header is the head of
         # the CFG.
         if not headers:
-            headers = headers.append(self.find_head())
-        return sorted(headers), sorted(entries)
+            headers.add(self.find_head())
+        return sorted(list(headers)), sorted(list(entries))
 
     def find_exiting_and_exits(
         self, subgraph: Set[BlockName]
@@ -240,14 +253,6 @@ class SCFG:
     def check_graph(self):
         pass
 
-    # We don't need this cause everything is 'hopefully' additive
-    # def remove_blocks(self, names: Set[BlockName]):
-    #     for name in names:
-    #         del self.blocks[name]
-    #         del self.out_edges[name]
-    #         del self.back_edges[name]
-    #     self.check_graph()
-
     def insert_block_between(
         self,
         block_name: BlockName,
@@ -283,28 +288,35 @@ class SCFG:
 
         name = new_block.block_name
         self.blocks[name] = new_block
-
-        self.back_edges[name] = []
         self.out_edges[name] = []
 
         return name
 
-    def add_connections(self, block_name, out_edges=[], back_edges=[]):
+    def add_region(self, kind: str, header: BlockName, exiting: BlockName, parent: Region = None, region_label = RegionLabel()):
+        if parent is None:
+            parent = self.meta_region
+
+        region_type = get_region_class(kind)
+        new_region: Region = region_type(name_gen=self.name_gen, label=region_label, header=header, exiting=exiting)
+        region_name = new_region.region_name
+        self.regions[region_name] = new_region
+        self.region_tree[region_name] = []
+
+        self.region_tree[parent].append(region_name)
+
+        for block, out_edges in self.out_edges.items():
+            for idx, edge in enumerate(out_edges):
+                if edge == header and block is not exiting:
+                    self.out_edges[block][idx] = region_name
+
+        return region_name
+
+    def add_connections(self, block_name, out_edges=[]):
         assert self.out_edges[block_name] == []
-        assert self.back_edges[block_name] == []
         self.out_edges[block_name] = out_edges
-        self.back_edges[block_name] = back_edges
 
         self.check_graph()
 
-    def add_region(self, region_head, region_exit, kind):
-        new_region = Region(self.name_gen, kind, region_head, region_exit)
-        region_name = new_region.region_name
-        self.regions[region_name] = new_region
-        if region_head in self.region_headers:
-            self.region_headers[region_head].append(region_name)
-        else:
-            self.region_headers[region_head] = [region_name]
 
     @staticmethod
     def from_yaml(yaml_string):
@@ -331,8 +343,10 @@ class SCFG:
 
             block_name = ref_dict[block_ref]
             out_edges = list(ref_dict[out_ref] for out_ref in out_refs)
-            back_edges = list(ref_dict[back_ref] for back_ref in back_refs)
-            scfg.add_connections(block_name, out_edges, back_edges)
+            scfg.add_connections(block_name, out_edges)
+            for _back in back_refs:
+                scfg.back_edges.add((ref_dict[block_ref], ref_dict[_back]))
+
 
         scfg.check_graph()
         return scfg, ref_dict
@@ -342,9 +356,13 @@ class SCFG:
         yaml_string = """"""
 
         for key, value in self.blocks.items():
-            out_edges = [f"{i}" for i in self.out_edges[key]]
+            out_edges = []
+            back_edges = []
+            for out_edge in self.out_edges[key]:
+                out_edges.append(f"{out_edge}")
+                if (key, out_edge) in self.back_edges:
+                    back_edges.append(f"{out_edge}")
             out_edges = str(out_edges).replace("'", '"')
-            back_edges = [f"{i}" for i in self.back_edges[key]]
             jump_target_str = f"""
                 "{str(key)}":
                     type: "{get_block_class_str(value)}"
@@ -363,19 +381,28 @@ class SCFG:
         for key, value in self.blocks.items():
             curr_dict = {}
             curr_dict["type"] = get_block_class_str(value)
-            curr_dict["out"] = [f"{i}" for i in self.out_edges[key]]
-            back_edges = [f"{i}" for i in self.back_edges[key]]
+            curr_dict["out"] = []
+            back_edges = []
+            for out_edge in self.out_edges[key]:
+                curr_dict["out"].append(f"{out_edge}")
+                if (key, out_edge) in self.back_edges:
+                    back_edges.append(f"{out_edge}")
             if back_edges:
                 curr_dict["back"] = back_edges
             graph_dict[str(key)] = curr_dict
 
         return graph_dict
 
-    def iterate_region(self, region_name):
+    def iterate_region(self, region_name, region_view=False):
+        if region_name == self.meta_region and not region_view:
+            return iter(self)
+
         region = self.regions[region_name]
         """Region Iterator"""
+        region_head = region.header if region_name is not self.meta_region else self.find_head()
+
         # initialise housekeeping datastructures
-        to_visit, seen = [region.header], []
+        to_visit, seen = [region_head], []
         while to_visit:
             # get the next block_name on the list
             block_name = to_visit.pop(0)
@@ -386,7 +413,16 @@ class SCFG:
                 seen.append(block_name)
             # yield the block_name
             yield block_name
-            if block_name is region.exiting:
+            if region_name is not self.meta_region and block_name is region.exiting:
                 continue
             # finally add any out_edges to the list of block_names to visit
-            to_visit.extend(self.out_edges[block_name])
+            outs = self.out_edges[block_name]
+
+            if not region_view:
+                for idx, _out in enumerate(outs):
+                    if isinstance(_out, RegionName):
+                        to_visit.append(_out.header)
+                    else:
+                        to_visit.append(_out)
+            else:
+                to_visit.extend(outs)

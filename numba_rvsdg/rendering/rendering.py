@@ -11,7 +11,9 @@ from numba_rvsdg.core.datastructures.labels import (
     PythonBytecodeLabel,
     ControlLabel,
     BlockName,
+    RegionName
 )
+from numba_rvsdg.core.datastructures.region import MetaRegion, LoopRegion
 from numba_rvsdg.core.datastructures.byte_flow import ByteFlow
 import dis
 from typing import Dict
@@ -27,7 +29,6 @@ class ByteFlowRenderer(object):
         self.bcmap_from_bytecode(byte_flow.bc)
 
         self.rendered_blocks = set()
-        self.rendered_regions = set()
         self.render_region(self.g, None)
         self.render_edges()
 
@@ -82,43 +83,33 @@ class ByteFlowRenderer(object):
         # If region name is none, we're in the 'root' region
         # that is the graph itself.
         if region_name is None:
-            region_headers = self.scfg.region_headers
-            all_blocks_iterator = self.scfg
+            region_name = self.scfg.meta_region
+            region = self.scfg.regions[region_name]
         else:
             region = self.scfg.regions[region_name]
-            region_headers = region.sub_region_headers
-            all_blocks_iterator = self.scfg.iterate_region(region_name)
 
-        # If subregions exist within this region we render them first
-        if region_headers:
-            for _, regions in region_headers.items():
-                for _region_name in regions:
-                    _region = self.scfg.regions[_region_name]
-                    with graph.subgraph(name=f"cluster_{_region_name}") as subg:
-                        color = "blue"
-                        if _region.kind == "branch":
-                            color = "green"
-                        if _region.kind == "tail":
-                            color = "purple"
-                        if _region.kind == "head":
-                            color = "red"
-                        subg.attr(color=color, label=_region.kind)
-                        self.render_region(subg, _region_name)
+        all_blocks = self.scfg.iterate_region(region_name)
 
-        # If there are no further subregions then we render the blocks
-        for block_name in all_blocks_iterator:
-            self.render_block(graph, block_name, self.scfg[block_name])
+        with graph.subgraph(name=f"cluster_{region_name}") as subg:
+            if isinstance(region, LoopRegion):
+                color = "blue"
+            else:
+                color = "black"
+            subg.attr(color=color, label=str(region.label))
 
-    def render_block(self, graph, block_name, block):
+            # If there are no further subregions then we render the blocks
+            for block_name in all_blocks:
+                self.render_block(subg, block_name)
+
+    def render_block(self, graph, block_name):
         if block_name in self.rendered_blocks:
             return
 
-        if block_name in self.scfg.region_headers.keys():
-            for region in self.scfg.region_headers[block_name]:
-                if region not in self.rendered_regions:
-                    self.rendered_regions.add(region)
-                    self.render_region(graph, region)
+        if isinstance(block_name, RegionName):
+            self.render_region(graph, block_name)
+            return
 
+        block = self.scfg[block_name]
         if type(block) == BasicBlock:
             self.render_basic_block(graph, block_name)
         elif type(block) == PythonBytecodeBlock:
@@ -132,20 +123,20 @@ class ByteFlowRenderer(object):
         self.rendered_blocks.add(block_name)
 
     def render_edges(self):
-
         for block_name, out_edges in self.scfg.out_edges.items():
             for out_edge in out_edges:
-                self.g.edge(str(block_name), str(out_edge))
-
-        for block_name, back_edges in self.scfg.back_edges.items():
-            for back_edge in back_edges:
-                self.g.edge(
-                    str(block_name),
-                    str(back_edge),
-                    style="dashed",
-                    color="grey",
-                    constraint="0",
-                )
+                if isinstance(out_edge, RegionName):
+                    out_edge = self.scfg.regions[out_edge].header
+                if (block_name, out_edge) in self.scfg.back_edges:
+                    self.g.edge(
+                        str(block_name),
+                        str(out_edge),
+                        style="dashed",
+                        color="grey",
+                        constraint="0",
+                    )
+                else:
+                    self.g.edge(str(block_name), str(out_edge))
 
     def bcmap_from_bytecode(self, bc: dis.Bytecode):
         self.bcmap: Dict[int, dis.Instruction] = ByteFlow.bcmap_from_bytecode(bc)

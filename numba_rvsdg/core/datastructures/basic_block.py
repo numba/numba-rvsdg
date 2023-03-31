@@ -7,19 +7,23 @@ from numba_rvsdg.core.utils import _next_inst_offset
 
 
 @dataclass(frozen=True)
-class BasicBlock:
+class Block:
     name_gen: InitVar[NameGenerator]
-    """Block Name Generator associated with this BasicBlock.
+    """Block Name Generator associated with this Block.
        Note: This is an initialization only argument and not
        a class attribute."""
-
-    block_name: BlockName = field(init=False)
-    """Unique name identifier for this block"""
 
     label: Label
     """The corresponding Label for this block."""
 
-    def __post_init__(self, name_gen):
+
+@dataclass(frozen=True)
+class BasicBlock(Block):
+
+    block_name: BlockName = field(init=False)
+    """Unique name identifier for this block"""
+
+    def __post_init__(self, name_gen: NameGenerator):
         block_name = name_gen.new_block_name(label=self.label)
         object.__setattr__(self, "block_name", block_name)
 

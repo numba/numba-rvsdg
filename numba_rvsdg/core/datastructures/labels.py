@@ -20,6 +20,11 @@ class ControlLabel(Label):
 
 
 @dataclass(frozen=True, order=True)
+class RegionLabel(Label):
+    pass
+
+
+@dataclass(frozen=True, order=True)
 class SyntheticBranch(ControlLabel):
     pass
 
@@ -56,6 +61,16 @@ class SyntheticExitingLatch(ControlLabel):
 
 @dataclass(frozen=True, order=True)
 class SynthenticAssignment(ControlLabel):
+    pass
+
+
+@dataclass(frozen=True, order=True)
+class LoopRegionLabel(RegionLabel):
+    pass
+
+
+@dataclass(frozen=True, order=True)
+class MetaRegionLabel(RegionLabel):
     pass
 
 
@@ -126,10 +141,10 @@ class NameGenerator:
         self.block_index += 1
         return BlockName(str(label).lower().split("(")[0] + "_" + str(ret))
 
-    def new_region_name(self, kind: str) -> RegionName:
+    def new_region_name(self, label: str) -> RegionName:
         ret = self.region_index
         self.region_index += 1
-        return RegionName(str(kind).lower().split("(")[0] + "_" + str(ret))
+        return RegionName(str(label).lower().split("(")[0] + "_" + str(ret))
 
     def new_var_name(self) -> str:
         variable_name = chr(self.variable_index)
