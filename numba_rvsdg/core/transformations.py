@@ -268,9 +268,9 @@ def find_branch_regions(scfg: SCFG, begin: BlockName, end: BlockName) -> Set[Blo
     branch_regions = []
     out_targets = scfg.out_edges[begin]
     for bra_start in out_targets:
-        for out_targets in jump_targets:
+        for out_target in out_targets:
             if (out_targets != bra_start
-               and scfg.is_reachable_dfs(out_targets, bra_start)):
+               and scfg.is_reachable_dfs(out_target, bra_start)):
                 branch_regions.append(tuple())
                 break
         else:
@@ -315,7 +315,7 @@ def extract_region(scfg: SCFG, region_blocks, region_kind):
     assert len(headers) == 1
     assert len(exiting_blocks) == 1
     region_header = headers[0]
-    region_exiting = exiting_blocks[0]
+    region_exiting = next(iter(exiting_blocks))
 
     scfg.add_region(region_header, region_exiting, region_kind)
 
