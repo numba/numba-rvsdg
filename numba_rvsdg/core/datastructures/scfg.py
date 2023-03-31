@@ -169,28 +169,46 @@ class SCFG:
 
     def find_exiting_and_exits(
         self, subgraph: Set[BlockName]
-    ) -> Tuple[Set[BlockName], Set[BlockName]]:
+    ) -> Tuple[list[BlockName], list[BlockName]]:
         """Find exiting and exit blocks in a given subgraph.
 
-        Existing blocks are blocks inside the subgraph that have edges to
+        Exiting blocks are blocks inside the subgraph that have edges to
         blocks outside of the subgraph. Exit blocks are blocks outside the
         subgraph that have incoming edges from within the subgraph. Exiting
         blocks point to exits and exits and pointed to by exiting blocks.
 
+        Parameters
+        ----------
+        subgraph: set of BlockName
+            The subgraph for which to find the exiting and exit blocks.
+
+        Returns
+        -------
+        exiting: list of BlockName
+            The exiting blocks for this subgraph
+        exits:
+            The exit block for this subgraph
+
+        Notes
+        -----
+        The returned lists of exiting and exit blocks are sorted.
+
         """
         inside: BlockName
-        exiting: Set[BlockName] = set()
-        exits: Set[BlockName] = set()
+        # use sets internally to avoid duplicates
+        exiting: set[BlockName] = set()
+        exits: set[BlockName] = set()
         for inside in subgraph:
             # any node inside that points outside the loop
-            for jt in self.out_edges[inside]:
-                if jt not in subgraph:
+            for out_target in self.out_edges[inside]:
+                if out_target not in subgraph:
                     exiting.add(inside)
-                    exits.add(jt)
+                    exits.add(out_target)
             # any returns
             if self.is_exiting(inside):
                 exiting.add(inside)
-        return exiting, exits
+        # convert to sorted list before return
+        return sorted(exiting), sorted(exits)
 
     def is_reachable_dfs(self, begin: BlockName, end: BlockName):  # -> TypeGuard:
         """Is end reachable from begin."""
