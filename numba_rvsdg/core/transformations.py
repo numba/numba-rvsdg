@@ -42,7 +42,6 @@ def loop_restructure_helper(scfg: SCFG, loop: Set[BlockName]):
     headers, entries = scfg.find_headers_and_entries(loop)
     exiting_blocks, exit_blocks = scfg.find_exiting_and_exits(loop)
     headers_were_unified = False
-    exit_blocks = list(sorted(exit_blocks))
 
     # If there are multiple headers, insert assignment and control blocks,
     # such that only a single loop header remains.
@@ -67,7 +66,7 @@ def loop_restructure_helper(scfg: SCFG, loop: Set[BlockName]):
     if (
         len(backedge_blocks) == 1
         and len(exiting_blocks) == 1
-        and backedge_blocks[0] == next(iter(exiting_blocks))
+        and backedge_blocks[0] == exiting_blocks[0]
     ):
         scfg.back_edges[backedge_blocks[0]].append(loop_head)
         return
@@ -106,7 +105,7 @@ def loop_restructure_helper(scfg: SCFG, loop: Set[BlockName]):
         )
     else:
         backedge_value_table = dict(
-            (i, j) for i, j in enumerate((loop_head, next(iter(exit_blocks))))
+            (i, j) for i, j in enumerate((loop_head, exit_blocks[0]))
         )
     if headers_were_unified:
         header_value_table = scfg[loop_head].branch_value_table
@@ -155,7 +154,7 @@ def loop_restructure_helper(scfg: SCFG, loop: Set[BlockName]):
                         )
                     variable_assignment[backedge_variable] = reverse_lookup(
                         backedge_value_table,
-                        synth_exit if needs_synth_exit else next(iter(exit_blocks)),
+                        synth_exit if needs_synth_exit else exit_blocks[0]
                     )
                     # Insert the assignment to the block map
                     synth_assign = scfg.add_block(
@@ -213,9 +212,9 @@ def loop_restructure_helper(scfg: SCFG, loop: Set[BlockName]):
         scfg.insert_block_between(
             synth_exit,
             [synth_exiting_latch],
-            list(exit_blocks))
+            exit_blocks)
     else:
-        scfg.out_edges[synth_exiting_latch].append(list(exit_blocks)[0])
+        scfg.out_edges[synth_exiting_latch].append(exit_blocks[0])
 
 
 def restructure_loop(scfg: SCFG):
@@ -315,7 +314,7 @@ def extract_region(scfg: SCFG, region_blocks, region_kind):
     assert len(headers) == 1
     assert len(exiting_blocks) == 1
     region_header = headers[0]
-    region_exiting = next(iter(exiting_blocks))
+    region_exiting = exiting_blocks[0]
 
     scfg.add_region(region_header, region_exiting, region_kind)
 
