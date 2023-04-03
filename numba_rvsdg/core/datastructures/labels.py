@@ -20,6 +20,11 @@ class ControlLabel(Label):
 
 
 @dataclass(frozen=True, order=True)
+class RegionLabel(Label):
+    pass
+
+
+@dataclass(frozen=True, order=True)
 class SyntheticBranch(ControlLabel):
     pass
 
@@ -59,6 +64,16 @@ class SynthenticAssignment(ControlLabel):
     pass
 
 
+@dataclass(frozen=True, order=True)
+class LoopRegionLabel(RegionLabel):
+    pass
+
+
+@dataclass(frozen=True, order=True)
+class MetaRegionLabel(RegionLabel):
+    pass
+
+
 # Maybe we can register new labels over here instead of static lists
 label_types = {
     "label": Label,
@@ -83,15 +98,24 @@ def get_label_class(label_type_string):
 
 
 @dataclass(frozen=True, order=True)
-class BlockName:
+class Name:
     name: str
-    ...
+    
+    def __repr__(self):
+        return self.name
+
+    def __str__(self):
+        return self.name
 
 
 @dataclass(frozen=True, order=True)
-class RegionName:
-    name: str
-    ...
+class BlockName(Name):
+    pass
+
+
+@dataclass(frozen=True, order=True)
+class RegionName(Name):
+    pass
 
 
 @dataclass
@@ -117,10 +141,10 @@ class NameGenerator:
         self.block_index += 1
         return BlockName(str(label).lower().split("(")[0] + "_" + str(ret))
 
-    def new_region_name(self, kind: str) -> RegionName:
+    def new_region_name(self, label: str) -> RegionName:
         ret = self.region_index
         self.region_index += 1
-        return RegionName(str(kind).lower().split("(")[0] + "_" + str(ret))
+        return RegionName(str(label).lower().split("(")[0] + "_" + str(ret))
 
     def new_var_name(self) -> str:
         variable_name = chr(self.variable_index)

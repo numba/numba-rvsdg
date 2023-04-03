@@ -43,7 +43,7 @@ class TestJoinReturns(SCFGComparator):
             label_type: "synth_return" 
             out: []
         """
-        expected_scfg, block_ref_exp = SCFG.from_yaml(expected)
+        expected_scfg, _ = SCFG.from_yaml(expected)
 
         join_returns(original_scfg)
 
@@ -69,7 +69,7 @@ class TestJoinTailsAndExits(SCFGComparator):
             type: "basic"
             out: []
         """
-        expected_scfg, block_ref_exp = SCFG.from_yaml(expected)
+        expected_scfg, _ = SCFG.from_yaml(expected)
 
         tails = list((block_ref_orig["0"],))
         exits = list((block_ref_orig["1"],))
@@ -111,7 +111,7 @@ class TestJoinTailsAndExits(SCFGComparator):
             label_type: "synth_exit"
             out: ["1", "2"]
         """
-        expected_scfg, block_ref_exp = SCFG.from_yaml(expected)
+        expected_scfg, _ = SCFG.from_yaml(expected)
 
         tails = list((block_ref_orig["0"],))
         exits = list((block_ref_orig["1"], block_ref_orig["2"]))
@@ -153,7 +153,7 @@ class TestJoinTailsAndExits(SCFGComparator):
             label_type: "synth_tail"
             out: ["3"]
         """
-        expected_scfg, block_ref_exp = SCFG.from_yaml(expected)
+        expected_scfg, _ = SCFG.from_yaml(expected)
 
         tails = list((block_ref_orig["1"], block_ref_orig["2"]))
         exits = list((block_ref_orig["3"],))
@@ -195,7 +195,7 @@ class TestJoinTailsAndExits(SCFGComparator):
             label_type: "synth_tail"
             out: ["3"]
         """
-        expected_scfg, block_ref_exp = SCFG.from_yaml(expected)
+        expected_scfg, _ = SCFG.from_yaml(expected)
 
         tails = list((block_ref_orig["1"], block_ref_orig["2"]))
         exits = list((block_ref_orig["3"],))
@@ -254,7 +254,7 @@ class TestJoinTailsAndExits(SCFGComparator):
             label_type: "synth_exit"
             out: ["3", "4"]
         """
-        expected_scfg, block_ref_exp = SCFG.from_yaml(expected)
+        expected_scfg, _ = SCFG.from_yaml(expected)
 
         tails = list((block_ref_orig["1"], block_ref_orig["2"]))
         exits = list((block_ref_orig["3"], block_ref_orig["4"]))
@@ -313,7 +313,7 @@ class TestJoinTailsAndExits(SCFGComparator):
             label_type: "synth_exit"
             out: ["3", "4"]
         """
-        expected_scfg, block_ref_exp = SCFG.from_yaml(expected)
+        expected_scfg, _ = SCFG.from_yaml(expected)
 
         tails = list((block_ref_orig["1"], block_ref_orig["2"]))
         exits = list((block_ref_orig["3"], block_ref_orig["4"]))
@@ -349,7 +349,7 @@ class TestLoopRestructure(SCFGComparator):
             out: []
         """
         original_scfg, block_ref_orig = SCFG.from_yaml(original)
-        expected_scfg, block_ref_exp = SCFG.from_yaml(expected)
+        expected_scfg, _ = SCFG.from_yaml(expected)
 
         loop_restructure_helper(original_scfg, set((block_ref_orig["1"],)))
 
@@ -387,7 +387,7 @@ class TestLoopRestructure(SCFGComparator):
             out: []
         """
         original_scfg, block_ref_orig = SCFG.from_yaml(original)
-        expected_scfg, block_ref_exp = SCFG.from_yaml(expected)
+        expected_scfg, _ = SCFG.from_yaml(expected)
         loop_restructure_helper(original_scfg, set((block_ref_orig["1"], block_ref_orig["2"])))
         self.assertSCFGEqual(expected_scfg, original_scfg)
 
@@ -438,7 +438,7 @@ class TestLoopRestructure(SCFGComparator):
             out: ["4"]
         """
         original_scfg, block_ref_orig = SCFG.from_yaml(original)
-        expected_scfg, block_ref_exp = SCFG.from_yaml(expected)
+        expected_scfg, _ = SCFG.from_yaml(expected)
         loop_restructure_helper(original_scfg, set((block_ref_orig["1"], block_ref_orig["2"])))
         self.assertSCFGEqual(expected_scfg, original_scfg)
 
@@ -500,7 +500,7 @@ class TestLoopRestructure(SCFGComparator):
             out: ["5"]
         """
         original_scfg, block_ref_orig = SCFG.from_yaml(original)
-        expected_scfg, block_ref_exp = SCFG.from_yaml(expected)
+        expected_scfg, _ = SCFG.from_yaml(expected)
         loop_restructure_helper(original_scfg, set((block_ref_orig["1"], block_ref_orig["2"], block_ref_orig["3"])))
         self.assertSCFGEqual(expected_scfg, original_scfg)
 
@@ -577,7 +577,7 @@ class TestLoopRestructure(SCFGComparator):
             out: ["9"]
         """
         original_scfg, block_ref_orig = SCFG.from_yaml(original)
-        expected_scfg, block_ref_exp = SCFG.from_yaml(expected)
+        expected_scfg, _ = SCFG.from_yaml(expected)
         loop_restructure_helper(original_scfg, set((block_ref_orig["1"], block_ref_orig["2"], block_ref_orig["3"], block_ref_orig["4"])))
         self.assertSCFGEqual(expected_scfg, original_scfg)
 
@@ -678,9 +678,212 @@ class TestLoopRestructure(SCFGComparator):
             out: ["12"]
         """
         original_scfg, block_ref_orig = SCFG.from_yaml(original)
-        expected_scfg, block_ref_exp = SCFG.from_yaml(expected)
+        expected_scfg, _ = SCFG.from_yaml(expected)
         loop_restructure_helper(original_scfg, set((block_ref_orig["1"], block_ref_orig["2"], block_ref_orig["3"], block_ref_orig["4"])))
         self.assertSCFGEqual(expected_scfg, original_scfg)
+
+
+class TestLoops(SCFGComparator):
+    def test_basic_for_loop(self):
+
+        original = """
+        "0":
+            type: "basic"
+            out: ["1"]
+        "1":
+            type: "basic"
+            out: ["2", "3"]
+        "2":
+            type: "basic"
+            out: ["1"]
+        "3":
+            type: "basic"
+            out: []
+        """
+        original_scfg, block_ref_orig = SCFG.from_yaml(original)
+        expected = """
+        "0":
+            type: "basic"
+            out: ["1"]
+        "1":
+            type: "basic"
+            out: ["2", "5"]
+        "2":
+            type: "basic"
+            out: ["6"]
+        "3":
+            type: "basic"
+            out: []
+        "4":
+            type: "basic"
+            label_type: "synth_exit_latch"
+            out: ["1", "3"]
+            back: ["1"]
+        "5":
+            type: "basic"
+            label_type: "synth_assign"
+            out: ["4"]
+        "6":
+            type: "basic"
+            label_type: "synth_assign"
+            out: ["4"]
+        """
+        expected_scfg, _ = SCFG.from_yaml(expected)
+
+        loop_restructure_helper(original_scfg, set((block_ref_orig["1"], block_ref_orig["2"])))
+        print(original_scfg.compute_scc())
+        self.assertSCFGEqual(expected_scfg, original_scfg)
+
+    def test_basic_while_loop(self):
+        original = """
+        "0":
+            type: "basic"
+            out: ["1", "2"]
+        "1":
+            type: "basic"
+            out: ["1", "2"]
+        "2":
+            type: "basic"
+            out: []
+        """
+        original_scfg, block_ref_orig = SCFG.from_yaml(original)
+        expected = """
+        "0":
+            type: "basic"
+            out: ["1", "2"]
+        "1":
+            type: "basic"
+            out: ["1", "2"]
+            back: ["1"]
+        "2":
+            type: "basic"
+            out: []
+        """
+        expected_scfg, _ = SCFG.from_yaml(expected)
+
+        loop_restructure_helper(original_scfg, set((block_ref_orig["1"],)))
+        print(original_scfg.compute_scc())
+        self.assertSCFGEqual(expected_scfg, original_scfg)
+
+    def test_mixed_for_while_loop_with_branch(self):
+        original = """
+        "0":
+            type: "basic"
+            out: ["1"]
+        "1":
+            type: "basic"
+            out: ["2", "7"]
+        "2":
+            type: "basic"
+            out: ["3", "6"]
+        "3":
+            type: "basic"
+            out: ["4", "5"]
+        "4":
+            type: "basic"
+            out: ["5"]
+        "5":
+            type: "basic"
+            out: ["3", "6"]
+        "6":
+            type: "basic"
+            out: ["1"]
+        "7":
+            type: "basic"
+            out: []
+        """
+        original_scfg, block_ref_orig = SCFG.from_yaml(original)
+        # this has two loops, so we need to attempt to rotate twice, first for
+        # the header controlled loop, inserting an additional block
+        expected01 = """
+        "0":
+            type: "basic"
+            out: ["1"]
+        "1":
+            type: "basic"
+            out: ["2", "9"]
+        "2":
+            type: "basic"
+            out: ["3", "6"]
+        "3":
+            type: "basic"
+            out: ["4", "5"]
+        "4":
+            type: "basic"
+            out: ["5"]
+        "5":
+            type: "basic"
+            out: ["3", "6"]
+        "6":
+            type: "basic"
+            out: ["10"]
+        "7":
+            type: "basic"
+            out: []
+        "8":
+            type: "basic"
+            label_type: "synth_exit_latch"
+            out: ["1", "7"]
+            back: ["1"]
+        "9":
+            type: "basic"
+            label_type: "synth_assign"
+            out: ["8"]
+        "10":
+            type: "basic"
+            label_type: "synth_assign"
+            out: ["8"]
+        """
+        expected01_block_map, _ = SCFG.from_yaml(expected01)
+        loop_restructure_helper(original_scfg,
+                    set((block_ref_orig["1"], block_ref_orig["2"], block_ref_orig["3"], block_ref_orig["4"], block_ref_orig["5"], block_ref_orig["6"])))
+        self.assertSCFGEqual(expected01_block_map, original_scfg)
+        # And then, we make sure that the inner-loop remains unchanged, and the
+        # loop rotation will only detect the aditional backedge, from 5 to 3
+        expected02 = """
+        "0":
+            type: "basic"
+            out: ["1"]
+        "1":
+            type: "basic"
+            out: ["2", "9"]
+        "2":
+            type: "basic"
+            out: ["3", "6"]
+        "3":
+            type: "basic"
+            out: ["4", "5"]
+        "4":
+            type: "basic"
+            out: ["5"]
+        "5":
+            type: "basic"
+            out: ["3", "6"]
+            back: ["3"]
+        "6":
+            type: "basic"
+            out: ["10"]
+        "7":
+            type: "basic"
+            out: []
+        "8":
+            type: "basic"
+            label_type: "synth_exit_latch"
+            out: ["1", "7"]
+            back: ["1"]
+        "9":
+            type: "basic"
+            label_type: "synth_assign"
+            out: ["8"]
+        "10":
+            type: "basic"
+            label_type: "synth_assign"
+            out: ["8"]
+        """
+        expected02_block_map, _ = SCFG.from_yaml(expected02)
+        loop_restructure_helper(original_scfg,
+                    set((block_ref_orig["3"], block_ref_orig["4"], block_ref_orig["5"],)))
+        self.assertSCFGEqual(expected02_block_map, original_scfg)
 
 
 if __name__ == "__main__":

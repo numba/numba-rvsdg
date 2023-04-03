@@ -11,7 +11,9 @@ from numba_rvsdg.core.datastructures.labels import (
     PythonBytecodeLabel,
     ControlLabel,
     BlockName,
+    RegionName
 )
+from numba_rvsdg.core.datastructures.region import MetaRegion, LoopRegion
 from numba_rvsdg.core.datastructures.byte_flow import ByteFlow
 import dis
 from typing import Dict
@@ -26,26 +28,11 @@ class ByteFlowRenderer(object):
         self.scfg = byte_flow.scfg
         self.bcmap_from_bytecode(byte_flow.bc)
 
-        self.render_blocks()
+        self.rendered_blocks = set()
+        self.render_region(self.g, None)
         self.render_edges()
-        self.render_regions()
 
-    def render_regions(self):
-        # render subgraph
-        # for region_name, region in self.scfg.regions.items():
-        #     graph = region.get_full_graph()
-        #     with self.g.subgraph(name=f"cluster_{label}") as subg:
-        #         color = "blue"
-        #         if region.kind == "branch":
-        #             color = "green"
-        #         if region.kind == "tail":
-        #             color = "purple"
-        #         if region.kind == "head":
-        #             color = "red"
-        #         subg.attr(color=color, label=region.kind)
-        pass
-
-    def render_basic_block(self, block_name: BlockName):
+    def render_basic_block(self, graph, block_name: BlockName):
         block = self.scfg[block_name]
 
         if isinstance(block.label, PythonBytecodeLabel):
@@ -58,9 +45,9 @@ class ByteFlowRenderer(object):
             body = str(block_name)
         else:
             raise Exception("Unknown label type: " + block.label)
-        self.g.node(str(block_name), shape="rect", label=body)
+        graph.node(str(block_name), shape="rect", label=body)
 
-    def render_control_variable_block(self, block_name: BlockName):
+    def render_control_variable_block(self, graph, block_name: BlockName):
         block = self.scfg[block_name]
 
         if isinstance(block.label, ControlLabel):
@@ -70,9 +57,9 @@ class ByteFlowRenderer(object):
             # )
         else:
             raise Exception("Unknown label type: " + block.label)
-        self.g.node(str(block_name), shape="rect", label=body)
+        graph.node(str(block_name), shape="rect", label=body)
 
-    def render_branching_block(self, block_name: BlockName):
+    def render_branching_block(self, graph, block_name: BlockName):
         block = self.scfg[block_name]
 
         if isinstance(block.label, ControlLabel):
@@ -90,36 +77,66 @@ class ByteFlowRenderer(object):
             # )
         else:
             raise Exception("Unknown label type: " + block.label)
-        self.g.node(str(block_name), shape="rect", label=body)
+        graph.node(str(block_name), shape="rect", label=body)
 
-    def render_blocks(self):
-        for block_name, block in self.scfg.blocks.items():
-            if type(block) == BasicBlock:
-                self.render_basic_block(block_name)
-            elif type(block) == PythonBytecodeBlock:
-                self.render_basic_block(block_name)
-            elif type(block) == ControlVariableBlock:
-                self.render_control_variable_block(block_name)
-            elif type(block) == BranchBlock:
-                self.render_branching_block(block_name)
+    def render_region(self, graph, region_name):
+        # If region name is none, we're in the 'root' region
+        # that is the graph itself.
+        if region_name is None:
+            region_name = self.scfg.meta_region
+            region = self.scfg.regions[region_name]
+        else:
+            region = self.scfg.regions[region_name]
+
+        all_blocks = list(self.scfg.iterate_region(region_name, region_view=True))
+
+        with graph.subgraph(name=f"cluster_{region_name}") as subg:
+            if isinstance(region, LoopRegion):
+                color = "blue"
             else:
-                raise Exception("unreachable")
+                color = "black"
+            subg.attr(color=color, label=str(region.label))
+
+            # If there are no further subregions then we render the blocks
+            for block_name in all_blocks:
+                self.render_block(subg, block_name)
+
+    def render_block(self, graph, block_name):
+        if block_name in self.rendered_blocks:
+            return
+
+        if isinstance(block_name, RegionName):
+            self.render_region(graph, block_name)
+            return
+
+        block = self.scfg[block_name]
+        if type(block) == BasicBlock:
+            self.render_basic_block(graph, block_name)
+        elif type(block) == PythonBytecodeBlock:
+            self.render_basic_block(graph, block_name)
+        elif type(block) == ControlVariableBlock:
+            self.render_control_variable_block(graph, block_name)
+        elif type(block) == BranchBlock:
+            self.render_branching_block(graph, block_name)
+        else:
+            raise Exception("unreachable")
+        self.rendered_blocks.add(block_name)
 
     def render_edges(self):
-
         for block_name, out_edges in self.scfg.out_edges.items():
             for out_edge in out_edges:
-                self.g.edge(str(block_name), str(out_edge))
-
-        for block_name, back_edges in self.scfg.back_edges.items():
-            for back_edge in back_edges:
-                self.g.edge(
-                    str(block_name),
-                    str(back_edge),
-                    style="dashed",
-                    color="grey",
-                    constraint="0",
-                )
+                if isinstance(out_edge, RegionName):
+                    out_edge = self.scfg.regions[out_edge].header
+                if (block_name, out_edge) in self.scfg.back_edges:
+                    self.g.edge(
+                        str(block_name),
+                        str(out_edge),
+                        style="dashed",
+                        color="grey",
+                        constraint="0",
+                    )
+                else:
+                    self.g.edge(str(block_name), str(out_edge))
 
     def bcmap_from_bytecode(self, bc: dis.Bytecode):
         self.bcmap: Dict[int, dis.Instruction] = ByteFlow.bcmap_from_bytecode(bc)
@@ -133,13 +150,17 @@ logging.basicConfig(level=logging.DEBUG)
 
 def render_func(func):
     flow = ByteFlow.from_bytecode(func)
-    ByteFlowRenderer(flow).view("before")
+    render_flow(flow)
 
-    flow._join_returns()
-    ByteFlowRenderer(flow).view("closed")
 
-    flow._restructure_loop()
-    ByteFlowRenderer(flow).view("loop restructured")
+def render_flow(byte_flow):
+    ByteFlowRenderer(byte_flow).view("before")
 
-    flow._restructure_branch()
-    ByteFlowRenderer(flow).view("branch restructured")
+    byte_flow._join_returns()
+    ByteFlowRenderer(byte_flow).view("closed")
+
+    byte_flow._restructure_loop()
+    ByteFlowRenderer(byte_flow).view("loop restructured")
+
+    byte_flow._restructure_branch()
+    ByteFlowRenderer(byte_flow).view("branch restructured")

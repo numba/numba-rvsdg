@@ -12,6 +12,7 @@ from numba_rvsdg.core.datastructures.labels import (
     SynthenticAssignment,
     PythonBytecodeLabel,
     BlockName,
+    RegionLabel
 )
 from numba_rvsdg.core.datastructures.scfg import SCFG
 from numba_rvsdg.core.datastructures.basic_block import (
@@ -68,7 +69,7 @@ def loop_restructure_helper(scfg: SCFG, loop: Set[BlockName]):
         and len(exiting_blocks) == 1
         and backedge_blocks[0] == exiting_blocks[0]
     ):
-        scfg.back_edges[backedge_blocks[0]].append(loop_head)
+        scfg.back_edges.add((backedge_blocks[0], loop_head))
         return
 
     doms = _doms(scfg)
@@ -163,8 +164,7 @@ def loop_restructure_helper(scfg: SCFG, loop: Set[BlockName]):
                         variable_assignment=variable_assignment)
                     scfg.add_connections(
                         synth_assign,
-                        [synth_exiting_latch],
-                        [])
+                        [synth_exiting_latch])
                     loop.add(synth_assign)
                     # Update the edge from the out_target to point to the new
                     # assignment block
@@ -190,8 +190,7 @@ def loop_restructure_helper(scfg: SCFG, loop: Set[BlockName]):
                         variable_assignment=variable_assignment)
                     scfg.add_connections(
                         synth_assign,
-                        [synth_exiting_latch],
-                        [])
+                        [synth_exiting_latch])
                     loop.add(synth_assign)
 
                     # Update the edge from the out_target to point to the new
@@ -204,7 +203,7 @@ def loop_restructure_helper(scfg: SCFG, loop: Set[BlockName]):
 
     # Add the back_edge
     scfg.out_edges[synth_exiting_latch].append(loop_head)
-    scfg.back_edges[synth_exiting_latch].append(loop_head)
+    scfg.back_edges.add((synth_exiting_latch, loop_head))
 
     # If an exit is to be created, we do so too, but only add it to the scfg,
     # since it isn't part of the loop
@@ -268,7 +267,7 @@ def find_branch_regions(scfg: SCFG, begin: BlockName, end: BlockName) -> Set[Blo
     out_targets = scfg.out_edges[begin]
     for bra_start in out_targets:
         for out_target in out_targets:
-            if (out_targets != bra_start
+            if (out_target != bra_start
                and scfg.is_reachable_dfs(out_target, bra_start)):
                 branch_regions.append(tuple())
                 break
@@ -308,7 +307,7 @@ def find_tail_blocks(scfg: SCFG, begin: Set[BlockName], head_region_blocks, bran
     return tail_subregion
 
 
-def extract_region(scfg: SCFG, region_blocks, region_kind):
+def extract_region(scfg: SCFG, region_blocks, region_kind, region_label = RegionLabel()):
     headers, entries = scfg.find_headers_and_entries(region_blocks)
     exiting_blocks, exit_blocks = scfg.find_exiting_and_exits(region_blocks)
     assert len(headers) == 1
@@ -316,7 +315,7 @@ def extract_region(scfg: SCFG, region_blocks, region_kind):
     region_header = headers[0]
     region_exiting = exiting_blocks[0]
 
-    scfg.add_region(region_header, region_exiting, region_kind)
+    scfg.add_region(region_kind, region_label=region_label, header = region_header, exiting = region_exiting)
 
 
 def restructure_branch(scfg: SCFG):

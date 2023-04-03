@@ -18,11 +18,11 @@ class SCFGComparator(TestCase):
             self.assertEqual(type(block_1.label), type(block_2.label))
             # compare edges
             self.assertEqual(first_scfg.out_edges[key1], second_scfg.out_edges[key2])
-            self.assertEqual(first_scfg.back_edges[key1], second_scfg.back_edges[key2])
+        self.assertEqual(first_scfg.back_edges, second_scfg.back_edges)
 
     def assertYAMLEquals(self, first_yaml: str, second_yaml: str, ref_dict: Dict):
         for key, value in ref_dict.items():
-            second_yaml = second_yaml.replace(repr(value), key)
+            first_yaml = first_yaml.replace(key, value.name)
 
         self.assertEqual(first_yaml, second_yaml)
 

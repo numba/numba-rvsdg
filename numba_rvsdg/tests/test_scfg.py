@@ -115,8 +115,8 @@ class TestSCFGIterator(SCFGComparator):
         block_0 = BasicBlock(name_generator, Label())
         block_1 = BasicBlock(name_generator, Label())
         expected = [
-            (block_0.block_name, block_0),
-            (block_1.block_name, block_1),
+            block_0.block_name,
+            block_1.block_name,
         ]
         scfg, ref_dict = SCFG.from_yaml(
             """

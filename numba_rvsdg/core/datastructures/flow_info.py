@@ -94,7 +94,7 @@ class FlowInfo:
                 targets = [names[o] for o in self.jump_insts[term_offset]]
 
             block_name = names[begin]
-            scfg.add_connections(block_name, targets, [])
+            scfg.add_connections(block_name, targets)
 
         scfg.check_graph()
         return scfg
