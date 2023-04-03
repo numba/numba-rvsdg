@@ -30,7 +30,7 @@ class SCFG:
 
     regions: Dict[RegionName, Region] = field(default_factory=dict, init=False)
     meta_region: RegionName = field(init=False)
-    region_tree: Dict[BlockName, List[RegionName]] = field(default_factory=dict, init=False)
+    region_tree: Dict[RegionName, List[RegionName]] = field(default_factory=dict, init=False)
 
     name_gen: NameGenerator = field(default_factory=NameGenerator, compare=False, init=False)
 
@@ -50,7 +50,7 @@ class SCFG:
     def __iter__(self):
         """Graph Iterator"""
         # initialise housekeeping datastructures
-        to_visit, seen = [self.find_head()], []
+        to_visit, seen = [self.find_head()], set()
         while to_visit:
             # get the next name on the list
             name = to_visit.pop(0)
@@ -58,7 +58,7 @@ class SCFG:
             if name in seen:
                 continue
             else:
-                seen.append(name)
+                seen.add(name)
             # get the corresponding block for the name
             if isinstance(name, RegionName):
                 name = self.regions[name].header
@@ -398,7 +398,7 @@ class SCFG:
         region_head = region.header if region_name is not self.meta_region else self.find_head()
 
         # initialise housekeeping datastructures
-        to_visit, seen = [region_head], []
+        to_visit, seen = [region_head], set
         while to_visit:
             # get the next block_name on the list
             block_name = to_visit.pop(0)
@@ -406,7 +406,7 @@ class SCFG:
             if block_name in seen:
                 continue
             else:
-                seen.append(block_name)
+                seen.add(block_name)
             # yield the block_name
             yield block_name
             if region_name is not self.meta_region and block_name is region.exiting:
