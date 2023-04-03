@@ -150,13 +150,17 @@ logging.basicConfig(level=logging.DEBUG)
 
 def render_func(func):
     flow = ByteFlow.from_bytecode(func)
-    ByteFlowRenderer(flow).view("before")
+    render_flow(flow)
 
-    flow._join_returns()
-    ByteFlowRenderer(flow).view("closed")
 
-    flow._restructure_loop()
-    ByteFlowRenderer(flow).view("loop restructured")
+def render_flow(byte_flow):
+    ByteFlowRenderer(byte_flow).view("before")
 
-    flow._restructure_branch()
-    ByteFlowRenderer(flow).view("branch restructured")
+    byte_flow._join_returns()
+    ByteFlowRenderer(byte_flow).view("closed")
+
+    byte_flow._restructure_loop()
+    ByteFlowRenderer(byte_flow).view("loop restructured")
+
+    byte_flow._restructure_branch()
+    ByteFlowRenderer(byte_flow).view("branch restructured")

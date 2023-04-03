@@ -180,7 +180,7 @@ class SCFG:
         # the CFG.
         if not headers:
             headers.add(self.find_head())
-        return sorted(list(headers)), sorted(list(entries))
+        return sorted(headers), sorted(entries)
 
     def find_exiting_and_exits(
         self, subgraph: Set[BlockName]
@@ -311,10 +311,9 @@ class SCFG:
 
         return region_name
 
-    def add_connections(self, block_name, out_edges=[]):
+    def add_connections(self, block_name, out_edges):
         assert self.out_edges[block_name] == []
         self.out_edges[block_name] = out_edges
-
         self.check_graph()
 
 
