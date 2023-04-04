@@ -398,7 +398,7 @@ class SCFG:
         region_head = region.header if region_name is not self.meta_region else self.find_head()
 
         # initialise housekeeping datastructures
-        to_visit, seen = [region_head], set
+        to_visit, seen = [region_head], set()
         while to_visit:
             # get the next block_name on the list
             block_name = to_visit.pop(0)
