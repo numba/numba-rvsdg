@@ -7,6 +7,7 @@ from numba_rvsdg.core.utils import _logger, _LogWrap
 
 from numba_rvsdg.core.transformations import (
     restructure_loop,
+    restructure_loop_recursive,
     restructure_branch,
     join_returns,
 )
@@ -30,7 +31,7 @@ class ByteFlow:
         join_returns(self.scfg)
 
     def _restructure_loop(self):
-        restructure_loop(self.scfg)
+        restructure_loop_recursive(self.scfg)
 
     def _restructure_branch(self):
         restructure_branch(self.scfg)

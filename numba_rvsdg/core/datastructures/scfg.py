@@ -4,10 +4,12 @@ import itertools
 from textwrap import dedent
 from typing import Set, Tuple, Dict, List, Iterator
 from dataclasses import dataclass, field
+from collections import deque
 
 from numba_rvsdg.core.datastructures.basic_block import BasicBlock, get_block_class, get_block_class_str
 from numba_rvsdg.core.datastructures.region import MetaRegion, Region, LoopRegion, get_region_class
 from numba_rvsdg.core.datastructures.labels import (
+    Name,
     Label,
     BlockName,
     NameGenerator,
@@ -118,7 +120,7 @@ class SCFG:
         """
         from numba_rvsdg.networkx_vendored.scc import scc
 
-        out_edges = self.out_edges
+        scfg = self
 
         class GraphWrap:
             def __init__(self, graph: Dict[BlockName, BasicBlock], subgraph):
@@ -126,9 +128,11 @@ class SCFG:
                 self.subgraph = subgraph
 
             def __getitem__(self, vertex):
-                out = out_edges[vertex]
+
+                out = scfg.get_out_edges(vertex, region_view=False)
                 # Exclude node outside of the subgraph
-                return [k for k in out if k in subgraph]
+                return [k for k in out if k in subgraph
+                        and not (vertex, k) in scfg.back_edges]
 
             def __iter__(self):
                 return iter(self.graph.keys())
@@ -171,7 +175,8 @@ class SCFG:
         for outside in self.exclude_blocks(subgraph):
             # Check if the current block points to any blocks that are inside
             # the subgraph.
-            targets_in_loop = subgraph.intersection(self.out_edges[outside])
+            targets_in_loop = subgraph.intersection(self.get_out_edges(outside,
+                                                                      region_view=False))
             # Record both headers and entries
             if targets_in_loop:
                 headers.update(targets_in_loop)
@@ -392,6 +397,88 @@ class SCFG:
 
         return graph_dict
 
+    def blocks_in_region(self, region_name: RegionName):
+        """Generator for all blocks in a given region.
+
+        Parameters
+        ----------
+        region_name: RegionName
+
+        Returns
+        -------
+        gen: generator of BlockName
+            A generator that yields block names
+        """
+        # get correct region from, scfg
+        region = self.regions[region_name]
+        # initialize housekeeping datastructures
+        to_visit, seen = [region.header], set()
+        while to_visit:
+            # get the next block_name on the list
+            name = to_visit.pop(0)
+            # if we have visited this, we skip it
+            if name in seen:
+                continue
+            # otherwise add it to the list of seen names
+            else:
+                seen.add(name)
+            # unless this is the exiting block of the region
+            if name is not region.exiting:
+                out_edges = [e for e in
+                             self.get_out_edges(name, region_view=False)
+                             if not isinstance(e, RegionName)
+                            ]
+                to_visit.extend(out_edges)
+            yield name
+
+    def get_out_edges(self, name: Name, region_view: bool = True):
+        if region_view:
+            if isinstance(name, RegionName):
+                if name is self.meta_region:
+                    raise ValueError("Meta Region encompasses all the graph, it cannot have out edges")
+                name = self.regions[name].exiting
+        else:
+            if isinstance(name, RegionName):
+                if name is self.meta_region:
+                    raise ValueError("Meta Region encompasses all the graph, it cannot have out edges")
+                name = self.regions[name].header
+
+        return self.out_edges[name]
+
+    def region_iterator(self) -> Iterator[RegionName]:
+        """A region iterator that is aware of new regions being added.
+
+        This iterator returns `RegionName` from the `regions` dictionary.
+        Importantly, this iterator has an internal queue that is updated with
+        new keys from the `regions` dictionary on every iteration. This allows
+        the `regions` dictionary to be updated while this iterator is running.
+
+        Returns
+        -------
+        iterator: Iterator[ReionName]
+            the regions of this scfg
+
+        """
+        # initialize housekeeping datastructures
+        queue, seen = deque(), set()
+        while True:
+            # extend the queue with any un-seen items
+            queue.extend([r for r in self.regions if r not in seen])
+            # If the queue is now empty exit
+            if not queue:
+                break
+            # Otherwise...
+            else:
+                # get the next region name
+                r = queue.popleft()
+                if r in seen:
+                    continue
+                # add it to the set of seen regions
+                seen.add(r)
+                # finally, yield the region name
+                yield r
+
+
     def iterate_region(self, region_name, region_view=False):
         region = self.regions[region_name]
         """Region Iterator"""
@@ -420,7 +507,7 @@ class SCFG:
             if not region_view:
                 for idx, _out in enumerate(outs):
                     if isinstance(_out, RegionName):
-                        to_visit.append(_out.header)
+                        to_visit.append(self.regions[_out].header)
                     else:
                         to_visit.append(_out)
             else:

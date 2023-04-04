@@ -216,13 +216,16 @@ def loop_restructure_helper(scfg: SCFG, loop: Set[BlockName]):
         scfg.out_edges[synth_exiting_latch].append(exit_blocks[0])
 
 
-def restructure_loop(scfg: SCFG):
+def restructure_loop(scfg: SCFG, subgraph: list[BlockName] = None):
     """Inplace restructuring of the given graph to extract loops using
     strongly-connected components
     """
     # obtain a List of Sets of Labels, where all labels in each set are strongly
     # connected, i.e. all reachable from one another by traversing the subset
-    scc: List[Set[SCFG]] = scfg.compute_scc()
+    if subgraph:
+        scc: List[Set[SCFG]] = scfg.compute_scc_subgraph(subgraph)
+    else:
+        scc: List[Set[SCFG]] = scfg.compute_scc()
     # loops are defined as strongly connected subsets who have more than a
     # single label and single label loops that point back to to themselves.
     loops: List[Set[SCFG]] = [
@@ -235,9 +238,24 @@ def restructure_loop(scfg: SCFG):
         "restructure_loop found %d loops in %s", len(loops), scfg.blocks.keys()
     )
     # rotate and extract loop
-    for loop in loops:
-        loop_restructure_helper(scfg, loop)
-        extract_region(scfg, loop, "loop")
+    for l in loops:
+        loop_restructure_helper(scfg, l)
+        extract_region(scfg, l, "loop")
+
+
+def restructure_loop_recursive(scfg: SCFG):
+    # find all top-level loops
+    restructure_loop(scfg)
+    # if any loops were found, continue down into regions
+    for region_name in scfg.region_iterator():
+        if region_name is scfg.meta_region:
+            # skip the meta region, it doesn't have header or exiting
+            continue
+        region_blocks = list(scfg.blocks_in_region(region_name))
+        #region_blocks = list(scfg.iterate_region(region_name))
+        #breakpoint()
+        breakpoint()
+        restructure_loop(scfg, subgraph=region_blocks)
 
 
 def find_head_blocks(scfg: SCFG, begin: BlockName) -> Set[BlockName]:

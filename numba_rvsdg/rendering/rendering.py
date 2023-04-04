@@ -160,7 +160,8 @@ def render_flow(byte_flow):
     ByteFlowRenderer(byte_flow).view("closed")
 
     byte_flow._restructure_loop()
+    breakpoint()
     ByteFlowRenderer(byte_flow).view("loop restructured")
 
-    byte_flow._restructure_branch()
-    ByteFlowRenderer(byte_flow).view("branch restructured")
+    #byte_flow._restructure_branch()
+    #ByteFlowRenderer(byte_flow).view("branch restructured")
