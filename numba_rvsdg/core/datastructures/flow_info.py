@@ -89,7 +89,7 @@ class FlowInfo:
             term_offset = _prev_inst_offset(end)
             if term_offset not in self.jump_insts:
                 # implicit jump
-                targets = (names[end],)
+                targets = [names[end],]
             else:
                 targets = [names[o] for o in self.jump_insts[term_offset]]
 
