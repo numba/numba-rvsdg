@@ -106,6 +106,7 @@ class ByteFlowRenderer(object):
             return
 
         if isinstance(block_name, RegionName):
+            self.rendered_blocks.add(block_name)
             self.render_region(graph, block_name)
             return
 
