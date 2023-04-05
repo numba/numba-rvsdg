@@ -223,7 +223,7 @@ class TestFlowInfo(unittest.TestCase):
 
     def test_build_basic_blocks(self):
         expected = SCFG()
-        expected.add_block("python_bytecode", get_label_class("python_bytecode")(),
+        expected.add_block(expected.meta_region, "python_bytecode", get_label_class("python_bytecode")(),
                             begin=0, end=10)
 
         received = FlowInfo.from_bytecode(bytecode).build_basicblocks()
@@ -240,6 +240,7 @@ class TestByteFlow(SCFGComparator):
         scfg = SCFG()
 
         scfg.add_block(
+            scfg.meta_region,
             block_type="python_bytecode",
             block_label=get_label_class("python_bytecode")(),
             begin=0,

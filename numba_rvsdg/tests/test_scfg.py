@@ -157,7 +157,7 @@ class TestInsertBlock(SCFGComparator):
 
         preds = list((block_ref_orig["0"],))
         succs = list((block_ref_orig["1"],))
-        new_block = original_scfg.add_block()
+        new_block = original_scfg.add_block(original_scfg.meta_region)
         original_scfg.insert_block_between(new_block, preds, succs)
 
         self.assertSCFGEqual(expected_scfg, original_scfg)
@@ -193,7 +193,7 @@ class TestInsertBlock(SCFGComparator):
 
         preds = list((block_ref_orig["0"], block_ref_orig["1"]))
         succs = list((block_ref_orig["2"],))
-        new_block = original_scfg.add_block()
+        new_block = original_scfg.add_block(original_scfg.meta_region)
         original_scfg.insert_block_between(new_block, preds, succs)
 
         self.assertSCFGEqual(expected_scfg, original_scfg)
@@ -229,7 +229,7 @@ class TestInsertBlock(SCFGComparator):
 
         preds = list((block_ref_orig["0"],))
         succs = list((block_ref_orig["1"], block_ref_orig["2"]))
-        new_block = original_scfg.add_block()
+        new_block = original_scfg.add_block(original_scfg.meta_region)
         original_scfg.insert_block_between(new_block, preds, succs)
 
         self.assertSCFGEqual(expected_scfg, original_scfg)
@@ -277,7 +277,7 @@ class TestInsertBlock(SCFGComparator):
 
         preds = list((block_ref_orig["1"], block_ref_orig["2"]))
         succs = list((block_ref_orig["3"], block_ref_orig["4"]))
-        new_block = original_scfg.add_block()
+        new_block = original_scfg.add_block(original_scfg.meta_region)
         original_scfg.insert_block_between(new_block, preds, succs)
 
         self.assertSCFGEqual(expected_scfg, original_scfg)
@@ -325,7 +325,7 @@ class TestInsertBlock(SCFGComparator):
 
         preds = list((block_ref_orig["1"], block_ref_orig["2"]))
         succs = list((block_ref_orig["3"], block_ref_orig["4"]))
-        new_block = original_scfg.add_block()
+        new_block = original_scfg.add_block(original_scfg.meta_region)
         original_scfg.insert_block_between(new_block, preds, succs)
 
         self.assertSCFGEqual(expected_scfg, original_scfg)

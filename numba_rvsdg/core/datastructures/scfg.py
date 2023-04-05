@@ -310,7 +310,7 @@ class SCFG:
             label_class = get_label_class(block_attrs.get("label_type", "label"))
             label_info = block_attrs.get("label_info", None)
             block_label = label_class(label_info)
-            block_name = scfg.add_block(block_class, block_label, **block_args)
+            block_name = scfg.add_block(scfg.meta_region, block_class, block_label, **block_args)
             ref_dict[block_ref] = block_name
 
         for block_ref, block_attrs in graph_dict.items():

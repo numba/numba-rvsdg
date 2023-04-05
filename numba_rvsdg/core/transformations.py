@@ -593,7 +593,7 @@ def join_returns(scfg: SCFG):
     # close if more than one is found
     if len(return_nodes) > 1:
         return_solo_label = SyntheticReturn()
-        new_block = scfg.add_block(block_label=return_solo_label)
+        new_block = scfg.add_block(scfg.meta_region, block_label=return_solo_label)
         scfg.insert_block_between(new_block, return_nodes, [])
 
 
@@ -608,7 +608,7 @@ def join_tails_and_exits(scfg: SCFG, tails: Set[BlockName], exits: Set[BlockName
         # join only exits
         solo_tail_name = next(iter(tails))
         solo_exit_label = SyntheticExit()
-        solo_exit_name = scfg.add_block(block_label=solo_exit_label)
+        solo_exit_name = scfg.add_block(scfg.meta_region, block_label=solo_exit_label)
         scfg.insert_block_between(solo_exit_name, tails, exits)
         return solo_tail_name, solo_exit_name
 
@@ -616,7 +616,7 @@ def join_tails_and_exits(scfg: SCFG, tails: Set[BlockName], exits: Set[BlockName
         # join only tails
         solo_tail_label = SyntheticTail()
         solo_exit_name = next(iter(exits))
-        solo_tail_name = scfg.add_block(block_label=solo_tail_label)
+        solo_tail_name = scfg.add_block(scfg.meta_region, block_label=solo_tail_label)
         scfg.insert_block_between(solo_tail_name, tails, exits)
         return solo_tail_name, solo_exit_name
 
@@ -625,9 +625,9 @@ def join_tails_and_exits(scfg: SCFG, tails: Set[BlockName], exits: Set[BlockName
         solo_tail_label = SyntheticTail()
         solo_exit_label = SyntheticExit()
 
-        solo_tail_name = scfg.add_block(block_label=solo_tail_label)
+        solo_tail_name = scfg.add_block(scfg.meta_region, block_label=solo_tail_label)
         scfg.insert_block_between(solo_tail_name, tails, exits)
 
-        solo_exit_name = scfg.add_block(block_label=solo_exit_label)
+        solo_exit_name = scfg.add_block(scfg.meta_region, block_label=solo_exit_label)
         scfg.insert_block_between(solo_exit_name, set((solo_tail_name,)), exits)
         return solo_tail_name, solo_exit_name
