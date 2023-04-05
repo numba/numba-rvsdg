@@ -35,5 +35,9 @@ jobs:
         run: |
           pip install coverage
           coverage run -m pytest numba_rvsdg/tests/
+      - name: Display Coverage
+        shell: bash -l {0}
+        run: |
+          coverage report
       - name: Upload Coverage to Codecov
         uses: codecov/codecov-action@v2
