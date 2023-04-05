@@ -12,6 +12,8 @@ from numba_rvsdg.core.datastructures.labels import (
     SynthenticAssignment,
     PythonBytecodeLabel,
     BlockName,
+    RegionName,
+    LoopRegionLabel,
     RegionLabel
 )
 from numba_rvsdg.core.datastructures.scfg import SCFG
@@ -24,7 +26,7 @@ from numba_rvsdg.core.datastructures.basic_block import (
 from numba_rvsdg.core.utils import _logger
 
 
-def loop_restructure_helper(scfg: SCFG, loop: Set[BlockName]):
+def loop_restructure_helper(scfg: SCFG, loop: Set[BlockName], region: RegionName):
     """Loop Restructuring
 
     Applies the algorithm LOOP RESTRUCTURING from section 4.1 of Bahmann2015.
@@ -51,6 +53,7 @@ def loop_restructure_helper(scfg: SCFG, loop: Set[BlockName]):
         solo_head_label = SyntheticHead()
         loop_head: BlockName = insert_block_and_control_blocks(
             scfg,
+            region,
             entries,
             headers,
             block_label=solo_head_label)
@@ -93,6 +96,7 @@ def loop_restructure_helper(scfg: SCFG, loop: Set[BlockName]):
     if needs_synth_exit:
         synth_exit_label = SyntheticExit()
         synth_exit = scfg.add_block(
+            region,
             "branch",
             block_label=synth_exit_label,
             variable=exit_variable,
@@ -117,6 +121,7 @@ def loop_restructure_helper(scfg: SCFG, loop: Set[BlockName]):
     # This variable denotes the backedge
     backedge_variable = scfg.name_gen.new_var_name()
     synth_exiting_latch = scfg.add_block(
+        region,
         "branch",
         block_label=synth_latch_label,
         variable=backedge_variable,
@@ -159,6 +164,7 @@ def loop_restructure_helper(scfg: SCFG, loop: Set[BlockName]):
                     )
                     # Insert the assignment to the block map
                     synth_assign = scfg.add_block(
+                        region,
                         "control_variable",
                         synth_assign,
                         variable_assignment=variable_assignment)
@@ -185,6 +191,7 @@ def loop_restructure_helper(scfg: SCFG, loop: Set[BlockName]):
                             header_value_table, out_target
                         )
                     synth_assign = scfg.add_block(
+                        region,
                         "control_variable",
                         synth_assign,
                         variable_assignment=variable_assignment)
@@ -222,10 +229,14 @@ def restructure_loop(scfg: SCFG):
     """
     # obtain a List of Sets of Labels, where all labels in each set are strongly
     # connected, i.e. all reachable from one another by traversing the subset
-    scc: List[Set[SCFG]] = scfg.compute_scc()
+    restructure_loop_region(scfg, scfg.meta_region)
+
+def restructure_loop_region(scfg:SCFG, region: RegionName):
+    region_blocks = scfg.blocks_in_region(region)
+    scc = scfg.compute_scc_subgraph(region_blocks)
     # loops are defined as strongly connected subsets who have more than a
     # single label and single label loops that point back to to themselves.
-    loops: List[Set[SCFG]] = [
+    loops = [
         nodes
         for nodes in scc
         if len(nodes) > 1 or next(iter(nodes)) in scfg.out_edges[next(iter(nodes))]
@@ -235,9 +246,11 @@ def restructure_loop(scfg: SCFG):
         "restructure_loop found %d loops in %s", len(loops), scfg.blocks.keys()
     )
     # rotate and extract loop
-    for loop in loops:
-        loop_restructure_helper(scfg, loop)
-        extract_region(scfg, loop, "loop")
+    for l in loops:
+        loop_restructure_helper(scfg, l, region)
+        region_label = LoopRegionLabel()
+        new_region = extract_region(scfg, l, "loop", region_label, region)
+        restructure_loop_region(scfg, new_region)
 
 
 def find_head_blocks(scfg: SCFG, begin: BlockName) -> Set[BlockName]:
@@ -307,7 +320,7 @@ def find_tail_blocks(scfg: SCFG, begin: Set[BlockName], head_region_blocks, bran
     return tail_subregion
 
 
-def extract_region(scfg: SCFG, region_blocks, region_kind, region_label = RegionLabel()):
+def extract_region(scfg: SCFG, region_blocks, region_kind, region_label, parent_region):
     headers, entries = scfg.find_headers_and_entries(region_blocks)
     exiting_blocks, exit_blocks = scfg.find_exiting_and_exits(region_blocks)
     assert len(headers) == 1
@@ -315,7 +328,7 @@ def extract_region(scfg: SCFG, region_blocks, region_kind, region_label = Region
     region_header = headers[0]
     region_exiting = exiting_blocks[0]
 
-    scfg.add_region(region_kind, region_label=region_label, header = region_header, exiting = region_exiting)
+    return scfg.add_region(parent_region, region_kind, region_label=region_label, header = region_header, exiting = region_exiting, regional_components=region_blocks)
 
 
 def restructure_branch(scfg: SCFG):
@@ -343,7 +356,7 @@ def restructure_branch(scfg: SCFG):
     headers, entries = scfg.find_headers_and_entries(tail_region_blocks)
     if len(headers) > 1:
         end = SyntheticHead()
-        insert_block_and_control_blocks(scfg, entries, headers, end)
+        insert_block_and_control_blocks(scfg, region, entries, headers, end)
 
     # Recompute regions.
     head_region_blocks = find_head_blocks(scfg, begin)
@@ -512,6 +525,7 @@ def _find_dominators_internal(entries, nodes, preds_table, succs_table):
 
 def insert_block_and_control_blocks(
     scfg: SCFG,
+    region: RegionName,
     predecessors: List[BlockName],
     successors: List[BlockName],
     block_label: Label = Label()
@@ -525,6 +539,7 @@ def insert_block_and_control_blocks(
     branch_value_table = {}
     # initialize new block, which will hold the branching table
     branch_block_name = scfg.add_block(
+        region,
         "branch",
         block_label,
         variable=branch_variable,
@@ -548,6 +563,7 @@ def insert_block_and_control_blocks(
 
                 # add block
                 control_block_name = scfg.add_block(
+                    region,
                     "control_variable",
                     synth_assign,
                     variable_assignment=variable_assignment,
@@ -577,7 +593,7 @@ def join_returns(scfg: SCFG):
     # close if more than one is found
     if len(return_nodes) > 1:
         return_solo_label = SyntheticReturn()
-        new_block = scfg.add_block(block_label=return_solo_label)
+        new_block = scfg.add_block(scfg.meta_region, block_label=return_solo_label)
         scfg.insert_block_between(new_block, return_nodes, [])
 
 
@@ -592,7 +608,7 @@ def join_tails_and_exits(scfg: SCFG, tails: Set[BlockName], exits: Set[BlockName
         # join only exits
         solo_tail_name = next(iter(tails))
         solo_exit_label = SyntheticExit()
-        solo_exit_name = scfg.add_block(block_label=solo_exit_label)
+        solo_exit_name = scfg.add_block(scfg.meta_region, block_label=solo_exit_label)
         scfg.insert_block_between(solo_exit_name, tails, exits)
         return solo_tail_name, solo_exit_name
 
@@ -600,7 +616,7 @@ def join_tails_and_exits(scfg: SCFG, tails: Set[BlockName], exits: Set[BlockName
         # join only tails
         solo_tail_label = SyntheticTail()
         solo_exit_name = next(iter(exits))
-        solo_tail_name = scfg.add_block(block_label=solo_tail_label)
+        solo_tail_name = scfg.add_block(scfg.meta_region, block_label=solo_tail_label)
         scfg.insert_block_between(solo_tail_name, tails, exits)
         return solo_tail_name, solo_exit_name
 
@@ -609,9 +625,9 @@ def join_tails_and_exits(scfg: SCFG, tails: Set[BlockName], exits: Set[BlockName
         solo_tail_label = SyntheticTail()
         solo_exit_label = SyntheticExit()
 
-        solo_tail_name = scfg.add_block(block_label=solo_tail_label)
+        solo_tail_name = scfg.add_block(scfg.meta_region, block_label=solo_tail_label)
         scfg.insert_block_between(solo_tail_name, tails, exits)
 
-        solo_exit_name = scfg.add_block(block_label=solo_exit_label)
+        solo_exit_name = scfg.add_block(scfg.meta_region, block_label=solo_exit_label)
         scfg.insert_block_between(solo_exit_name, set((solo_tail_name,)), exits)
         return solo_tail_name, solo_exit_name

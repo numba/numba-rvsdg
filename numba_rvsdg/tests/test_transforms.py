@@ -351,7 +351,7 @@ class TestLoopRestructure(SCFGComparator):
         original_scfg, block_ref_orig = SCFG.from_yaml(original)
         expected_scfg, _ = SCFG.from_yaml(expected)
 
-        loop_restructure_helper(original_scfg, set((block_ref_orig["1"],)))
+        loop_restructure_helper(original_scfg, set((block_ref_orig["1"],)), original_scfg.meta_region)
 
         self.assertSCFGEqual(expected_scfg, original_scfg)
 
@@ -388,7 +388,7 @@ class TestLoopRestructure(SCFGComparator):
         """
         original_scfg, block_ref_orig = SCFG.from_yaml(original)
         expected_scfg, _ = SCFG.from_yaml(expected)
-        loop_restructure_helper(original_scfg, set((block_ref_orig["1"], block_ref_orig["2"])))
+        loop_restructure_helper(original_scfg, set((block_ref_orig["1"], block_ref_orig["2"])), original_scfg.meta_region)
         self.assertSCFGEqual(expected_scfg, original_scfg)
 
     def test_backedge_not_exiting(self):
@@ -439,7 +439,7 @@ class TestLoopRestructure(SCFGComparator):
         """
         original_scfg, block_ref_orig = SCFG.from_yaml(original)
         expected_scfg, _ = SCFG.from_yaml(expected)
-        loop_restructure_helper(original_scfg, set((block_ref_orig["1"], block_ref_orig["2"])))
+        loop_restructure_helper(original_scfg, set((block_ref_orig["1"], block_ref_orig["2"])), original_scfg.meta_region)
         self.assertSCFGEqual(expected_scfg, original_scfg)
 
     def test_double_exit(self):
@@ -501,7 +501,7 @@ class TestLoopRestructure(SCFGComparator):
         """
         original_scfg, block_ref_orig = SCFG.from_yaml(original)
         expected_scfg, _ = SCFG.from_yaml(expected)
-        loop_restructure_helper(original_scfg, set((block_ref_orig["1"], block_ref_orig["2"], block_ref_orig["3"])))
+        loop_restructure_helper(original_scfg, set((block_ref_orig["1"], block_ref_orig["2"], block_ref_orig["3"])), original_scfg.meta_region)
         self.assertSCFGEqual(expected_scfg, original_scfg)
 
     def test_double_header(self):
@@ -578,7 +578,7 @@ class TestLoopRestructure(SCFGComparator):
         """
         original_scfg, block_ref_orig = SCFG.from_yaml(original)
         expected_scfg, _ = SCFG.from_yaml(expected)
-        loop_restructure_helper(original_scfg, set((block_ref_orig["1"], block_ref_orig["2"], block_ref_orig["3"], block_ref_orig["4"])))
+        loop_restructure_helper(original_scfg, set((block_ref_orig["1"], block_ref_orig["2"], block_ref_orig["3"], block_ref_orig["4"])), original_scfg.meta_region)
         self.assertSCFGEqual(expected_scfg, original_scfg)
 
     def test_double_header_double_exiting(self):
@@ -679,7 +679,7 @@ class TestLoopRestructure(SCFGComparator):
         """
         original_scfg, block_ref_orig = SCFG.from_yaml(original)
         expected_scfg, _ = SCFG.from_yaml(expected)
-        loop_restructure_helper(original_scfg, set((block_ref_orig["1"], block_ref_orig["2"], block_ref_orig["3"], block_ref_orig["4"])))
+        loop_restructure_helper(original_scfg, set((block_ref_orig["1"], block_ref_orig["2"], block_ref_orig["3"], block_ref_orig["4"])), original_scfg.meta_region)
         self.assertSCFGEqual(expected_scfg, original_scfg)
 
 
@@ -730,8 +730,7 @@ class TestLoops(SCFGComparator):
         """
         expected_scfg, _ = SCFG.from_yaml(expected)
 
-        loop_restructure_helper(original_scfg, set((block_ref_orig["1"], block_ref_orig["2"])))
-        print(original_scfg.compute_scc())
+        loop_restructure_helper(original_scfg, set((block_ref_orig["1"], block_ref_orig["2"])), original_scfg.meta_region)
         self.assertSCFGEqual(expected_scfg, original_scfg)
 
     def test_basic_while_loop(self):
@@ -761,8 +760,7 @@ class TestLoops(SCFGComparator):
         """
         expected_scfg, _ = SCFG.from_yaml(expected)
 
-        loop_restructure_helper(original_scfg, set((block_ref_orig["1"],)))
-        print(original_scfg.compute_scc())
+        loop_restructure_helper(original_scfg, set((block_ref_orig["1"],)), original_scfg.meta_region)
         self.assertSCFGEqual(expected_scfg, original_scfg)
 
     def test_mixed_for_while_loop_with_branch(self):
@@ -836,7 +834,7 @@ class TestLoops(SCFGComparator):
         """
         expected01_block_map, _ = SCFG.from_yaml(expected01)
         loop_restructure_helper(original_scfg,
-                    set((block_ref_orig["1"], block_ref_orig["2"], block_ref_orig["3"], block_ref_orig["4"], block_ref_orig["5"], block_ref_orig["6"])))
+                    set((block_ref_orig["1"], block_ref_orig["2"], block_ref_orig["3"], block_ref_orig["4"], block_ref_orig["5"], block_ref_orig["6"])), original_scfg.meta_region)
         self.assertSCFGEqual(expected01_block_map, original_scfg)
         # And then, we make sure that the inner-loop remains unchanged, and the
         # loop rotation will only detect the aditional backedge, from 5 to 3
@@ -882,7 +880,7 @@ class TestLoops(SCFGComparator):
         """
         expected02_block_map, _ = SCFG.from_yaml(expected02)
         loop_restructure_helper(original_scfg,
-                    set((block_ref_orig["3"], block_ref_orig["4"], block_ref_orig["5"],)))
+                    set((block_ref_orig["3"], block_ref_orig["4"], block_ref_orig["5"],)), original_scfg.meta_region)
         self.assertSCFGEqual(expected02_block_map, original_scfg)
 
 

@@ -78,6 +78,7 @@ class FlowInfo:
 
         for begin, end in zip(offsets, [*offsets[1:], end_offset]):
             names[begin] = scfg.add_block(
+                scfg.meta_region,
                 block_type="python_bytecode",
                 block_label=PythonBytecodeLabel(),
                 begin=begin,
