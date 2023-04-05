@@ -30,7 +30,10 @@ jobs:
         shell: bash -l {0}
         run: |
           pip install -e .
-      - name: run pytest
+      - name: Run pytest and Generate Report
         shell: bash -l {0}
         run: |
-          pytest numba_rvsdg/tests/
+          pip install coverage
+          coverage run -m pytest numba_rvsdg/tests/
+      - name: Upload Coverage to Codecov
+        uses: codecov/codecov-action@v2
