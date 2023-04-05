@@ -45,6 +45,7 @@ class ByteFlowRenderer(object):
             body = str(block_name)
         else:
             raise Exception("Unknown label type: " + block.label)
+
         graph.node(str(block_name), shape="rect", label=body)
 
     def render_control_variable_block(self, graph, block_name: BlockName):
@@ -88,8 +89,6 @@ class ByteFlowRenderer(object):
         else:
             region = self.scfg.regions[region_name]
 
-        all_blocks = list(self.scfg.iterate_region(region_name, region_view=True))
-
         with graph.subgraph(name=f"cluster_{region_name}") as subg:
             if isinstance(region, LoopRegion):
                 color = "blue"
@@ -97,16 +96,15 @@ class ByteFlowRenderer(object):
                 color = "black"
             subg.attr(color=color, label=str(region.label))
 
+            for sub_region in self.scfg.region_tree[region_name]:
+                self.render_region(subg, sub_region)
+
             # If there are no further subregions then we render the blocks
-            for block_name in all_blocks:
+            for block_name in self.scfg.regional_components[region_name]:
                 self.render_block(subg, block_name)
 
     def render_block(self, graph, block_name):
         if block_name in self.rendered_blocks:
-            return
-
-        if isinstance(block_name, RegionName):
-            self.render_region(graph, block_name)
             return
 
         block = self.scfg[block_name]
