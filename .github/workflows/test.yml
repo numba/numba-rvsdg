@@ -25,7 +25,7 @@ jobs:
         shell: bash -l {0}
         run: |
           conda install graphviz python=3.11
-          pip install pytest pyyaml graphviz
+          pip install pytest pyyaml graphviz coverage
       - name: Setup numba_rvsdg
         shell: bash -l {0}
         run: |
@@ -33,11 +33,8 @@ jobs:
       - name: Run pytest and Generate Report
         shell: bash -l {0}
         run: |
-          pip install coverage
           coverage run -m pytest numba_rvsdg/tests/
       - name: Display Coverage
         shell: bash -l {0}
         run: |
           coverage report
-      - name: Upload Coverage to Codecov
-        uses: codecov/codecov-action@v2
