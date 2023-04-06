@@ -231,8 +231,8 @@ class TestFlowInfo(unittest.TestCase):
     def test_build_basic_blocks(self):
         expected = BlockMap(
             graph={
-                PythonBytecodeLabel(index=0): PythonBytecodeBlock(
-                    label=PythonBytecodeLabel(index=0),
+                PythonBytecodeLabel(index="0"): PythonBytecodeBlock(
+                    label=PythonBytecodeLabel(index="0"),
                     begin=0,
                     end=10,
                     _jump_targets=(),
@@ -253,8 +253,8 @@ class TestByteFlow(unittest.TestCase):
     def test_from_bytecode(self):
         bbmap = BlockMap(
             graph={
-                PythonBytecodeLabel(index=0): PythonBytecodeBlock(
-                    label=PythonBytecodeLabel(index=0),
+                PythonBytecodeLabel(index="0"): PythonBytecodeBlock(
+                    label=PythonBytecodeLabel(index="0"),
                     begin=0,
                     end=10,
                     _jump_targets=(),
