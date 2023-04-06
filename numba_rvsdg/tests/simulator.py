@@ -118,7 +118,7 @@ class Simulator:
 
         """
         self.varmap.update(args)
-        label = PythonBytecodeLabel(index=0)
+        label = PythonBytecodeLabel(index="0")
         while True:
             action = self.run_BasicBlock(label)
             if "return" in action:
