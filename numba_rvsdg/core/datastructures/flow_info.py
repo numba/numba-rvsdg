@@ -78,7 +78,7 @@ class FlowInfo:
         offsets = sorted(self.block_offsets)
         # enumerate labels
         labels = dict(
-            (offset, PythonBytecodeLabel(self.clg.new_index())) for offset in offsets
+            (offset, PythonBytecodeLabel(str(self.clg.new_index()))) for offset in offsets
         )
         if end_offset is None:
             end_offset = _next_inst_offset(self.last_offset)
