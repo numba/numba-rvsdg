@@ -1,7 +1,7 @@
 # Figure 3 of the paper
 from numba_rvsdg.core.datastructures.byte_flow import ByteFlow
 from numba_rvsdg.core.datastructures.flow_info import FlowInfo
-from numba_rvsdg.rendering.rendering import ByteFlowRenderer
+from numba_rvsdg.rendering.rendering import render_flow
 
 # import logging
 # logging.basicConfig(level=logging.DEBUG)
@@ -31,3 +31,11 @@ def make_flow():
     flow = FlowInfo.from_bytecode(bc)
     bbmap = flow.build_basicblocks()
     return ByteFlow(bc=bc, bbmap=bbmap)
+
+
+def test_fig3():
+    render_flow(make_flow())
+
+
+if __name__ == "__main__":
+    test_fig3()
