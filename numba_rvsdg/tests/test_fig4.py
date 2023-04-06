@@ -32,8 +32,9 @@ def make_flow():
     return ByteFlow(bc=bc, bbmap=bbmap)
 
 def test_fig4():
-    render_flow(make_flow())
+    f = make_flow()
+    f.restructure()
 
 
 if __name__ == "__main__":
-    test_fig4()
+    render_flow(make_flow())
