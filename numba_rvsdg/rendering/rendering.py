@@ -142,7 +142,9 @@ logging.basicConfig(level=logging.DEBUG)
 
 
 def render_func(func):
-    flow = ByteFlow.from_bytecode(func)
+    render_flow(ByteFlow.from_bytecode(func))
+
+def render_flow(flow):
     ByteFlowRenderer().render_byteflow(flow).view("before")
 
     cflow = flow._join_returns()
