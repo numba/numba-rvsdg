@@ -42,8 +42,8 @@ numba_rvsdg
 ├── core
 │   ├── datastructures
 │   │   ├── basic_block.py  # BasicBlock implementation
-│   │   ├── block_map.py    # BlockMap implementation, maps labels to blocks
-│   │   ├── byte_flow.py    # ByteFlow implementation, BlockMap + bytecode
+│   │   ├── scfg.py         # SCFG implementation, maps labels to blocks
+│   │   ├── byte_flow.py    # ByteFlow implementation, SCFG + bytecode
 │   │   ├── flow_info.py    # Converts program to ByteFlow
 │   │   └── labels.py       # Collection of Label classes
 │   ├── transformations.py  # Algorithms
@@ -51,7 +51,7 @@ numba_rvsdg
 ├── networkx_vendored
 │   └── scc.py              # Strongly Connected Componets (loop detection)
 ├── rendering
-│   └── rendering.py        # Graphivz based rendering of BlockMaps
+│   └── rendering.py        # Graphivz based rendering of SCFGs
 ├── tests
 │   ├── simulator.py        # Simulator utility for running SCFGs
 │   ├── test_byteflow.py    # Testung ByteFlow and others

@@ -4,7 +4,7 @@ import unittest
 from numba_rvsdg.core.datastructures.basic_block import PythonBytecodeBlock
 from numba_rvsdg.core.datastructures.labels import PythonBytecodeLabel
 from numba_rvsdg.core.datastructures.byte_flow import ByteFlow
-from numba_rvsdg.core.datastructures.block_map import BlockMap
+from numba_rvsdg.core.datastructures.scfg import SCFG
 from numba_rvsdg.core.datastructures.flow_info import FlowInfo
 
 
@@ -102,7 +102,7 @@ class TestBCMapFromBytecode(unittest.TestCase):
                 ),
             ),
         }
-        received = BlockMap.bcmap_from_bytecode(bytecode)
+        received = SCFG.bcmap_from_bytecode(bytecode)
         self.assertEqual(expected, received)
 
 
@@ -211,7 +211,7 @@ class TestPythonBytecodeBlock(unittest.TestCase):
             ),
         ]
 
-        received = block.get_instructions(BlockMap.bcmap_from_bytecode(bytecode))
+        received = block.get_instructions(SCFG.bcmap_from_bytecode(bytecode))
         self.assertEqual(expected, received)
 
 
@@ -229,7 +229,7 @@ class TestFlowInfo(unittest.TestCase):
         self.assertEqual(expected, received)
 
     def test_build_basic_blocks(self):
-        expected = BlockMap(
+        expected = SCFG(
             graph={
                 PythonBytecodeLabel(index="0"): PythonBytecodeBlock(
                     label=PythonBytecodeLabel(index="0"),
@@ -248,10 +248,10 @@ class TestByteFlow(unittest.TestCase):
     def test_constructor(self):
         byteflow = ByteFlow([], [])
         self.assertEqual(len(byteflow.bc), 0)
-        self.assertEqual(len(byteflow.bbmap), 0)
+        self.assertEqual(len(byteflow.scfg), 0)
 
     def test_from_bytecode(self):
-        bbmap = BlockMap(
+        scfg = SCFG(
             graph={
                 PythonBytecodeLabel(index="0"): PythonBytecodeBlock(
                     label=PythonBytecodeLabel(index="0"),
@@ -262,9 +262,9 @@ class TestByteFlow(unittest.TestCase):
                 )
             }
         )
-        expected = ByteFlow(bc=bytecode, bbmap=bbmap)
+        expected = ByteFlow(bc=bytecode, scfg=scfg)
         received = ByteFlow.from_bytecode(fun)
-        self.assertEqual(expected.bbmap, received.bbmap)
+        self.assertEqual(expected.scfg, received.scfg)
 
 
 if __name__ == "__main__":

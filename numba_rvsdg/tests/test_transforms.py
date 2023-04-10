@@ -6,12 +6,12 @@ from numba_rvsdg.core.datastructures.labels import (
     SyntheticTail,
     SyntheticExit,
 )
-from numba_rvsdg.core.datastructures.block_map import BlockMap, wrap_id
+from numba_rvsdg.core.datastructures.scfg import SCFG, wrap_id
 from numba_rvsdg.core.transformations import loop_restructure_helper
-from numba_rvsdg.tests.test_utils import MapComparator
+from numba_rvsdg.tests.test_utils import SCFGComparator
 
 
-class TestInsertBlock(MapComparator):
+class TestInsertBlock(SCFGComparator):
     def test_linear(self):
         original = """
         "0":
@@ -19,7 +19,7 @@ class TestInsertBlock(MapComparator):
         "1":
             jt: []
         """
-        original_block_map = BlockMap.from_yaml(original)
+        original_scfg = SCFG.from_yaml(original)
         expected = """
         "0":
             jt: ["2"]
@@ -28,11 +28,11 @@ class TestInsertBlock(MapComparator):
         "2":
             jt: ["1"]
         """
-        expected_block_map = BlockMap.from_yaml(expected)
-        original_block_map.insert_block(
+        expected_scfg = SCFG.from_yaml(expected)
+        original_scfg.insert_block(
             ControlLabel("2"), wrap_id(("0",)), wrap_id(("1",))
         )
-        self.assertMapEqual(expected_block_map, original_block_map)
+        self.assertSCFGEqual(expected_scfg, original_scfg)
 
     def test_dual_predecessor(self):
         original = """
@@ -43,7 +43,7 @@ class TestInsertBlock(MapComparator):
         "2":
             jt: []
         """
-        original_block_map = BlockMap.from_yaml(original)
+        original_scfg = SCFG.from_yaml(original)
         expected = """
         "0":
             jt: ["3"]
@@ -54,11 +54,11 @@ class TestInsertBlock(MapComparator):
         "3":
             jt: ["2"]
         """
-        expected_block_map = BlockMap.from_yaml(expected)
-        original_block_map.insert_block(
+        expected_scfg = SCFG.from_yaml(expected)
+        original_scfg.insert_block(
             ControlLabel("3"), wrap_id(("0", "1")), wrap_id(("2",))
         )
-        self.assertMapEqual(expected_block_map, original_block_map)
+        self.assertSCFGEqual(expected_scfg, original_scfg)
 
     def test_dual_successor(self):
         original = """
@@ -69,7 +69,7 @@ class TestInsertBlock(MapComparator):
         "2":
             jt: []
         """
-        original_block_map = BlockMap.from_yaml(original)
+        original_scfg = SCFG.from_yaml(original)
         expected = """
         "0":
             jt: ["3"]
@@ -80,13 +80,13 @@ class TestInsertBlock(MapComparator):
         "3":
             jt: ["1", "2"]
         """
-        expected_block_map = BlockMap.from_yaml(expected)
-        original_block_map.insert_block(
+        expected_scfg = SCFG.from_yaml(expected)
+        original_scfg.insert_block(
             ControlLabel("3"),
             wrap_id(("0",)),
             wrap_id(("1", "2")),
         )
-        self.assertMapEqual(expected_block_map, original_block_map)
+        self.assertSCFGEqual(expected_scfg, original_scfg)
 
     def test_dual_predecessor_and_dual_successor(self):
         original = """
@@ -101,7 +101,7 @@ class TestInsertBlock(MapComparator):
         "4":
             jt: []
         """
-        original_block_map = BlockMap.from_yaml(original)
+        original_scfg = SCFG.from_yaml(original)
         expected = """
         "0":
             jt: ["1", "2"]
@@ -116,13 +116,13 @@ class TestInsertBlock(MapComparator):
         "5":
             jt: ["3", "4"]
         """
-        expected_block_map = BlockMap.from_yaml(expected)
-        original_block_map.insert_block(
+        expected_scfg = SCFG.from_yaml(expected)
+        original_scfg.insert_block(
             ControlLabel("5"),
             wrap_id(("1", "2")),
             wrap_id(("3", "4")),
         )
-        self.assertMapEqual(expected_block_map, original_block_map)
+        self.assertSCFGEqual(expected_scfg, original_scfg)
 
     def test_dual_predecessor_and_dual_successor_with_additional_arcs(self):
         original = """
@@ -137,7 +137,7 @@ class TestInsertBlock(MapComparator):
         "4":
             jt: []
         """
-        original_block_map = BlockMap.from_yaml(original)
+        original_scfg = SCFG.from_yaml(original)
         expected = """
         "0":
             jt: ["1", "2"]
@@ -152,16 +152,16 @@ class TestInsertBlock(MapComparator):
         "5":
             jt: ["3", "4"]
         """
-        expected_block_map = BlockMap.from_yaml(expected)
-        original_block_map.insert_block(
+        expected_scfg = SCFG.from_yaml(expected)
+        original_scfg.insert_block(
             ControlLabel("5"),
             wrap_id(("1", "2")),
             wrap_id(("3", "4")),
         )
-        self.assertMapEqual(expected_block_map, original_block_map)
+        self.assertSCFGEqual(expected_scfg, original_scfg)
 
 
-class TestJoinReturns(MapComparator):
+class TestJoinReturns(SCFGComparator):
     def test_two_returns(self):
         original = """
         "0":
@@ -171,7 +171,7 @@ class TestJoinReturns(MapComparator):
         "2":
             jt: []
         """
-        original_block_map = BlockMap.from_yaml(original)
+        original_scfg = SCFG.from_yaml(original)
         expected = """
         "0":
             jt: ["1", "2"]
@@ -182,12 +182,12 @@ class TestJoinReturns(MapComparator):
         "3":
             jt: []
         """
-        expected_block_map = BlockMap.from_yaml(expected)
-        original_block_map.join_returns()
-        self.assertMapEqual(expected_block_map, original_block_map)
+        expected_scfg = SCFG.from_yaml(expected)
+        original_scfg.join_returns()
+        self.assertSCFGEqual(expected_scfg, original_scfg)
 
 
-class TestJoinTailsAndExits(MapComparator):
+class TestJoinTailsAndExits(SCFGComparator):
     def test_join_tails_and_exits_case_00(self):
         original = """
         "0":
@@ -195,22 +195,22 @@ class TestJoinTailsAndExits(MapComparator):
         "1":
             jt: []
         """
-        original_block_map = BlockMap.from_yaml(original)
+        original_scfg = SCFG.from_yaml(original)
         expected = """
         "0":
             jt: ["1"]
         "1":
             jt: []
         """
-        expected_block_map = BlockMap.from_yaml(expected)
+        expected_scfg = SCFG.from_yaml(expected)
 
         tails = wrap_id(("0",))
         exits = wrap_id(("1",))
-        solo_tail_label, solo_exit_label = original_block_map.join_tails_and_exits(
+        solo_tail_label, solo_exit_label = original_scfg.join_tails_and_exits(
             tails, exits
         )
 
-        self.assertMapEqual(expected_block_map, original_block_map)
+        self.assertSCFGEqual(expected_scfg, original_scfg)
         self.assertEqual(ControlLabel("0"), solo_tail_label)
         self.assertEqual(ControlLabel("1"), solo_exit_label)
 
@@ -225,7 +225,7 @@ class TestJoinTailsAndExits(MapComparator):
         "3":
             jt: []
         """
-        original_block_map = BlockMap.from_yaml(original)
+        original_scfg = SCFG.from_yaml(original)
         expected = """
         "0":
             jt: ["4"]
@@ -238,15 +238,15 @@ class TestJoinTailsAndExits(MapComparator):
         "4":
             jt: ["1", "2"]
         """
-        expected_block_map = BlockMap.from_yaml(expected)
+        expected_scfg = SCFG.from_yaml(expected)
 
         tails = wrap_id(("0",))
         exits = wrap_id(("1", "2"))
-        solo_tail_label, solo_exit_label = original_block_map.join_tails_and_exits(
+        solo_tail_label, solo_exit_label = original_scfg.join_tails_and_exits(
             tails, exits
         )
 
-        self.assertMapEqual(expected_block_map, original_block_map)
+        self.assertSCFGEqual(expected_scfg, original_scfg)
         self.assertEqual(ControlLabel("0"), solo_tail_label)
         self.assertEqual(SyntheticExit("4"), solo_exit_label)
 
@@ -261,7 +261,7 @@ class TestJoinTailsAndExits(MapComparator):
         "3":
             jt: []
         """
-        original_block_map = BlockMap.from_yaml(original)
+        original_scfg = SCFG.from_yaml(original)
         expected = """
         "0":
             jt: ["1", "2"]
@@ -274,15 +274,15 @@ class TestJoinTailsAndExits(MapComparator):
         "4":
             jt: ["3"]
         """
-        expected_block_map = BlockMap.from_yaml(expected)
+        expected_scfg = SCFG.from_yaml(expected)
 
         tails = wrap_id(("1", "2"))
         exits = wrap_id(("3",))
-        solo_tail_label, solo_exit_label = original_block_map.join_tails_and_exits(
+        solo_tail_label, solo_exit_label = original_scfg.join_tails_and_exits(
             tails, exits
         )
 
-        self.assertMapEqual(expected_block_map, original_block_map)
+        self.assertSCFGEqual(expected_scfg, original_scfg)
         self.assertEqual(SyntheticTail("4"), solo_tail_label)
         self.assertEqual(ControlLabel("3"), solo_exit_label)
 
@@ -297,7 +297,7 @@ class TestJoinTailsAndExits(MapComparator):
         "3":
             jt: []
         """
-        original_block_map = BlockMap.from_yaml(original)
+        original_scfg = SCFG.from_yaml(original)
         expected = """
         "0":
             jt: ["1", "2"]
@@ -310,15 +310,15 @@ class TestJoinTailsAndExits(MapComparator):
         "4":
             jt: ["3"]
         """
-        expected_block_map = BlockMap.from_yaml(expected)
+        expected_scfg = SCFG.from_yaml(expected)
 
         tails = wrap_id(("1", "2"))
         exits = wrap_id(("3",))
 
-        solo_tail_label, solo_exit_label = original_block_map.join_tails_and_exits(
+        solo_tail_label, solo_exit_label = original_scfg.join_tails_and_exits(
             tails, exits
         )
-        self.assertMapEqual(expected_block_map, original_block_map)
+        self.assertSCFGEqual(expected_scfg, original_scfg)
         self.assertEqual(SyntheticTail("4"), solo_tail_label)
         self.assertEqual(ControlLabel("3"), solo_exit_label)
 
@@ -338,7 +338,7 @@ class TestJoinTailsAndExits(MapComparator):
         "5":
             jt: []
         """
-        original_block_map = BlockMap.from_yaml(original)
+        original_scfg = SCFG.from_yaml(original)
         expected = """
         "0":
             jt: ["1", "2"]
@@ -357,14 +357,14 @@ class TestJoinTailsAndExits(MapComparator):
         "7":
             jt: ["3", "4"]
         """
-        expected_block_map = BlockMap.from_yaml(expected)
+        expected_scfg = SCFG.from_yaml(expected)
 
         tails = wrap_id(("1", "2"))
         exits = wrap_id(("3", "4"))
-        solo_tail_label, solo_exit_label = original_block_map.join_tails_and_exits(
+        solo_tail_label, solo_exit_label = original_scfg.join_tails_and_exits(
             tails, exits
         )
-        self.assertMapEqual(expected_block_map, original_block_map)
+        self.assertSCFGEqual(expected_scfg, original_scfg)
         self.assertEqual(SyntheticTail("6"), solo_tail_label)
         self.assertEqual(SyntheticExit("7"), solo_exit_label)
 
@@ -384,7 +384,7 @@ class TestJoinTailsAndExits(MapComparator):
         "5":
             jt: []
         """
-        original_block_map = BlockMap.from_yaml(original)
+        original_scfg = SCFG.from_yaml(original)
         expected = """
         "0":
             jt: ["1", "2"]
@@ -403,18 +403,18 @@ class TestJoinTailsAndExits(MapComparator):
         "7":
             jt: ["3", "4"]
         """
-        expected_block_map = BlockMap.from_yaml(expected)
+        expected_scfg = SCFG.from_yaml(expected)
         tails = wrap_id(("1", "2"))
         exits = wrap_id(("3", "4"))
-        solo_tail_label, solo_exit_label = original_block_map.join_tails_and_exits(
+        solo_tail_label, solo_exit_label = original_scfg.join_tails_and_exits(
             tails, exits
         )
-        self.assertMapEqual(expected_block_map, original_block_map)
+        self.assertSCFGEqual(expected_scfg, original_scfg)
         self.assertEqual(SyntheticTail("6"), solo_tail_label)
         self.assertEqual(SyntheticExit("7"), solo_exit_label)
 
 
-class TestLoopRestructure(MapComparator):
+class TestLoopRestructure(SCFGComparator):
 
     def test_no_op_mono(self):
         """Loop consists of a single Block."""
@@ -435,10 +435,10 @@ class TestLoopRestructure(MapComparator):
         "2":
             jt: []
         """
-        original_block_map = BlockMap.from_yaml(original)
-        expected_block_map = BlockMap.from_yaml(expected)
-        loop_restructure_helper(original_block_map, set(wrap_id({"1"})))
-        self.assertMapEqual(expected_block_map, original_block_map)
+        original_scfg = SCFG.from_yaml(original)
+        expected_scfg = SCFG.from_yaml(expected)
+        loop_restructure_helper(original_scfg, set(wrap_id({"1"})))
+        self.assertSCFGEqual(expected_scfg, original_scfg)
 
     def test_no_op(self):
         """Loop consists of two blocks, but it's in form."""
@@ -463,10 +463,10 @@ class TestLoopRestructure(MapComparator):
         "3":
             jt: []
         """
-        original_block_map = BlockMap.from_yaml(original)
-        expected_block_map = BlockMap.from_yaml(expected)
-        loop_restructure_helper(original_block_map, set(wrap_id({"1", "2"})))
-        self.assertMapEqual(expected_block_map, original_block_map)
+        original_scfg = SCFG.from_yaml(original)
+        expected_scfg = SCFG.from_yaml(expected)
+        loop_restructure_helper(original_scfg, set(wrap_id({"1", "2"})))
+        self.assertSCFGEqual(expected_scfg, original_scfg)
 
     def test_backedge_not_exiting(self):
         """Loop has a backedge not coming from the exiting block.
@@ -500,10 +500,10 @@ class TestLoopRestructure(MapComparator):
         "6":
             jt: ["4"]
         """
-        original_block_map = BlockMap.from_yaml(original)
-        expected_block_map = BlockMap.from_yaml(expected)
-        loop_restructure_helper(original_block_map, set(wrap_id({"1", "2"})))
-        self.assertMapEqual(expected_block_map, original_block_map)
+        original_scfg = SCFG.from_yaml(original)
+        expected_scfg = SCFG.from_yaml(expected)
+        loop_restructure_helper(original_scfg, set(wrap_id({"1", "2"})))
+        self.assertSCFGEqual(expected_scfg, original_scfg)
 
     def test_double_exit(self):
         """Loop has two exiting blocks.
@@ -544,10 +544,10 @@ class TestLoopRestructure(MapComparator):
         "8":
             jt: ["5"]
         """
-        original_block_map = BlockMap.from_yaml(original)
-        expected_block_map = BlockMap.from_yaml(expected)
-        loop_restructure_helper(original_block_map, set(wrap_id({"1", "2", "3"})))
-        self.assertMapEqual(expected_block_map, original_block_map)
+        original_scfg = SCFG.from_yaml(original)
+        expected_scfg = SCFG.from_yaml(expected)
+        loop_restructure_helper(original_scfg, set(wrap_id({"1", "2", "3"})))
+        self.assertSCFGEqual(expected_scfg, original_scfg)
 
     def test_double_header(self):
         """ This is like the example from Bahman2015 fig. 3 --
@@ -595,10 +595,10 @@ class TestLoopRestructure(MapComparator):
         "12":
             jt: ["9"]
         """
-        original_block_map = BlockMap.from_yaml(original)
-        expected_block_map = BlockMap.from_yaml(expected)
-        loop_restructure_helper(original_block_map, set(wrap_id({"1", "2", "3", "4"})))
-        self.assertMapEqual(expected_block_map, original_block_map)
+        original_scfg = SCFG.from_yaml(original)
+        expected_scfg = SCFG.from_yaml(expected)
+        loop_restructure_helper(original_scfg, set(wrap_id({"1", "2", "3", "4"})))
+        self.assertSCFGEqual(expected_scfg, original_scfg)
 
     def test_double_header_double_exiting(self):
         """ This is like the example from Bahman2015 fig. 3.
@@ -662,10 +662,10 @@ class TestLoopRestructure(MapComparator):
         "16":
             jt: ["11"]
         """
-        original_block_map = BlockMap.from_yaml(original)
-        expected_block_map = BlockMap.from_yaml(expected)
-        loop_restructure_helper(original_block_map, set(wrap_id({"1", "2", "3", "4"})))
-        self.assertMapEqual(expected_block_map, original_block_map)
+        original_scfg = SCFG.from_yaml(original)
+        expected_scfg = SCFG.from_yaml(expected)
+        loop_restructure_helper(original_scfg, set(wrap_id({"1", "2", "3", "4"})))
+        self.assertSCFGEqual(expected_scfg, original_scfg)
 
 if __name__ == "__main__":
     main()

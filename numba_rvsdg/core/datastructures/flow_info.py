@@ -4,7 +4,7 @@ from typing import Set, Tuple, Dict, Sequence
 from dataclasses import dataclass, field
 
 from numba_rvsdg.core.datastructures.basic_block import PythonBytecodeBlock
-from numba_rvsdg.core.datastructures.block_map import BlockMap
+from numba_rvsdg.core.datastructures.scfg import SCFG
 from numba_rvsdg.core.datastructures.labels import (
     Label,
     ControlLabelGenerator,
@@ -71,7 +71,7 @@ class FlowInfo:
         flowinfo.last_offset = inst.offset
         return flowinfo
 
-    def build_basicblocks(self: "FlowInfo", end_offset=None) -> "BlockMap":
+    def build_basicblocks(self: "FlowInfo", end_offset=None) -> "SCFG":
         """
         Build a graph of basic-blocks
         """
@@ -82,7 +82,7 @@ class FlowInfo:
         )
         if end_offset is None:
             end_offset = _next_inst_offset(self.last_offset)
-        bbmap = BlockMap(graph={}, clg=self.clg)
+        scfg = SCFG(graph={}, clg=self.clg)
         for begin, end in zip(offsets, [*offsets[1:], end_offset]):
             label = labels[begin]
             targets: Tuple[Label, ...]
@@ -99,5 +99,5 @@ class FlowInfo:
                 _jump_targets=targets,
                 backedges=(),
             )
-            bbmap.add_block(block)
-        return bbmap
+            scfg.add_block(block)
+        return scfg

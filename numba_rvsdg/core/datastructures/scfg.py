@@ -22,7 +22,7 @@ from numba_rvsdg.core.datastructures.labels import (
 
 
 @dataclass(frozen=True)
-class BlockMap:
+class SCFG:
     """Map of Labels to Blocks."""
 
     graph: Dict[Label, BasicBlock] = field(default_factory=dict)
@@ -325,11 +325,11 @@ class BlockMap:
     @staticmethod
     def from_yaml(yaml_string):
         data = yaml.safe_load(yaml_string)
-        return BlockMap.from_dict(data)
+        return SCFG.from_dict(data)
 
     @staticmethod
     def from_dict(graph_dict):        
-        block_map_graph = {}
+        scfg_graph = {}
         clg = ControlLabelGenerator()
         for index, attributes in graph_dict.items():
             jump_targets = attributes["jt"]
@@ -340,15 +340,15 @@ class BlockMap:
                 backedges=wrap_id(backedges),
                 _jump_targets=wrap_id(jump_targets),
             )
-            block_map_graph[label] = block
-        return BlockMap(block_map_graph, clg=clg)
+            scfg_graph[label] = block
+        return SCFG(scfg_graph, clg=clg)
 
     def to_yaml(self):
         # Convert to yaml
-        block_map_graph = self.graph
+        scfg_graph = self.graph
         yaml_string = """"""
 
-        for key, value in block_map_graph.items():
+        for key, value in scfg_graph.items():
             jump_targets = [f"{i.index}" for i in value._jump_targets]
             jump_targets = str(jump_targets).replace("\'", "\"")
             back_edges = [f"{i.index}" for i in value.backedges]
@@ -365,9 +365,9 @@ class BlockMap:
         return yaml_string
 
     def to_dict(self):
-        block_map_graph = self.graph
+        scfg_graph = self.graph
         graph_dict = {}
-        for key, value in block_map_graph.items():
+        for key, value in scfg_graph.items():
             curr_dict = {}
             curr_dict["jt"] = [f"{i.index}" for i in value._jump_targets]
             if value.backedges:

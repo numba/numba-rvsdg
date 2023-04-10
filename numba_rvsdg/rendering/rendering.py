@@ -6,7 +6,7 @@ from numba_rvsdg.core.datastructures.basic_block import (
     ControlVariableBlock,
     BranchBlock,
 )
-from numba_rvsdg.core.datastructures.block_map import BlockMap
+from numba_rvsdg.core.datastructures.scfg import SCFG
 from numba_rvsdg.core.datastructures.labels import (
     Label,
     PythonBytecodeLabel,
@@ -129,13 +129,13 @@ class ByteFlowRenderer(object):
         self.bcmap_from_bytecode(byteflow.bc)
 
         # render nodes
-        for label, block in byteflow.bbmap.graph.items():
+        for label, block in byteflow.scfg.graph.items():
             self.render_block(self.g, label, block)
-        self.render_edges(byteflow.bbmap.graph)
+        self.render_edges(byteflow.scfg.graph)
         return self.g
 
     def bcmap_from_bytecode(self, bc: dis.Bytecode):
-        self.bcmap: Dict[int, dis.Instruction] = BlockMap.bcmap_from_bytecode(bc)
+        self.bcmap: Dict[int, dis.Instruction] = SCFG.bcmap_from_bytecode(bc)
 
 
 logging.basicConfig(level=logging.DEBUG)
