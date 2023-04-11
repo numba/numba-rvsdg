@@ -11,22 +11,13 @@ from numba_rvsdg.core.datastructures.labels import (
     SyntheticTail,
     SynthenticAssignment,
     PythonBytecodeLabel,
-    BlockName,
-    RegionName,
-    LoopRegionLabel,
-    RegionLabel
 )
 from numba_rvsdg.core.datastructures.scfg import SCFG
-from numba_rvsdg.core.datastructures.basic_block import (
-    BasicBlock,
-    ControlVariableBlock,
-    BranchBlock,
-)
 
 from numba_rvsdg.core.utils import _logger
 
 
-def loop_restructure_helper(scfg: SCFG, loop: Set[BlockName], region: RegionName):
+def loop_restructure_helper(scfg: SCFG, loop: Set[str], region: str):
     """Loop Restructuring
 
     Applies the algorithm LOOP RESTRUCTURING from section 4.1 of Bahmann2015.
@@ -37,7 +28,7 @@ def loop_restructure_helper(scfg: SCFG, loop: Set[BlockName], region: RegionName
     ----------
     scfg: SCFG
         The SCFG containing the loop
-    loop: List[BlockName]
+    loop: List[str]
         The loop (strongly connected components) that is to be restructured
 
     """
@@ -51,15 +42,14 @@ def loop_restructure_helper(scfg: SCFG, loop: Set[BlockName], region: RegionName
     if len(headers) > 1:
         headers_were_unified = True
         solo_head_label = SyntheticHead()
-        loop_head: BlockName = insert_block_and_control_blocks(
+        loop_head: str = insert_block_and_control_blocks(
             scfg,
-            region,
             entries,
             headers,
             block_label=solo_head_label)
         loop.add(loop_head)
     else:
-        loop_head: BlockName = headers[0]
+        loop_head: str = headers[0]
     # If there is only a single exiting latch (an exiting block that also has a
     # backedge to the loop header) we can exit early, since the condition for
     # SCFG is fullfilled.
@@ -96,7 +86,6 @@ def loop_restructure_helper(scfg: SCFG, loop: Set[BlockName], region: RegionName
     if needs_synth_exit:
         synth_exit_label = SyntheticExit()
         synth_exit = scfg.add_block(
-            region,
             "branch",
             block_label=synth_exit_label,
             variable=exit_variable,
@@ -121,7 +110,6 @@ def loop_restructure_helper(scfg: SCFG, loop: Set[BlockName], region: RegionName
     # This variable denotes the backedge
     backedge_variable = scfg.name_gen.new_var_name()
     synth_exiting_latch = scfg.add_block(
-        region,
         "branch",
         block_label=synth_latch_label,
         variable=backedge_variable,
@@ -164,7 +152,6 @@ def loop_restructure_helper(scfg: SCFG, loop: Set[BlockName], region: RegionName
                     )
                     # Insert the assignment to the block map
                     synth_assign = scfg.add_block(
-                        region,
                         "control_variable",
                         synth_assign,
                         variable_assignment=variable_assignment)
@@ -191,7 +178,6 @@ def loop_restructure_helper(scfg: SCFG, loop: Set[BlockName], region: RegionName
                             header_value_table, out_target
                         )
                     synth_assign = scfg.add_block(
-                        region,
                         "control_variable",
                         synth_assign,
                         variable_assignment=variable_assignment)
@@ -231,8 +217,8 @@ def restructure_loop(scfg: SCFG):
     # connected, i.e. all reachable from one another by traversing the subset
     restructure_loop_region(scfg, scfg.meta_region)
 
-def restructure_loop_region(scfg:SCFG, region: RegionName):
-    region_blocks = scfg.blocks_in_region(region)
+def restructure_loop_region(scfg:SCFG, region: str):
+    region_blocks, _ = scfg.block_view(region)
     scc = scfg.compute_scc_subgraph(region_blocks)
     # loops are defined as strongly connected subsets who have more than a
     # single label and single label loops that point back to to themselves.
@@ -248,12 +234,11 @@ def restructure_loop_region(scfg:SCFG, region: RegionName):
     # rotate and extract loop
     for l in loops:
         loop_restructure_helper(scfg, l, region)
-        region_label = LoopRegionLabel()
-        new_region = extract_region(scfg, l, "loop", region_label, region)
+        new_region = extract_region(scfg, l, "loop", region)
         restructure_loop_region(scfg, new_region)
 
 
-def find_head_blocks(scfg: SCFG, begin: BlockName) -> Set[BlockName]:
+def find_head_blocks(scfg: SCFG, begin: str) -> Set[str]:
     head = scfg.find_head()
     head_region_blocks = set()
     current_block = head
@@ -270,7 +255,7 @@ def find_head_blocks(scfg: SCFG, begin: BlockName) -> Set[BlockName]:
     return head_region_blocks
 
 
-def find_branch_regions(scfg: SCFG, begin: BlockName, end: BlockName) -> Set[BlockName]:
+def find_branch_regions(scfg: SCFG, begin: str, end: str) -> Set[str]:
     # identify branch regions
     doms = _doms(scfg)
     postdoms = _post_doms(scfg)
@@ -295,17 +280,7 @@ def find_branch_regions(scfg: SCFG, begin: BlockName, end: BlockName) -> Set[Blo
                     sub_keys.add(k)
     return branch_regions
 
-
-def _find_branch_regions(scfg: SCFG, begin: BlockName, end: BlockName) -> Set[BlockName]:
-    # identify branch regions
-    branch_regions = []
-    for bra_start in scfg.out_edges[begin]:
-        region = []
-        region.append(bra_start)
-    return branch_regions
-
-
-def find_tail_blocks(scfg: SCFG, begin: Set[BlockName], head_region_blocks, branch_regions):
+def find_tail_blocks(scfg: SCFG, begin: Set[str], head_region_blocks, branch_regions):
     tail_subregion = set((b for b in scfg.blocks.keys()))
     tail_subregion.difference_update(head_region_blocks)
     for reg in branch_regions:
@@ -320,7 +295,7 @@ def find_tail_blocks(scfg: SCFG, begin: Set[BlockName], head_region_blocks, bran
     return tail_subregion
 
 
-def extract_region(scfg: SCFG, region_blocks, region_kind, region_label, parent_region):
+def extract_region(scfg: SCFG, region_blocks, region_kind, parent_region):
     headers, entries = scfg.find_headers_and_entries(region_blocks)
     exiting_blocks, exit_blocks = scfg.find_exiting_and_exits(region_blocks)
     assert len(headers) == 1
@@ -328,12 +303,24 @@ def extract_region(scfg: SCFG, region_blocks, region_kind, region_label, parent_
     region_header = headers[0]
     region_exiting = exiting_blocks[0]
 
-    return scfg.add_region(parent_region, region_kind, region_label=region_label, header = region_header, exiting = region_exiting, regional_components=region_blocks)
+    return scfg.add_region(parent_region, region_kind, region_header, region_exiting)
 
 
 def restructure_branch(scfg: SCFG):
+    """Inplace restructuring of the given graph to extract loops using
+    strongly-connected components
+    """
+    # obtain a List of Sets of Labels, where all labels in each set are strongly
+    # connected, i.e. all reachable from one another by traversing the subset
+    restructure_branch_region(scfg, scfg.meta_region)
+
+
+def restructure_branch_region(scfg: SCFG, parent_region: str):
     print("restructure_branch", scfg.blocks)
-    doms = _doms(scfg)
+
+
+def restructure_branch_helper(scfg: SCFG, region: str):
+    doms = _doms(scfg, region)
     postdoms = _post_doms(scfg)
     postimmdoms = _imm_doms(postdoms)
     immdoms = _imm_doms(doms)
@@ -392,17 +379,17 @@ def restructure_branch(scfg: SCFG):
     )
 
     # extract subregions
-    extract_region(scfg, head_region_blocks, "head")
+    extract_region(scfg, head_region_blocks, "head", region)
     for region in branch_regions:
         if region:
             bra_start, inner_nodes = region
             if inner_nodes:
-                extract_region(scfg, inner_nodes, "branch")
-    extract_region(scfg, tail_region_blocks, "tail")
+                extract_region(scfg, inner_nodes, "branch", region)
+    extract_region(scfg, tail_region_blocks, "tail", region)
 
 
 def _iter_branch_regions(
-    scfg: SCFG, immdoms: Dict[BlockName, BlockName], postimmdoms: Dict[BlockName, BlockName]
+    scfg: SCFG, immdoms: Dict[str, str], postimmdoms: Dict[str, str]
 ):
     for begin, node in [i for i in scfg.blocks.items()]:
         if len(scfg.out_edges[begin]) > 1:
@@ -413,7 +400,7 @@ def _iter_branch_regions(
                     yield begin, end
 
 
-def _imm_doms(doms: Dict[BlockName, Set[BlockName]]) -> Dict[BlockName, BlockName]:
+def _imm_doms(doms: Dict[str, Set[str]]) -> Dict[str, str]:
     idoms = {k: v - {k} for k, v in doms.items()}
     changed = True
     while changed:
@@ -439,8 +426,7 @@ def _doms(scfg: SCFG):
     preds_table = defaultdict(set)
     succs_table = defaultdict(set)
 
-    node: BasicBlock
-    for src, node in scfg.blocks.items():
+    for src, _ in scfg.blocks.items():
         for dst in scfg.out_edges[src]:
             # check dst is in subgraph
             if dst in scfg.blocks:
@@ -525,21 +511,19 @@ def _find_dominators_internal(entries, nodes, preds_table, succs_table):
 
 def insert_block_and_control_blocks(
     scfg: SCFG,
-    region: RegionName,
-    predecessors: List[BlockName],
-    successors: List[BlockName],
+    predecessors: List[str],
+    successors: List[str],
     block_label: Label = Label()
-) -> BlockName:
+) -> str:
     # TODO: needs a diagram and documentaion
     # name of the variable for this branching assignment
     branch_variable = scfg.name_gen.new_var_name()
     # initial value of the assignment
     branch_variable_value = 0
-    # store for the mapping from variable value to blockname
+    # store for the mapping from variable value to str
     branch_value_table = {}
     # initialize new block, which will hold the branching table
     branch_block_name = scfg.add_block(
-        region,
         "branch",
         block_label,
         variable=branch_variable,
@@ -563,7 +547,6 @@ def insert_block_and_control_blocks(
 
                 # add block
                 control_block_name = scfg.add_block(
-                    region,
                     "control_variable",
                     synth_assign,
                     variable_assignment=variable_assignment,
@@ -593,11 +576,11 @@ def join_returns(scfg: SCFG):
     # close if more than one is found
     if len(return_nodes) > 1:
         return_solo_label = SyntheticReturn()
-        new_block = scfg.add_block(scfg.meta_region, block_label=return_solo_label)
+        new_block = scfg.add_block(block_label=return_solo_label)
         scfg.insert_block_between(new_block, return_nodes, [])
 
 
-def join_tails_and_exits(scfg: SCFG, tails: Set[BlockName], exits: Set[BlockName]):
+def join_tails_and_exits(scfg: SCFG, tails: Set[str], exits: Set[str]):
     if len(tails) == 1 and len(exits) == 1:
         # no-op
         solo_tail_name = next(iter(tails))
@@ -608,7 +591,7 @@ def join_tails_and_exits(scfg: SCFG, tails: Set[BlockName], exits: Set[BlockName
         # join only exits
         solo_tail_name = next(iter(tails))
         solo_exit_label = SyntheticExit()
-        solo_exit_name = scfg.add_block(scfg.meta_region, block_label=solo_exit_label)
+        solo_exit_name = scfg.add_block(block_label=solo_exit_label)
         scfg.insert_block_between(solo_exit_name, tails, exits)
         return solo_tail_name, solo_exit_name
 
@@ -616,7 +599,7 @@ def join_tails_and_exits(scfg: SCFG, tails: Set[BlockName], exits: Set[BlockName
         # join only tails
         solo_tail_label = SyntheticTail()
         solo_exit_name = next(iter(exits))
-        solo_tail_name = scfg.add_block(scfg.meta_region, block_label=solo_tail_label)
+        solo_tail_name = scfg.add_block(block_label=solo_tail_label)
         scfg.insert_block_between(solo_tail_name, tails, exits)
         return solo_tail_name, solo_exit_name
 
@@ -625,9 +608,9 @@ def join_tails_and_exits(scfg: SCFG, tails: Set[BlockName], exits: Set[BlockName
         solo_tail_label = SyntheticTail()
         solo_exit_label = SyntheticExit()
 
-        solo_tail_name = scfg.add_block(scfg.meta_region, block_label=solo_tail_label)
+        solo_tail_name = scfg.add_block(block_label=solo_tail_label)
         scfg.insert_block_between(solo_tail_name, tails, exits)
 
-        solo_exit_name = scfg.add_block(scfg.meta_region, block_label=solo_exit_label)
+        solo_exit_name = scfg.add_block(block_label=solo_exit_label)
         scfg.insert_block_between(solo_exit_name, set((solo_tail_name,)), exits)
         return solo_tail_name, solo_exit_name

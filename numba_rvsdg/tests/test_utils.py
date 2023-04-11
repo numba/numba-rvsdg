@@ -8,8 +8,8 @@ class SCFGComparator(TestCase):
     def assertSCFGEqual(self, first_scfg: SCFG, second_scfg: SCFG):
 
         for key1, key2 in zip(
-            sorted(first_scfg.blocks.keys(), key=lambda x: x.name),
-            sorted(second_scfg.blocks.keys(), key=lambda x: x.name),
+            sorted(first_scfg.blocks.keys()),
+            sorted(second_scfg.blocks.keys()),
         ):
             block_1 = first_scfg[key1]
             block_2 = second_scfg[key2]
@@ -22,7 +22,7 @@ class SCFGComparator(TestCase):
 
     def assertYAMLEquals(self, first_yaml: str, second_yaml: str, ref_dict: Dict):
         for key, value in ref_dict.items():
-            first_yaml = first_yaml.replace(key, value.name)
+            first_yaml = first_yaml.replace(key, value)
 
         self.assertEqual(first_yaml, second_yaml)
 

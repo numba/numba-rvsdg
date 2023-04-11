@@ -2,12 +2,12 @@ import dis
 from typing import Dict, List
 from dataclasses import dataclass, field, InitVar
 
-from numba_rvsdg.core.datastructures.labels import Label, NameGenerator, BlockName
+from numba_rvsdg.core.datastructures.labels import Label, NameGenerator
 from numba_rvsdg.core.utils import _next_inst_offset
 
 
 @dataclass(frozen=True)
-class Block:
+class BasicBlock:
     name_gen: InitVar[NameGenerator]
     """Block Name Generator associated with this Block.
        Note: This is an initialization only argument and not
@@ -16,11 +16,7 @@ class Block:
     label: Label
     """The corresponding Label for this block."""
 
-
-@dataclass(frozen=True)
-class BasicBlock(Block):
-
-    block_name: BlockName = field(init=False)
+    block_name: str = field(init=False)
     """Unique name identifier for this block"""
 
     def __post_init__(self, name_gen: NameGenerator):

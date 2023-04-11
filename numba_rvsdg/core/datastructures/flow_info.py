@@ -2,10 +2,8 @@ import dis
 from typing import Set, Tuple, Dict, Sequence, List
 from dataclasses import dataclass, field
 
-from numba_rvsdg.core.datastructures.basic_block import PythonBytecodeBlock
 from numba_rvsdg.core.datastructures.scfg import SCFG
 from numba_rvsdg.core.datastructures.labels import (
-    BlockName,
     PythonBytecodeLabel,
 )
 from numba_rvsdg.core.utils import (
@@ -78,7 +76,6 @@ class FlowInfo:
 
         for begin, end in zip(offsets, [*offsets[1:], end_offset]):
             names[begin] = scfg.add_block(
-                scfg.meta_region,
                 block_type="python_bytecode",
                 block_label=PythonBytecodeLabel(),
                 begin=begin,
@@ -86,7 +83,7 @@ class FlowInfo:
             )
 
         for begin, end in zip(offsets, [*offsets[1:], end_offset]):
-            targets: List[BlockName]
+            targets: List[str]
             term_offset = _prev_inst_offset(end)
             if term_offset not in self.jump_insts:
                 # implicit jump

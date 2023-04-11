@@ -18,7 +18,6 @@ from numba_rvsdg.core.datastructures.labels import (
     SyntheticHead,
     SyntheticTail,
     SyntheticReturn,
-    BlockName,
 )
 
 import builtins
@@ -52,7 +51,7 @@ class Simulator:
         Control variable map
     stack: List[Instruction]
         Instruction stack
-    trace: Set[BlockName]
+    trace: Set[str]
         List of names, block combinations visisted
     branch: Boolean
         Flag to be set during execution.
@@ -75,7 +74,7 @@ class Simulator:
         self.branch = None
         self.return_value = None
 
-    def get_block(self, name: BlockName):
+    def get_block(self, name: str):
         """Return the BasicBlock object for a give name.
 
         This method is aware of the recusion level of the `Simulator` into the
@@ -87,7 +86,7 @@ class Simulator:
 
         Parameters
         ----------
-        name: BlockName
+        name: str
             The name for which to fetch the BasicBlock
 
         Return
@@ -120,13 +119,13 @@ class Simulator:
                 return action["return"]
             name = action["jumpto"]
 
-    def run_BasicBlock(self, name: BlockName):
+    def run_BasicBlock(self, name: str):
         """Run a BasicBlock.
 
         Paramters
         ---------
-        name: BlockName
-            The BlockName of the BasicBlock
+        name: str
+            The str of the BasicBlock
 
         Returns
         -------
@@ -152,13 +151,13 @@ class Simulator:
         else:
             return {"return": self.return_value}
 
-    def run_PythonBytecodeBlock(self, name: BlockName):
+    def run_PythonBytecodeBlock(self, name: str):
         """Run PythonBytecodeBlock
 
         Parameters
         ----------
-        name: BlockName
-            The BlockName for the block.
+        name: str
+            The str for the block.
 
         """
         block: PythonBytecodeBlock = self.get_block(name)
@@ -166,19 +165,19 @@ class Simulator:
         for inst in block.get_instructions(self.bcmap):
             self.run_inst(inst)
 
-    def run_synth_block(self, name: BlockName):
+    def run_synth_block(self, name: str):
         """Run a SyntheticBlock
 
         Paramaters
         ----------
-        name: BlockName
-            The BlockName for the block.
+        name: str
+            The str for the block.
 
         """
         print("----", name)
         print(f"control variable map: {self.ctrl_varmap}")
         block = self.get_block(name)
-        handler = getattr(self, f"synth_{type(name).__name__}")
+        handler = getattr(self, f"synth_{type(block.label).__name__}")
         handler(name, block)
 
     def run_inst(self, inst: Instruction):
@@ -200,41 +199,41 @@ class Simulator:
 
     ### Synthetic Instructions ###
     def synth_SynthenticAssignment(
-        self, control_label: BlockName, block: ControlVariableBlock
+        self, control_label: str, block: ControlVariableBlock
     ):
         self.ctrl_varmap.update(block.variable_assignment)
 
-    def _synth_branch(self, control_label: BlockName, block: BranchBlock):
+    def _synth_branch(self, control_label: str, block: BranchBlock):
         jump_target = block.branch_value_table[self.ctrl_varmap[block.variable]]
-        self.branch = bool(block._jump_targets.index(jump_target))
+        self.branch = bool(self.scfg.out_edges[block.block_name].index(jump_target))
 
     def synth_SyntheticExitingLatch(
-        self, control_label: BlockName, block: ControlVariableBlock
+        self, control_label: str, block: ControlVariableBlock
     ):
         self._synth_branch(control_label, block)
 
     def synth_SyntheticHead(
-        self, control_label: BlockName, block: ControlVariableBlock
+        self, control_label: str, block: ControlVariableBlock
     ):
         self._synth_branch(control_label, block)
 
     def synth_SyntheticExit(
-        self, control_label: BlockName, block: ControlVariableBlock
+        self, control_label: str, block: ControlVariableBlock
     ):
         self._synth_branch(control_label, block)
 
     def synth_SyntheticReturn(
-        self, control_label: BlockName, block: ControlVariableBlock
+        self, control_label: str, block: ControlVariableBlock
     ):
         pass
 
     def synth_SyntheticTail(
-        self, control_label: BlockName, block: ControlVariableBlock
+        self, control_label: str, block: ControlVariableBlock
     ):
         pass
 
     def synth_SyntheticBranch(
-        self, control_label: BlockName, block: ControlVariableBlock
+        self, control_label: str, block: ControlVariableBlock
     ):
         pass
 

@@ -3,6 +3,8 @@ from numba_rvsdg.core.datastructures.byte_flow import ByteFlow
 from numba_rvsdg.core.datastructures.flow_info import FlowInfo
 from numba_rvsdg.rendering.rendering import ByteFlowRenderer
 
+from numba_rvsdg.rendering.rendering import render_flow
+
 # import logging
 # logging.basicConfig(level=logging.DEBUG)
 
@@ -31,3 +33,11 @@ def make_flow():
     flow = FlowInfo.from_bytecode(bc)
     scfg = flow.build_basicblocks()
     return ByteFlow(bc=bc, scfg=scfg)
+
+
+def test_fig3():
+    f = make_flow()
+    f.restructure()
+
+if __name__ == "__main__":
+    render_flow(make_flow())

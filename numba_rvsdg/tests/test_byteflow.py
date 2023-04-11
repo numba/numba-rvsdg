@@ -5,8 +5,6 @@ from numba_rvsdg.core.datastructures.basic_block import PythonBytecodeBlock
 from numba_rvsdg.core.datastructures.labels import (
     PythonBytecodeLabel,
     NameGenerator,
-    BlockName,
-    get_label_class,
 )
 from numba_rvsdg.core.datastructures.byte_flow import ByteFlow
 from numba_rvsdg.core.datastructures.scfg import SCFG
@@ -19,12 +17,12 @@ def fun():
 
 
 bytecode = Bytecode(fun)
-
+# If the above fun function definition line changes, just change the variable below, 
+# rest of it will adjust as long as function remains the same
+func_def_line = 14
 
 class TestBCMapFromBytecode(unittest.TestCase):
     def test(self):
-        # If the function definition line changes, just change the variable below, rest of it will adjust as long as function remains the same
-        func_def_line = 16
         expected = {
             0: Instruction(
                 opname="RESUME",
@@ -124,12 +122,11 @@ class TestPythonBytecodeBlock(unittest.TestCase):
         self.assertEqual(block.begin, 0)
         self.assertEqual(block.end, 8)
 
-        block_name = BlockName("pythonbytecodelabel_0")
+        block_name = "pythonbytecodelabel_0"
         self.assertEqual(block.block_name, block_name)
 
     def test_get_instructions(self):
         # If the function definition line changes, just change the variable below, rest of it will adjust as long as function remains the same
-        func_def_line = 16
         name_gen = NameGenerator()
         block = PythonBytecodeBlock(
             label=PythonBytecodeLabel(),
@@ -223,7 +220,7 @@ class TestFlowInfo(unittest.TestCase):
 
     def test_build_basic_blocks(self):
         expected = SCFG()
-        expected.add_block(expected.meta_region, "python_bytecode", get_label_class("python_bytecode")(),
+        expected.add_block("python_bytecode", PythonBytecodeLabel(),
                             begin=0, end=10)
 
         received = FlowInfo.from_bytecode(bytecode).build_basicblocks()
@@ -240,9 +237,8 @@ class TestByteFlow(SCFGComparator):
         scfg = SCFG()
 
         scfg.add_block(
-            scfg.meta_region,
             block_type="python_bytecode",
-            block_label=get_label_class("python_bytecode")(),
+            block_label=PythonBytecodeLabel(),
             begin=0,
             end=10,
         )

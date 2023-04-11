@@ -10,10 +10,7 @@ from numba_rvsdg.core.datastructures.labels import (
     Label,
     PythonBytecodeLabel,
     ControlLabel,
-    BlockName,
-    RegionName
 )
-from numba_rvsdg.core.datastructures.region import MetaRegion, LoopRegion
 from numba_rvsdg.core.datastructures.byte_flow import ByteFlow
 import dis
 from typing import Dict
@@ -32,7 +29,7 @@ class ByteFlowRenderer(object):
         self.render_region(self.g, None)
         self.render_edges()
 
-    def render_basic_block(self, graph, block_name: BlockName):
+    def render_basic_block(self, graph, block_name: str):
         block = self.scfg[block_name]
 
         if isinstance(block.label, PythonBytecodeLabel):
@@ -48,7 +45,7 @@ class ByteFlowRenderer(object):
 
         graph.node(str(block_name), shape="rect", label=body)
 
-    def render_control_variable_block(self, graph, block_name: BlockName):
+    def render_control_variable_block(self, graph, block_name: str):
         block = self.scfg[block_name]
 
         if isinstance(block.label, ControlLabel):
@@ -60,7 +57,7 @@ class ByteFlowRenderer(object):
             raise Exception("Unknown label type: " + block.label)
         graph.node(str(block_name), shape="rect", label=body)
 
-    def render_branching_block(self, graph, block_name: BlockName):
+    def render_branching_block(self, graph, block_name: str):
         block = self.scfg[block_name]
 
         if isinstance(block.label, ControlLabel):
@@ -90,17 +87,25 @@ class ByteFlowRenderer(object):
             region = self.scfg.regions[region_name]
 
         with graph.subgraph(name=f"cluster_{region_name}") as subg:
-            if isinstance(region, LoopRegion):
+            kind = region.kind
+            if kind == "loop":
                 color = "blue"
+            elif kind == "head":
+                color = "red"
+            elif kind == "branch":
+                color = "green"
+            elif kind == "tail":
+                color = "purple"
             else:
                 color = "black"
-            subg.attr(color=color, label=str(region.label))
+            subg.attr(color=color, label=str(region.region_name))
 
             for sub_region in self.scfg.region_tree[region_name]:
                 self.render_region(subg, sub_region)
 
             # If there are no further subregions then we render the blocks
-            for block_name in self.scfg.regional_components[region_name]:
+            all_blocks, _ = self.scfg.block_view(region_name)
+            for block_name in all_blocks:
                 self.render_block(subg, block_name)
 
     def render_block(self, graph, block_name):
@@ -123,8 +128,6 @@ class ByteFlowRenderer(object):
     def render_edges(self):
         for block_name, out_edges in self.scfg.out_edges.items():
             for out_edge in out_edges:
-                if isinstance(out_edge, RegionName):
-                    out_edge = self.scfg.regions[out_edge].header
                 if (block_name, out_edge) in self.scfg.back_edges:
                     self.g.edge(
                         str(block_name),

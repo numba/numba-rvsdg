@@ -31,7 +31,7 @@ class SimulatorTest(unittest.TestCase):
             return c
 
         flow = ByteFlow.from_bytecode(foo)
-        # flow = flow.restructure()
+        flow.restructure()
 
         # if case
         self._run(foo, flow, {"x": 1})
@@ -49,7 +49,7 @@ class SimulatorTest(unittest.TestCase):
             return c
 
         flow = ByteFlow.from_bytecode(foo)
-        # flow = flow.restructure()
+        flow.restructure()
 
         # loop bypass case
         self._run(foo, flow, {"x": 0})
@@ -71,7 +71,7 @@ class SimulatorTest(unittest.TestCase):
             return c
 
         flow = ByteFlow.from_bytecode(foo)
-        # flow = flow.restructure()
+        # flow.restructure()
 
         # loop bypass case
         self._run(foo, flow, {"x": 0})
@@ -93,7 +93,7 @@ class SimulatorTest(unittest.TestCase):
             return c
 
         flow = ByteFlow.from_bytecode(foo)
-        # flow = flow.restructure()
+        # flow.restructure()
 
         # loop bypass case
         self._run(foo, flow, {"x": 0})
@@ -120,7 +120,7 @@ class SimulatorTest(unittest.TestCase):
             return c
 
         flow = ByteFlow.from_bytecode(foo)
-        # flow = flow.restructure()
+        # flow.restructure()
 
         # no loop
         self._run(foo, flow, {"x": 0})
@@ -147,7 +147,7 @@ class SimulatorTest(unittest.TestCase):
             return c
 
         flow = ByteFlow.from_bytecode(foo)
-        # flow = flow.restructure()
+        # flow.restructure()
 
         # loop bypass
         self._run(foo, flow, {"x": 0})
@@ -166,7 +166,7 @@ class SimulatorTest(unittest.TestCase):
             return (x > 0 and x < 10) or (y > 0 and y < 10)
 
         flow = ByteFlow.from_bytecode(foo)
-        # flow = flow.restructure()
+        # flow.restructure()
 
         self._run(foo, flow, {"x": 5, "y": 5})
 
@@ -180,7 +180,7 @@ class SimulatorTest(unittest.TestCase):
             return c
 
         flow = ByteFlow.from_bytecode(foo)
-        # flow = flow.restructure()
+        # flow.restructure()
 
         # no looping
         self._run(foo, flow, {"s": 0, "e": 0})

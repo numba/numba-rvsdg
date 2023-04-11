@@ -7,49 +7,52 @@ from dataclasses import dataclass, field
 from collections import deque
 
 from numba_rvsdg.core.datastructures.basic_block import BasicBlock, get_block_class, get_block_class_str
-from numba_rvsdg.core.datastructures.region import MetaRegion, Region, LoopRegion, get_region_class
-from numba_rvsdg.core.datastructures.labels import (
-    Name,
-    Label,
-    BlockName,
-    NameGenerator,
-    RegionName,
-    MetaRegionLabel, LoopRegionLabel, RegionLabel,
-    get_label_class,
-)
+from numba_rvsdg.core.datastructures.region import Region
+from numba_rvsdg.core.datastructures.labels import *
 
 default_label = Label()
 
+
 @dataclass(frozen=True)
 class SCFG:
-    """Maps of BlockNames to respective BasicBlocks.
-    And stores the jump targets and back edges for
-    blocks within the graph."""
+    # This maps the names of the blocks to the block objects, which may contain
+    # additional information such as assembly instructions or Python byetcode
+    blocks: Dict[str, BasicBlock] = field(default_factory=dict, init=False)
 
-    blocks: Dict[BlockName, BasicBlock] = field(default_factory=dict, init=False)
+    # This is the actual graph, contains a mapping of block names to block
+    # names they point to, i.e. the edges of the graph. Any block name in the
+    # list of block names must also be a key in this mapping. I.e. this mapping
+    # must be self-contained.
+    out_edges: Dict[str, List[str]] = field(default_factory=dict, init=False)
 
-    out_edges: Dict[BlockName, List[BlockName]] = field(default_factory=dict, init=False)
-    back_edges: set[tuple[BlockName, BlockName]] = field(default_factory=set, init=False)
+    # These are any identified back-edges. This must also be self contained.
+    back_edges: set[tuple[str, str]] = field(default_factory=set, init=False)
 
-    regions: Dict[RegionName, Region] = field(default_factory=dict, init=False)
-    meta_region: RegionName = field(init=False)
-    region_tree: Dict[RegionName, set[RegionName]] = field(default_factory=dict, init=False)
-    regional_components: Dict[RegionName, set[BlockName]] = field(default_factory=dict, init=False)
+    # This is the top-level region
+    meta_region: str = field(init=False)
+
+    # This is the region storage. It maps region names to the Region objects,
+    # which themselves contain the header and exiting blocks of this region
+    regions: Dict[str, Region] = field(default_factory=dict, init=False)
+
+    # This is the region tree which stores the hierarchical relationship
+    # between regions. The root node of this tree is the meta-region (once the
+    # graph is fully analysed).
+    region_tree: Dict[str, set[str]] = field(default_factory=dict, init=False)
 
     name_gen: NameGenerator = field(default_factory=NameGenerator, compare=False, init=False)
 
     def __post_init__(self):
-        new_region = MetaRegion(name_gen = self.name_gen, label = MetaRegionLabel())
+        new_region = Region(name_gen = self.name_gen, kind="meta", header=None, exiting=None)
         region_name = new_region.region_name
         self.regions[region_name] = new_region
         self.region_tree[region_name] = set()
-        self.regional_components[region_name] = set()
         object.__setattr__(self, "meta_region", region_name)
 
-    def __getitem__(self, index: BlockName) -> BasicBlock:
+    def __getitem__(self, index: str) -> BasicBlock:
         return self.blocks[index]
 
-    def __contains__(self, index: BlockName) -> bool:
+    def __contains__(self, index: str) -> bool:
         return index in self.blocks
 
     def __iter__(self):
@@ -69,13 +72,13 @@ class SCFG:
             # finally add any out_edges to the list of names to visit
             to_visit.extend(self.out_edges[name])
 
-    def exclude_blocks(self, exclude_blocks: Set[BlockName]) -> Iterator[BlockName]:
+    def exclude_blocks(self, exclude_blocks: Set[str]) -> Iterator[str]:
         """Iterator over all nodes not in exclude_blocks."""
         for block in self.blocks:
             if block not in exclude_blocks:
                 yield block
 
-    def find_head(self) -> BlockName:
+    def find_head(self) -> str:
         """Find the head block of the CFG.
 
         Assuming the CFG is closed, this will find the block
@@ -89,7 +92,7 @@ class SCFG:
         assert len(heads) == 1
         return next(iter(heads))
 
-    def compute_scc_subgraph(self, subgraph) -> List[Set[BlockName]]:
+    def compute_scc_subgraph(self, subgraph) -> List[Set[str]]:
         """
         Strongly-connected component for detecting loops inside a subgraph.
         """
@@ -98,7 +101,7 @@ class SCFG:
         scfg = self
 
         class GraphWrap:
-            def __init__(self, graph: Dict[BlockName, BasicBlock], subgraph):
+            def __init__(self, graph: Dict[str, BasicBlock], subgraph):
                 self.graph = graph
                 self.subgraph = subgraph
 
@@ -116,8 +119,8 @@ class SCFG:
 
     def find_headers_and_entries(
             self,
-            subgraph: set[BlockName]
-            ) -> Tuple[list[BlockName], list[BlockName]]:
+            subgraph: set[str]
+            ) -> Tuple[list[str], list[str]]:
         """Find entries and headers in a given subgraph.
 
         Entries are blocks outside the subgraph that have an edge pointing to
@@ -128,12 +131,12 @@ class SCFG:
 
         Parameters
         ----------
-        subgraph: set of BlockName
+        subgraph: set of str
             The subgraph for which to find the headers and entries
 
         Returns
         -------
-        headers: list of BlockName
+        headers: list of str
             The headers for this subgraph
         entries:
             The entries for this subgraph
@@ -142,9 +145,9 @@ class SCFG:
         -----
         The returned lists of headers and entries are sorted.
         """
-        outside: BlockName
-        entries: set[BlockName] = set()
-        headers: set[BlockName] = set()
+        outside: str
+        entries: set[str] = set()
+        headers: set[str] = set()
         # Iterate over all blocks in the graph, excluding any blocks inside the
         # subgraph.
         for outside in self.exclude_blocks(subgraph):
@@ -162,8 +165,8 @@ class SCFG:
         return sorted(headers), sorted(entries)
 
     def find_exiting_and_exits(
-        self, subgraph: Set[BlockName]
-    ) -> Tuple[list[BlockName], list[BlockName]]:
+        self, subgraph: Set[str]
+    ) -> Tuple[list[str], list[str]]:
         """Find exiting and exit blocks in a given subgraph.
 
         Exiting blocks are blocks inside the subgraph that have edges to
@@ -173,12 +176,12 @@ class SCFG:
 
         Parameters
         ----------
-        subgraph: set of BlockName
+        subgraph: set of str
             The subgraph for which to find the exiting and exit blocks.
 
         Returns
         -------
-        exiting: list of BlockName
+        exiting: list of str
             The exiting blocks for this subgraph
         exits:
             The exit block for this subgraph
@@ -188,10 +191,10 @@ class SCFG:
         The returned lists of exiting and exit blocks are sorted.
 
         """
-        inside: BlockName
+        inside: str
         # use sets internally to avoid duplicates
-        exiting: set[BlockName] = set()
-        exits: set[BlockName] = set()
+        exiting: set[str] = set()
+        exits: set[str] = set()
         for inside in subgraph:
             # any node inside that points outside the loop
             for out_target in self.out_edges[inside]:
@@ -204,7 +207,7 @@ class SCFG:
         # convert to sorted list before return
         return sorted(exiting), sorted(exits)
 
-    def is_reachable_dfs(self, begin: BlockName, end: BlockName):  # -> TypeGuard:
+    def is_reachable_dfs(self, begin: str, end: str):  # -> TypeGuard:
         """Is end reachable from begin."""
         seen = set()
         to_vist = list(self.out_edges[begin])
@@ -223,10 +226,10 @@ class SCFG:
                 if block in self.blocks:
                     to_vist.extend(self.out_edges[block])
 
-    def is_exiting(self, block_name: BlockName):
+    def is_exiting(self, block_name: str):
         return len(self.out_edges[block_name]) == 0
 
-    def is_fallthrough(self, block_name: BlockName):
+    def is_fallthrough(self, block_name: str):
         return len(self.out_edges[block_name]) == 1
 
     def check_graph(self):
@@ -234,9 +237,9 @@ class SCFG:
 
     def insert_block_between(
         self,
-        block_name: BlockName,
-        predecessors: List[BlockName],
-        successors: List[BlockName]
+        block_name: str,
+        predecessors: List[str],
+        successors: List[str]
     ):
         # Replace any arcs from any of predecessors to any of successors with
         # an arc through the inserted block instead.
@@ -260,32 +263,25 @@ class SCFG:
         self.check_graph()
 
     def add_block(
-        self, parent_region, block_type: str = "basic", block_label: Label = default_label, **block_args
-    ) -> BlockName:
+        self, block_type: str = "basic", block_label: Label = default_label, **block_args
+    ) -> str:
         block_type = get_block_class(block_type)
         new_block: BasicBlock = block_type(**block_args, label=block_label, name_gen=self.name_gen)
 
         name = new_block.block_name
         self.blocks[name] = new_block
         self.out_edges[name] = []
-        self.regional_components[parent_region].add(name)
         return name
 
-    def add_region(self, parent_region: RegionName, kind: str, header: BlockName, exiting: BlockName, regional_components: set, region_label = RegionLabel()):
-        region_type = get_region_class(kind)
-        new_region: Region = region_type(name_gen=self.name_gen, label=region_label, header=header, exiting=exiting)
+    def add_region(self, parent_region: str, kind: str, header: str, exiting: str):
+        assert kind in ["loop", "head", "tail", "branch"]
+        assert parent_region in self.regions.keys()
+        new_region = Region(name_gen=self.name_gen, kind=kind, header=header, exiting=exiting)
         region_name = new_region.region_name
         self.regions[region_name] = new_region
         self.region_tree[region_name] = set()
         self.region_tree[parent_region].add(region_name)
 
-        self.regional_components[region_name] = set()
-        for _block in regional_components:
-            assert _block in self.regional_components[parent_region]
-            self.regional_components[parent_region].remove(_block)
-            self.regional_components[region_name].add(_block)
-        assert header in self.regional_components[region_name]
-        assert exiting in self.regional_components[region_name]
         return region_name
 
     def add_connections(self, block_name, out_edges):
@@ -301,6 +297,26 @@ class SCFG:
 
     @staticmethod
     def from_dict(graph_dict: Dict[str, Dict]):
+        label_types = {
+            "label": Label,
+            "python_bytecode": PythonBytecodeLabel,
+            "control": ControlLabel,
+            "synth_branch": SyntheticBranch,
+            "synth_tail": SyntheticTail,
+            "synth_exit": SyntheticExit,
+            "synth_head": SyntheticHead,
+            "synth_return": SyntheticReturn,
+            "synth_latch": SyntheticLatch,
+            "synth_exit_latch": SyntheticExitingLatch,
+            "synth_assign": SynthenticAssignment,
+        }
+
+        def get_label_class(label_type_string):
+            if label_type_string in label_types:
+                return label_types[label_type_string]
+            else:
+                raise TypeError(f"Block Type {label_type_string} not recognized.")
+
         scfg = SCFG()
         ref_dict = {}
 
@@ -310,7 +326,7 @@ class SCFG:
             label_class = get_label_class(block_attrs.get("label_type", "label"))
             label_info = block_attrs.get("label_info", None)
             block_label = label_class(label_info)
-            block_name = scfg.add_block(scfg.meta_region, block_class, block_label, **block_args)
+            block_name = scfg.add_block(block_class, block_label, **block_args)
             ref_dict[block_ref] = block_name
 
         for block_ref, block_attrs in graph_dict.items():
@@ -369,28 +385,59 @@ class SCFG:
 
         return graph_dict
 
-    def blocks_in_region(self, region_name: RegionName):
-        """Generator for all blocks in a given region.
-
-        Parameters
-        ----------
-        region_name: RegionName
-
-        Returns
-        -------
-        gen: generator of BlockName
-            A generator that yields block names
+    def block_view(self, region_name: str):
+        """All blocks in a given region.
+        Out edges within the region.
         """
-        # get correct region from, scfg
-        region = self.regions[region_name]
+        if region_name == self.meta_region:
+            header = self.find_head()
+            exiting  = None
+        else:
+            header = self.regions[region_name].header
+            exiting = self.regions[region_name].exiting
 
-        all_blocks = []
+        # initialise housekeeping datastructures
+        to_visit, all_blocks, all_outs = [header], set(), dict()
 
-        def _add_components(region):
-            all_blocks.extend(self.regional_components[region_name])
-            for _region in self.region_tree[region_name]:
-                _add_components(_region)
+        while to_visit:
+            # get the next name on the list
+            name = to_visit.pop(0)
+            # if we have visited this, we skip it
+            if name in all_blocks:
+                continue
+            
+            # Otherwise we process the valid block
+            all_blocks.add(name)
+            if name is exiting:
+                # This ignores back-edge case?
+                all_outs[name] = []
+                continue
+            to_visit.extend(self.out_edges[name])
+            all_outs[name] = self.out_edges[name]
+        return all_blocks, all_outs
 
-        _add_components(region)
+    def region_view(self, region_name: str):
+        """ All subregions + non-subregion blocks.
+        Out edges within the region.
+        Backedges of subregions shown as an edge pointing to the subregion itself.
+        """
+        all_blocks, all_outs = self.block_view(region_name)
+        all_headers = {}
 
-        return all_blocks
+        for subregion in self.region_tree[region_name]:
+            subregion_blocks, _ = self.block_view(subregion)
+            all_blocks.difference_update(subregion_blocks)
+            all_blocks.add(subregion)
+            subregion_header = self.regions[subregion].header
+            subregion_exiting = self.regions[subregion].exiting
+            all_outs[subregion] = self.out_edges[subregion_exiting]
+            all_headers[subregion_header] = subregion
+ 
+        for _out in list(all_outs.keys()):
+            if _out not in all_blocks:
+                all_outs.pop(_out)
+            else:
+                for idx, _out_item in enumerate(all_outs[_out]):
+                    if _out_item in all_headers.keys():
+                        all_outs[_out][idx] = all_headers[_out_item]
+        return all_blocks, all_outs
