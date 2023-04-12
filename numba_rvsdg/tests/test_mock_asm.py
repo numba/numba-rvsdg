@@ -6,6 +6,8 @@ from typing import IO, Dict
 import random
 import textwrap
 
+import logging
+logging.basicConfig(level=logging.DEBUG)
 from mock_asm import ProgramGen, parse, VM, Inst, GotoOperands, BrCtrOperands
 
 
@@ -102,7 +104,7 @@ class MockAsmLabel(Label):
 class MockAsmBasicBlock(BasicBlock):
     bbinstlist: list[Inst] = field(default_factory=list)
     bboffset: int = 0
-
+    bbtargets: tuple[int, ...] = ()
 
 
 from numba_rvsdg.core.datastructures.labels import (
@@ -277,6 +279,7 @@ def to_scfg(instlist: list[Inst]) -> BlockMap:
             label=label,
             bbinstlist=bb,
             bboffset=begin,
+            bbtargets=tuple(targets),
             _jump_targets=tuple(labelmap[tgt] for tgt in targets),
         )
         scfg.add_block(block)
@@ -289,10 +292,95 @@ def to_scfg(instlist: list[Inst]) -> BlockMap:
     scfg.join_returns()
     # MockAsmRenderer(scfg).view('jointed')
     restructure_loop(scfg)
-    MockAsmRenderer(scfg).view('loop')
+    # MockAsmRenderer(scfg).view('loop')
     restructure_branch(scfg)
-    MockAsmRenderer(scfg).view('branch')
+    # MockAsmRenderer(scfg).view('branch')
     return scfg
+
+class Simulator:
+    def __init__(self, scfg: BlockMap, buf: StringIO):
+        self.vm = VM(buf)
+        self.scfg = scfg
+        self.region_stack = []
+
+    def run(self):
+        scfg = self.scfg
+        label = scfg.find_head()
+        while True:
+            action = self.run_block(self.scfg.graph[label])
+            # If we need to return, break and do so
+            if "return" in action:
+                break  # break and return action
+            elif "jumpto" in action:
+                label = action["jumpto"]
+                # Otherwise check if we stay in the region and break otherwise
+                if label in self.scfg.graph:
+                    continue  # stay in the region
+                else:
+                    break  # break and return action
+            else:
+                assert False, "unreachable" # in case of coding errors
+
+    def run_block(self, block):
+        if isinstance(block, RegionBlock):
+            return self.run_RegionBlock(block)
+        elif isinstance(block, MockAsmBasicBlock):
+            return self.run_MockAsmBasicBlock(block)
+        else:
+            assert False
+
+    def run_RegionBlock(self, block: RegionBlock):
+        self.region_stack.append(block)
+
+        label = block.subregion.find_head()
+        while True:
+            action = self.run_block(block.subregion.graph[label])
+            # If we need to return, break and do so
+            if "return" in action:
+                break  # break and return action
+            elif "jumpto" in action:
+                label = action["jumpto"]
+                # Otherwise check if we stay in the region and break otherwise
+                if label in block.subregion.graph:
+                    continue  # stay in the region
+                else:
+                    break  # break and return action
+            else:
+                assert False, "unreachable" # in case of coding errors
+
+        self.region_stack.pop()
+        return action
+
+    def run_MockAsmBasicBlock(self, block: MockAsmBasicBlock):
+        vm = self.vm
+        pc = block.bboffset
+
+        for inst in block.bbinstlist:
+            pc = vm.eval_inst(pc, inst)
+        if block.bbtargets:
+            pos = block.bbtargets.index(pc)
+            label = block._jump_targets[pos]
+            return {"jumpto": label}
+        else:
+            return {"return": None}
+
+
+def simulate_scfg(scfg: BlockMap):
+    with StringIO() as buf:
+        Simulator(scfg, buf).run()
+        return buf.getvalue()
+
+def compare_simulated_scfg(asm):
+    instlist = parse(asm)
+    scfg = to_scfg(instlist)
+
+    with StringIO() as buf:
+        terminated = VM(buf).run(instlist, max_step=1000)
+        got = buf.getvalue()
+
+    expect = simulate_scfg(scfg)
+    assert got == expect
+
 
 
 def test_mock_scfg_loop():
@@ -307,8 +395,8 @@ def test_mock_scfg_loop():
             print B
     """)
 
-    instlist = parse(asm)
-    scfg = to_scfg(instlist)
+    compare_simulated_scfg(asm)
+
 
 
 def test_mock_scfg_head_cycle():
@@ -326,9 +414,7 @@ def test_mock_scfg_head_cycle():
         label B
             print B
     """)
-
-    instlist = parse(asm)
-    scfg = to_scfg(instlist)
+    compare_simulated_scfg(asm)
 
 def test_mock_scfg_diamond():
     asm = textwrap.dedent("""
@@ -344,7 +430,4 @@ def test_mock_scfg_diamond():
         label C
             print C
     """)
-
-    instlist = parse(asm)
-    scfg = to_scfg(instlist)
-
+    compare_simulated_scfg(asm)
