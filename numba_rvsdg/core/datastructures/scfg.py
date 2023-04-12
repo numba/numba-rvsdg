@@ -90,16 +90,14 @@ class SCFG:
                 continue
             else:
                 seen.add(label)
-            # get the corresponding block for the label (could also be a region)
+            # get the corresponding block for the label(could also be a region)
             try:
                 block = self[label]
             except KeyError:
-                # If this is outside the current graph, might be the case if
-                # inside a region and the block being looked at is outside of
-                # the region.
+                # If this is outside the current graph, just disregard it.
+                # (might be the case if inside a region and the block being
+                # looked at is outside of the region.)
                 continue
-            # yield the label, block combo
-            yield (label, block)
 
             # populate the to_vist
             if type(block) == RegionBlock:
@@ -108,8 +106,12 @@ class SCFG:
                 # consumer of this iterator.
                 to_visit.append(block.exit)
             else:
-                # finally add any jump_targets to the list of labels to visit
+                # otherwise add any jump_targets to the list of labels to visit
                 to_visit.extend(block.jump_targets)
+
+            # finally, yield the label, block combo
+            yield (label, block)
+
 
     def exclude_blocks(self, exclude_blocks: Set[Label]) -> Iterator[Label]:
         """Iterator over all nodes not in exclude_blocks."""

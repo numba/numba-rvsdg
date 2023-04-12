@@ -399,7 +399,7 @@ def restructure_branch(scfg: SCFG):
 def _iter_branch_regions(
     scfg: SCFG, immdoms: Dict[Label, Label], postimmdoms: Dict[Label, Label]
 ):
-    for begin, node in bbmap.region_view_iterator():
+    for begin, node in scfg.region_view_iterator():
         if len(node.jump_targets) > 1:
             # found branch
             if begin in postimmdoms:
