@@ -216,11 +216,11 @@ class ProgramGen:
             ]
             [kind] = self.rng.choices(["goto", "brctr", ""], [1, 10, 20])
             if kind == "goto":
-                target = self.rng.randrange(size)
+                target = self.rng.randrange(1, size) # avoid jump back to entry
                 bb.append(f"{indent}goto BB{target}")
             elif kind == "brctr":
-                target0 = self.rng.randrange(size)
-                target1 = self.rng.randrange(size)
+                target0 = self.rng.randrange(1, size) # avoid jump back to entry
+                target1 = self.rng.randrange(1, size) # avoid jump back to entry
                 ctr = self.rng.randrange(1, 10)
                 bb.append(f"{indent}ctr {ctr}")
                 bb.append(f"{indent}brctr BB{target0} BB{target1}")
