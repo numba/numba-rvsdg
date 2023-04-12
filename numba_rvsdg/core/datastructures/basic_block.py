@@ -120,6 +120,9 @@ class RegionBlock(BasicBlock):
     exit: Label = None
     """The exit node.
     """
+    def __post_init__(self):
+        assert isinstance(self.subregion.graph, dict)
+        assert isinstance(self.headers, dict)
 
     def get_full_graph(self):
         graph = ChainMap(self.subregion.graph, self.headers)

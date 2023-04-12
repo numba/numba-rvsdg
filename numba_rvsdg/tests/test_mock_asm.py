@@ -227,7 +227,7 @@ class MockAsmRenderer(Renderer):
             body = ''.join([ln + end for ln in lines])
             digraph.node(str(block_name), shape="rect", label=body)
         else:
-            super().render_basic_block(digraph, block_name)
+            super().render_basic_block(digraph, label, block)
 
 
 def to_scfg(instlist: list[Inst]) -> BlockMap:
@@ -297,10 +297,11 @@ def test_mock_scfg_loop():
     scfg = to_scfg(instlist)
 
 
-def test_mock_scfg_basic():
+def test_mock_scfg_head_cycle():
     asm = textwrap.dedent("""
-        label S
             print Start
+        label S
+            print S
             goto A
         label A
             print A
