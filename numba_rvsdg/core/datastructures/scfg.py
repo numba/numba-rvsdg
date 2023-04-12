@@ -3,6 +3,7 @@ import yaml
 from textwrap import dedent
 from typing import Set, Tuple, Dict, List, Iterator
 from dataclasses import dataclass, field
+from collections import deque
 
 from numba_rvsdg.core.datastructures.basic_block import (
     BasicBlock,
@@ -59,20 +60,37 @@ class SCFG:
             # finally add any jump_targets to the list of labels to visit
             to_visit.extend(block.jump_targets)
 
-    def region_view_iterator(self):
+    def region_view_iterator(self, head:Label=None) -> Iterator[Label]:
         """ Region View Iterator.
+
+        This iterator is region aware, which means that regions are "concealed"
+        and act as though they were a single block.
+
+        Parameters
+        ----------
+        head: Label, optional
+            The head block (or region) from which to start iterating. If None
+            is given, will discover the head automatically.
+
+        Returns
+        -------
+        blocks: iter of Label
+            An iterator over blocks (or regions)
+
         """
-        # initialise housekeeping datastructures
-        to_visit, seen = [self.find_head()], set()
+        # Initialise housekeeping datastructures:
+        # A set because we only need lookup and have unique items and a deque
+        # because we need a first in, first out (FIFO) structure.
+        to_visit, seen = deque([head if head else self.find_head()]), set()
         while to_visit:
             # get the next label on the list
-            label = to_visit.pop(0)
+            label = to_visit.popleft()
             # if we have visited this, we skip it
             if label in seen:
                 continue
             else:
                 seen.add(label)
-            # get the corresponding block for the label
+            # get the corresponding block for the label (could also be a region)
             try:
                 block = self[label]
             except KeyError:
