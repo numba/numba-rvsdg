@@ -5,11 +5,12 @@ from io import StringIO
 from typing import IO, Dict
 import random
 import textwrap
+import os
 
 from mock_asm import ProgramGen, parse, VM, Inst, GotoOperands, BrCtrOperands
 
 
-DEBUGGRAPH = False
+DEBUGGRAPH = os.environ.get("DEBUGGRAPH", 0)
 
 def test_mock_asm():
     asm = textwrap.dedent("""
@@ -246,13 +247,16 @@ class MockAsmRenderer(Renderer):
 
 def to_scfg(instlist: list[Inst]) -> BlockMap:
     labels = set([0, len(instlist)])
-    for inst in instlist:
+    for pc, inst in enumerate(instlist):
         if isinstance(inst.operands, GotoOperands):
             labels.add(inst.operands.jump_target)
+            if pc + 1 < len(instlist):
+                labels.add(pc + 1)
         elif isinstance(inst.operands, BrCtrOperands):
             labels.add(inst.operands.true_target)
             labels.add(inst.operands.false_target)
-
+            if pc + 1 < len(instlist):
+                labels.add(pc + 1)
     block_map_graph = {}
     clg = ControlLabelGenerator()
     scfg = BlockMap(block_map_graph, clg)
@@ -271,6 +275,8 @@ def to_scfg(instlist: list[Inst]) -> BlockMap:
         elif isinstance(inst.operands, BrCtrOperands):
             targets = [inst.operands.true_target,
                        inst.operands.false_target]
+        elif end < len(instlist):
+            targets = [end]
         else:
             targets = []
 
@@ -283,6 +289,17 @@ def to_scfg(instlist: list[Inst]) -> BlockMap:
             _jump_targets=tuple(labelmap[tgt] for tgt in targets),
         )
         scfg.add_block(block)
+
+    # remove dead code from reachabiliy of entry block
+    reachable = set([labelmap[0]])
+    stack = [labelmap[0]]
+    while stack:
+        blk: BasicBlock = scfg.graph[stack.pop()]
+        for k in blk._jump_targets:
+            if k not in reachable:
+                stack.append(k)
+                reachable.add(k)
+    scfg.remove_blocks(set(scfg.graph.keys()) - reachable)
 
     # for name, bb in bbmap.items():
     #     if targets:
@@ -513,3 +530,53 @@ def test_mock_scfg_double_exchange_loop():
     # branch count may be more once branch restructuring is fixed
     ensure_contains_region(scfg, loop=1, branch=4)
 
+
+
+def run_fuzzer(seed):
+    rng = random.Random(seed)
+    pg = ProgramGen(rng)
+    asm = pg.generate_program()
+
+    print(seed)
+    instlist = parse(asm)
+    with StringIO() as buf:
+        terminated = VM(buf).run(instlist, max_step=1000)
+        got = buf.getvalue().split()
+        if terminated:
+            print(f"seed={seed}".center(80, "="))
+            print(asm)
+            print(got)
+
+            compare_simulated_scfg(asm)
+            return True
+
+failing_case = {
+    0,
+    7,
+    9,
+    36,
+}
+
+def test_mock_scfg_fuzzer():
+    ct_term = 0
+    total = 10000
+    for i in range(total):
+        if i in failing_case:
+            continue
+        run_fuzzer(i)
+    print("terminated", ct_term, "total", total)
+
+
+def test_mock_scfg_fuzzer_case0():
+    run_fuzzer(seed=0)
+
+def test_mock_scfg_fuzzer_case7():
+    run_fuzzer(seed=7)
+
+def test_mock_scfg_fuzzer_case9():
+    # invalid control variable causes infinite loop
+    run_fuzzer(seed=9)
+
+def test_mock_scfg_fuzzer_case36():
+    # invalid control variable causes infinite loop
+    run_fuzzer(seed=36)
