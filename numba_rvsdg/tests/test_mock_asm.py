@@ -6,10 +6,10 @@ from typing import IO, Dict
 import random
 import textwrap
 
-import logging
-logging.basicConfig(level=logging.DEBUG)
 from mock_asm import ProgramGen, parse, VM, Inst, GotoOperands, BrCtrOperands
 
+
+DEBUGGRAPH = False
 
 def test_mock_asm():
     asm = textwrap.dedent("""
@@ -290,11 +290,14 @@ def to_scfg(instlist: list[Inst]) -> BlockMap:
     # scfg.check_graph()
 
     scfg.join_returns()
-    # MockAsmRenderer(scfg).view('jointed')
+    if DEBUGGRAPH:
+        MockAsmRenderer(scfg).view('jointed')
     restructure_loop(scfg)
-    # MockAsmRenderer(scfg).view('loop')
+    if DEBUGGRAPH:
+        MockAsmRenderer(scfg).view('loop')
     restructure_branch(scfg)
-    # MockAsmRenderer(scfg).view('branch')
+    if DEBUGGRAPH:
+        MockAsmRenderer(scfg).view('branch')
     return scfg
 
 class Simulator:
@@ -302,6 +305,7 @@ class Simulator:
         self.vm = VM(buf)
         self.scfg = scfg
         self.region_stack = []
+        self.ctrl_varmap = dict()
 
     def run(self):
         scfg = self.scfg
@@ -322,10 +326,15 @@ class Simulator:
                 assert False, "unreachable" # in case of coding errors
 
     def run_block(self, block):
+        print("run block", block.label)
         if isinstance(block, RegionBlock):
             return self.run_RegionBlock(block)
         elif isinstance(block, MockAsmBasicBlock):
             return self.run_MockAsmBasicBlock(block)
+        elif isinstance(block.label, ControlLabel):
+            label = block.label
+            handler = getattr(self, f"synth_{type(label).__name__}")
+            return handler(label, block)
         else:
             assert False
 
@@ -356,6 +365,7 @@ class Simulator:
         pc = block.bboffset
 
         for inst in block.bbinstlist:
+            print("inst", pc, inst)
             pc = vm.eval_inst(pc, inst)
         if block.bbtargets:
             pos = block.bbtargets.index(pc)
@@ -363,6 +373,37 @@ class Simulator:
             return {"jumpto": label}
         else:
             return {"return": None}
+
+   ### Synthetic Instructions ###
+    def synth_SynthenticAssignment(self, control_label, block):
+        self.ctrl_varmap.update(block.variable_assignment)
+        [label] = block.jump_targets
+        return {"jumpto": label}
+
+    def _synth_branch(self, control_label, block):
+        jump_target = block.branch_value_table[self.ctrl_varmap[block.variable]]
+        return {"jumpto": jump_target}
+
+    def synth_SyntheticExitingLatch(self, control_label, block):
+        return self._synth_branch(control_label, block)
+
+    def synth_SyntheticHead(self, control_label, block):
+        return self._synth_branch(control_label, block)
+
+    def synth_SyntheticExit(self, control_label, block):
+        return self._synth_branch(control_label, block)
+
+    def synth_SyntheticReturn(self, control_label, block):
+        [label] = block.jump_targets
+        return {"jumpto": label}
+
+    def synth_SyntheticTail(self, control_label, block):
+        [label] = block.jump_targets
+        return {"jumpto": label}
+
+    def synth_SyntheticBranch(self, control_label, block):
+        [label] = block.jump_targets
+        return {"jumpto": label}
 
 
 def simulate_scfg(scfg: BlockMap):
@@ -381,7 +422,26 @@ def compare_simulated_scfg(asm):
     expect = simulate_scfg(scfg)
     assert got == expect
 
+    return scfg
 
+def ensure_contains_region(scfg: BlockMap, loop: int, branch: int):
+    def recurse_find_regions(bbmap: BlockMap):
+        for blk in bbmap.graph.values():
+            if isinstance(blk, RegionBlock):
+                yield blk
+                yield from recurse_find_regions(blk.subregion)
+
+    regions = list(recurse_find_regions(scfg))
+    count_loop = 0
+    count_branch = 0
+    for reg in regions:
+        if reg.kind == 'loop':
+            count_loop += 1
+        elif reg.kind == 'branch':
+            count_branch += 1
+
+    assert loop == count_loop
+    assert branch == count_branch
 
 def test_mock_scfg_loop():
     asm = textwrap.dedent("""
@@ -394,9 +454,8 @@ def test_mock_scfg_loop():
         label B
             print B
     """)
-
-    compare_simulated_scfg(asm)
-
+    scfg = compare_simulated_scfg(asm)
+    ensure_contains_region(scfg, loop=1, branch=0)
 
 
 def test_mock_scfg_head_cycle():
@@ -414,7 +473,8 @@ def test_mock_scfg_head_cycle():
         label B
             print B
     """)
-    compare_simulated_scfg(asm)
+    scfg = compare_simulated_scfg(asm)
+    ensure_contains_region(scfg, loop=1, branch=0)
 
 def test_mock_scfg_diamond():
     asm = textwrap.dedent("""
@@ -430,4 +490,26 @@ def test_mock_scfg_diamond():
         label C
             print C
     """)
-    compare_simulated_scfg(asm)
+    scfg = compare_simulated_scfg(asm)
+    ensure_contains_region(scfg, loop=0, branch=2)
+
+
+def test_mock_scfg_double_exchange_loop():
+    asm = textwrap.dedent("""
+            print Start
+            goto A
+       label A
+            print A
+            ctr 4
+            brctr B Exit
+        label B
+            print B
+            ctr 5
+            brctr A Exit
+        label Exit
+            print Exit
+    """)
+    scfg = compare_simulated_scfg(asm)
+    # branch count may be more once branch restructuring is fixed
+    ensure_contains_region(scfg, loop=1, branch=4)
+
