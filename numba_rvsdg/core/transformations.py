@@ -319,7 +319,7 @@ def extract_region(bbmap, region_blocks, region_kind):
         _jump_targets=bbmap[region_exiting].jump_targets,
         backedges=(),
         kind=region_kind,
-        headers=headers,
+        headers=headers, # XXX: this is the wrong type
         subregion=head_subgraph,
         exit=region_exit,
     )

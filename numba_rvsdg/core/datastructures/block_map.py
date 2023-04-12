@@ -315,6 +315,8 @@ class BlockMap:
 
         A closed CFG is a CFG with a unique entry and exit node that have no
         predescessors and no successors respectively.
+
+        Note: This does not fix code entry node that has predescessors.
         """
         # for all nodes that contain a return
         return_nodes = [node for node in self.graph if self.graph[node].is_exiting]
@@ -362,7 +364,7 @@ class BlockMap:
         return BlockMap.from_dict(data)
 
     @staticmethod
-    def from_dict(graph_dict):        
+    def from_dict(graph_dict):
         block_map_graph = {}
         clg = ControlLabelGenerator()
         for index, attributes in graph_dict.items():

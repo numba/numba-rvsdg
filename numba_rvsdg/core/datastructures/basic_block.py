@@ -1,6 +1,6 @@
 import dis
 from collections import ChainMap
-from typing import Tuple, Dict, List
+from typing import Tuple, Dict, List, Set
 from dataclasses import dataclass, field, replace
 
 from numba_rvsdg.core.datastructures.labels import Label
@@ -112,7 +112,7 @@ class BranchBlock(BasicBlock):
 @dataclass(frozen=True)
 class RegionBlock(BasicBlock):
     kind: str = None
-    headers: Dict[Label, BasicBlock] = None
+    headers: Set[Label] = None
     """The header of the region"""
     subregion: "BlockMap" = None
     """The subgraph excluding the headers
@@ -122,8 +122,9 @@ class RegionBlock(BasicBlock):
     """
     def __post_init__(self):
         assert isinstance(self.subregion.graph, dict)
-        assert isinstance(self.headers, dict)
+        assert isinstance(self.headers, set)
 
     def get_full_graph(self):
-        graph = ChainMap(self.subregion.graph, self.headers)
+        # assert not (self.headers - set(self.subregion.graph))
+        graph = self.subregion.graph.copy()
         return graph

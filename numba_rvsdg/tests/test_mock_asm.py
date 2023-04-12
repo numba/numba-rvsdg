@@ -149,6 +149,18 @@ class Renderer(object):
         # render edges within this region
         self.render_edges(graph)
 
+    def render_control_variable_block(
+        self, digraph: "Digraph", label: Label, block: BasicBlock
+    ):
+        if isinstance(label, ControlLabel):
+            body = label.__class__.__name__ + ": " + str(label.index) + "\l"
+            body += "\l".join(
+                (f"{k} = {v}" for k, v in block.variable_assignment.items())
+            )
+        else:
+            raise Exception("Unknown label type: " + label)
+        digraph.node(str(label), shape="rect", label=body)
+
     def render_branching_block(
         self, digraph: "Digraph", label: Label, block: BasicBlock
     ):
@@ -275,9 +287,11 @@ def to_scfg(instlist: list[Inst]) -> BlockMap:
     # scfg.check_graph()
 
     scfg.join_returns()
+    # MockAsmRenderer(scfg).view('jointed')
     restructure_loop(scfg)
+    MockAsmRenderer(scfg).view('loop')
     restructure_branch(scfg)
-    MockAsmRenderer(scfg).view()
+    MockAsmRenderer(scfg).view('branch')
     return scfg
 
 
@@ -298,8 +312,10 @@ def test_mock_scfg_loop():
 
 
 def test_mock_scfg_head_cycle():
+    # Must manually enforce the the entry block only has no predecessor
     asm = textwrap.dedent("""
             print Start
+            goto S
         label S
             print S
             goto A
@@ -331,3 +347,4 @@ def test_mock_scfg_diamond():
 
     instlist = parse(asm)
     scfg = to_scfg(instlist)
+
