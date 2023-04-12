@@ -399,7 +399,7 @@ def restructure_branch(bbmap: BlockMap):
 def _iter_branch_regions(
     bbmap: BlockMap, immdoms: Dict[Label, Label], postimmdoms: Dict[Label, Label]
 ):
-    for begin, node in [i for i in bbmap.graph.items()]:
+    for begin, node in bbmap.region_view_iterator():
         if len(node.jump_targets) > 1:
             # found branch
             if begin in postimmdoms:

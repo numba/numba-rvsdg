@@ -59,6 +59,40 @@ class BlockMap:
             # finally add any jump_targets to the list of labels to visit
             to_visit.extend(block.jump_targets)
 
+    def region_view_iterator(self):
+        """ Region View Iterator.
+        """
+        # initialise housekeeping datastructures
+        to_visit, seen = [self.find_head()], set()
+        while to_visit:
+            # get the next label on the list
+            label = to_visit.pop(0)
+            # if we have visited this, we skip it
+            if label in seen:
+                continue
+            else:
+                seen.add(label)
+            # get the corresponding block for the label
+            try:
+                block = self[label]
+            except KeyError:
+                # If this is outside the current graph, might be the case if
+                # inside a region and the block being looked at is outside of
+                # the region.
+                continue
+            # yield the label, block combo
+            yield (label, block)
+
+            # populate the to_vist
+            if type(block) == RegionBlock:
+                # If this is a region, continue on to the exiting block, i.e.
+                # the region is presented a single fall-through block to the
+                # consumer of this iterator.
+                to_visit.append(block.exit)
+            else:
+                # finally add any jump_targets to the list of labels to visit
+                to_visit.extend(block.jump_targets)
+
     def exclude_blocks(self, exclude_blocks: Set[Label]) -> Iterator[Label]:
         """Iterator over all nodes not in exclude_blocks."""
         for block in self.graph:
