@@ -281,7 +281,7 @@ def to_scfg(instlist: list[Inst]) -> BlockMap:
     return scfg
 
 
-def test_mock_scfg():
+def test_mock_scfg_loop():
     asm = textwrap.dedent("""
             print Start
             goto A
@@ -291,6 +291,41 @@ def test_mock_scfg():
             brctr A B
         label B
             print B
+    """)
+
+    instlist = parse(asm)
+    scfg = to_scfg(instlist)
+
+
+def test_mock_scfg_basic():
+    asm = textwrap.dedent("""
+        label S
+            print Start
+            goto A
+        label A
+            print A
+            ctr 10
+            brctr S B
+        label B
+            print B
+    """)
+
+    instlist = parse(asm)
+    scfg = to_scfg(instlist)
+
+def test_mock_scfg_diamond():
+    asm = textwrap.dedent("""
+            print Start
+            ctr 1
+            brctr A B
+        label A
+            print A
+            goto C
+        label B
+            print B
+            goto C
+        label C
+            print C
     """)
 
     instlist = parse(asm)
