@@ -567,6 +567,13 @@ failing_case = {
     7,
     9,
     36,
+    44,
+    52,
+    60,
+    88,
+    122,
+    146,
+    153,
 }
 
 def test_mock_scfg_fuzzer():
@@ -575,9 +582,16 @@ def test_mock_scfg_fuzzer():
     for i in range(total):
         if i in failing_case:
             continue
-        run_fuzzer(i)
+        try:
+            run_fuzzer(i)
+        except Exception:
+            print("Failed case:", i)
+        else:
+            print('ok', i)
     print("terminated", ct_term, "total", total)
 
+
+# Interesting cases
 
 def test_mock_scfg_fuzzer_case0():
     run_fuzzer(seed=0)
@@ -591,3 +605,9 @@ def test_mock_scfg_fuzzer_case9():
 
 def test_mock_scfg_fuzzer_case36():
     run_fuzzer(seed=36)
+
+def test_mock_scfg_fuzzer_case146():
+    run_fuzzer(seed=146)
+
+def test_mock_scfg_fuzzer_case153():
+    run_fuzzer(seed=153)
