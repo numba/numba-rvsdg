@@ -318,11 +318,13 @@ def to_scfg(instlist: list[Inst]) -> BlockMap:
     return scfg
 
 class Simulator:
-    def __init__(self, scfg: BlockMap, buf: StringIO):
+    def __init__(self, scfg: BlockMap, buf: StringIO, max_step):
         self.vm = VM(buf)
         self.scfg = scfg
         self.region_stack = []
         self.ctrl_varmap = dict()
+        self.max_step = max_step
+        self.step = 0
 
     def run(self):
         scfg = self.scfg
@@ -384,9 +386,13 @@ class Simulator:
         vm = self.vm
         pc = block.bboffset
 
+        if self.step > self.max_step:
+            raise AssertionError("step > max_step")
+
         for inst in block.bbinstlist:
             print("inst", pc, inst)
             pc = vm.eval_inst(pc, inst)
+            self.step += 1
         if block.bbtargets:
             pos = block.bbtargets.index(pc)
             label = block._jump_targets[pos]
@@ -428,7 +434,7 @@ class Simulator:
 
 def simulate_scfg(scfg: BlockMap):
     with StringIO() as buf:
-        Simulator(scfg, buf).run()
+        Simulator(scfg, buf, max_step=1000).run()
         return buf.getvalue()
 
 def compare_simulated_scfg(asm):
