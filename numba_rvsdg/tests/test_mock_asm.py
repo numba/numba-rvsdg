@@ -10,7 +10,7 @@ import os
 from mock_asm import ProgramGen, parse, VM, Inst, GotoOperands, BrCtrOperands
 
 
-DEBUGGRAPH = os.environ.get("DEBUGGRAPH", 0)
+DEBUGGRAPH = int(os.environ.get("DEBUGGRAPH", 0))
 
 def test_mock_asm():
     asm = textwrap.dedent("""
@@ -349,9 +349,12 @@ class Simulator:
         elif isinstance(block, MockAsmBasicBlock):
             return self.run_MockAsmBasicBlock(block)
         elif isinstance(block.label, ControlLabel):
+            print("    ", block)
             label = block.label
             handler = getattr(self, f"synth_{type(label).__name__}")
-            return handler(label, block)
+            out = handler(label, block)
+            print("    ctrl_varmap dump:", self.ctrl_varmap)
+            return out
         else:
             assert False
 
@@ -434,9 +437,12 @@ def compare_simulated_scfg(asm):
 
     with StringIO() as buf:
         terminated = VM(buf).run(instlist, max_step=1000)
-        got = buf.getvalue()
+        assert terminated
+        expect = buf.getvalue()
+    print("EXPECT".center(80, '='))
+    print(expect)
 
-    expect = simulate_scfg(scfg)
+    got = simulate_scfg(scfg)
     assert got == expect
 
     return scfg
@@ -578,5 +584,4 @@ def test_mock_scfg_fuzzer_case9():
     run_fuzzer(seed=9)
 
 def test_mock_scfg_fuzzer_case36():
-    # invalid control variable causes infinite loop
     run_fuzzer(seed=36)
