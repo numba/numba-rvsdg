@@ -1,12 +1,14 @@
 
 from unittest import main
 from textwrap import dedent
-from numba_rvsdg.core.datastructures.block_map import BlockMap
+from numba_rvsdg.core.datastructures.scfg import SCFG
 
-from numba_rvsdg.tests.test_utils import MapComparator
+from numba_rvsdg.tests.test_utils import SCFGComparator
+from numba_rvsdg.core.datastructures.basic_block import BasicBlock
+from numba_rvsdg.core.datastructures.labels import ControlLabel
 
 
-class TestBlockMapConversion(MapComparator):
+class TestSCFGConversion(SCFGComparator):
 
     def test_yaml_conversion(self):
         # Case # 1: Acyclic graph, no back-edges
@@ -51,8 +53,8 @@ class TestBlockMapConversion(MapComparator):
 
         for case in cases:
             case = dedent(case)
-            block_map = BlockMap.from_yaml(case)
-            self.assertEqual(case, block_map.to_yaml())
+            scfg = SCFG.from_yaml(case)
+            self.assertEqual(case, scfg.to_yaml())
     
     def test_dict_conversion(self):
         # Case # 1: Acyclic graph, no back-edges
@@ -96,8 +98,27 @@ class TestBlockMapConversion(MapComparator):
         "be": ["2"]}}]
 
         for case in cases:
-            block_map = BlockMap.from_dict(case)
-            self.assertEqual(case, block_map.to_dict())
+            scfg = SCFG.from_dict(case)
+            self.assertEqual(case, scfg.to_dict())
+
+
+class TestSCFGIterator(SCFGComparator):
+
+    def test_scfg_iter(self):
+        expected = [
+            (ControlLabel("0"), BasicBlock(label=ControlLabel("0"),
+                                           _jump_targets=(ControlLabel("1"),))),
+            (ControlLabel("1"), BasicBlock(label=ControlLabel("1"))),
+        ]
+        scfg = SCFG.from_yaml("""
+        "0":
+            jt: ["1"]
+        "1":
+            jt: []
+        """)
+        received = list(scfg)
+        self.assertEqual(expected, received)
+
 
 if __name__ == "__main__":
     main()
