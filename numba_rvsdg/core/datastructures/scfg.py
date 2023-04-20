@@ -4,6 +4,7 @@ from textwrap import dedent
 from typing import Set, Tuple, Dict, List, Iterator
 from dataclasses import dataclass, field
 from collections import deque
+from collections.abc import Mapping
 
 from numba_rvsdg.core.datastructures.basic_block import (
     BasicBlock,
@@ -112,6 +113,9 @@ class SCFG:
             # finally, yield the label, block combo
             yield (label, block)
 
+    @property
+    def concealed_region_view(self):
+        return ConcealedRegionView(self)
 
     def exclude_blocks(self, exclude_blocks: Set[Label]) -> Iterator[Label]:
         """Iterator over all nodes not in exclude_blocks."""
@@ -431,3 +435,82 @@ class SCFG:
 
 def wrap_id(indices: Set[Label]):
     return tuple([ControlLabel(i) for i in indices])
+
+
+class AbstractGraphView(Mapping):
+
+    def __getitem__(self, item):
+        raise NotImplementedError
+
+    def __iter__(self):
+        raise NotImplementedError
+
+    def __len__(self):
+        raise NotImplementedError
+
+
+class ConcealedRegionView(AbstractGraphView):
+
+    def __init__(self, scfg):
+        self.scfg = scfg
+
+    def __getitem__(self, item):
+        return self.scfg[item]
+
+    def __iter__(self):
+        return self.region_view_iterator()
+
+    def region_view_iterator(self, head:Label=None) -> Iterator[Label]:
+        """ Region View Iterator.
+
+        This iterator is region aware, which means that regions are "concealed"
+        and act as though they were a single block.
+
+        Parameters
+        ----------
+        head: Label, optional
+            The head block (or region) from which to start iterating. If None
+            is given, will discover the head automatically.
+
+        Returns
+        -------
+        blocks: iter of Label
+            An iterator over blocks (or regions)
+
+        """
+        # Initialise housekeeping datastructures:
+        # A set because we only need lookup and have unique items and a deque
+        # because we need a first in, first out (FIFO) structure.
+        to_visit, seen = deque([head if head else self.scfg.find_head()]), set()
+        while to_visit:
+            # get the next label on the list
+            label = to_visit.popleft()
+            # if we have visited this, we skip it
+            if label in seen:
+                continue
+            else:
+                seen.add(label)
+            # get the corresponding block for the label(could also be a region)
+            try:
+                block = self[label]
+            except KeyError:
+                # If this is outside the current graph, just disregard it.
+                # (might be the case if inside a region and the block being
+                # looked at is outside of the region.)
+                continue
+
+            # populate the to_vist
+            if type(block) == RegionBlock:
+                # If this is a region, continue on to the exiting block, i.e.
+                # the region is presented a single fall-through block to the
+                # consumer of this iterator.
+                to_visit.append(block.exit)
+            else:
+                # otherwise add any jump_targets to the list of labels to visit
+                to_visit.extend(block.jump_targets)
+
+            # finally, yield the label
+            yield label
+
+    def __len__(self):
+        return len(self.scfg)
