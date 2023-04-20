@@ -74,8 +74,8 @@ class SCFG:
 
         Returns
         -------
-        blocks: iter of Label
-            An iterator over blocks (or regions)
+        blocks: iter of (Label, BasicBlock)
+            An iterator over labels and blocks (or regions)
 
         """
         # Initialise housekeeping datastructures:
