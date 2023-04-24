@@ -331,13 +331,22 @@ class SCFG:
     def from_dict(graph_dict):        
         scfg_graph = {}
         clg = ControlLabelGenerator()
-        for index, attributes in graph_dict.items():
-            jump_targets = attributes["jt"]
-            backedges = attributes.get("be", ())
+        
+        blocks = graph_dict["blocks"]
+        edges = graph_dict["edges"]
+        backedges = graph_dict["backedges"]
+        regions = graph_dict["regions"]
+
+        for _block in blocks:
+            jump_targets = edges[_block]
+            if backedges is not None:
+                backedge = backedges.get(_block, ())
+            else:
+                backedge = ()
             label = ControlLabel(str(clg.new_index()))
             block = BasicBlock(
                 label=label,
-                backedges=wrap_id(backedges),
+                backedges=wrap_id(backedge),
                 _jump_targets=wrap_id(jump_targets),
             )
             scfg_graph[label] = block
@@ -348,20 +357,35 @@ class SCFG:
         scfg_graph = self.graph
         yaml_string = """"""
 
+        blocks = {}
+        edges = {}
+        backedges = {}
+        regions = {}
+
         for key, value in scfg_graph.items():
-            jump_targets = [f"{i.index}" for i in value._jump_targets]
-            jump_targets = str(jump_targets).replace("\'", "\"")
-            back_edges = [f"{i.index}" for i in value.backedges]
-            jump_target_str= f"""
-                "{str(key.index)}":
-                    jt: {jump_targets}"""
+            blocks[key.index] = {"type": "basic"}
+            edges[key.index] = [i.index for i in value._jump_targets]
+            backedges[key.index]  = [i.index for i in value.backedges]
 
-            if back_edges:
-                back_edges = str(back_edges).replace("\'", "\"")
-                jump_target_str += f"""
-                    be: {back_edges}"""
-            yaml_string += dedent(jump_target_str)
+        yaml_string += "\nblocks:"
+        for _block in blocks.keys():
+            yaml_string += f"""
+    {_block}:"""
+            block_type = blocks[_block]["type"]
+            yaml_string += f"""
+        type: {block_type}"""
+        
+        yaml_string+="\nedges:"
+        for _block in blocks.keys():
+            yaml_string += f"""
+    {_block}: {edges[_block]}"""
 
+        yaml_string+="\nbackedges:"
+        for _block in blocks.keys():
+            if backedges[_block]:
+                yaml_string += f"""
+    {_block}: {backedges[_block]}"""
+        yaml_string+="\nregions:"
         return yaml_string
 
     def to_dict(self):
