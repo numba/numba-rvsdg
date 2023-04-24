@@ -134,6 +134,13 @@ class ByteFlowRenderer(object):
         self.render_edges(byteflow.scfg.graph)
         return self.g
 
+    def render_scfg(self, scfg):
+        # render nodes
+        for label, block in scfg.graph.items():
+            self.render_block(self.g, label, block)
+        self.render_edges(scfg.graph)
+        return self.g
+
     def bcmap_from_bytecode(self, bc: dis.Bytecode):
         self.bcmap: Dict[int, dis.Instruction] = SCFG.bcmap_from_bytecode(bc)
 
@@ -155,3 +162,6 @@ def render_flow(flow):
 
     bflow = lflow._restructure_branch()
     ByteFlowRenderer().render_byteflow(bflow).view("branch restructured")
+
+def render_scfg(scfg):
+    ByteFlowRenderer().render_scfg(scfg).view("scfg")
