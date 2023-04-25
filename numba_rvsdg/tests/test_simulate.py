@@ -3,10 +3,10 @@ from numba_rvsdg.tests.simulator import Simulator
 import unittest
 
 #    flow = ByteFlow.from_bytecode(foo)
-#    #pprint(flow.bbmap)
+#    #pprint(flow.scfg)
 #    flow = flow.restructure()
-#    #pprint(flow.bbmap)
-#    # pprint(rtsflow.bbmap)
+#    #pprint(flow.scfg)
+#    # pprint(rtsflow.scfg)
 #    ByteFlowRenderer().render_byteflow(flow).view()
 #    print(dis(foo))
 #

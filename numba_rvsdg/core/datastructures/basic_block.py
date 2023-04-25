@@ -114,7 +114,7 @@ class RegionBlock(BasicBlock):
     kind: str = None
     headers: Set[Label] = None
     """The header of the region"""
-    subregion: "BlockMap" = None
+    subregion: "SCFG" = None
     """The subgraph excluding the headers
     """
     exit: Label = None
