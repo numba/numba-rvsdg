@@ -85,7 +85,7 @@ def test_program_gen():
                 ct_term += 1
     print("terminated", ct_term, "total", total)
 
-from numba_rvsdg.core.datastructures.block_map import BlockMap
+from numba_rvsdg.core.datastructures.scfg import SCFG
 from numba_rvsdg.core.datastructures.labels import Label
 from numba_rvsdg.core.datastructures.basic_block import (
     BasicBlock,
@@ -117,7 +117,7 @@ from numba_rvsdg.core.datastructures.basic_block import (
 )
 # NOTE: modified Renderer to be more general
 class Renderer(object):
-    def __init__(self, bbmap: BlockMap):
+    def __init__(self, bbmap: SCFG):
         from graphviz import Digraph
 
         self.g = Digraph()
@@ -244,8 +244,24 @@ class MockAsmRenderer(Renderer):
         else:
             super().render_basic_block(digraph, label, block)
 
+def _iter_subregions(scfg: "SCFG"):
+    for node in scfg.graph.values():
+        if isinstance(node, RegionBlock):
+            yield node
+            yield from _iter_subregions(node.subregion)
 
-def to_scfg(instlist: list[Inst]) -> BlockMap:
+def recursive_restructure_loop(scfg):
+    restructure_loop(scfg)
+    for region in _iter_subregions(scfg):
+        restructure_loop(region.subregion)
+
+def recursive_restructure_branch(scfg):
+    restructure_branch(scfg)
+    for region in _iter_subregions(scfg):
+        restructure_branch(region.subregion)
+
+
+def to_scfg(instlist: list[Inst]) -> SCFG:
     labels = set([0, len(instlist)])
     for pc, inst in enumerate(instlist):
         if isinstance(inst.operands, GotoOperands):
@@ -259,7 +275,7 @@ def to_scfg(instlist: list[Inst]) -> BlockMap:
                 labels.add(pc + 1)
     block_map_graph = {}
     clg = ControlLabelGenerator()
-    scfg = BlockMap(block_map_graph, clg)
+    scfg = SCFG(block_map_graph, clg)
     bb_offsets =sorted(labels)
     labelmap = {}
 
@@ -309,16 +325,16 @@ def to_scfg(instlist: list[Inst]) -> BlockMap:
     scfg.join_returns()
     if DEBUGGRAPH:
         MockAsmRenderer(scfg).view('jointed')
-    restructure_loop(scfg)
+    recursive_restructure_loop(scfg)
     if DEBUGGRAPH:
         MockAsmRenderer(scfg).view('loop')
-    restructure_branch(scfg)
+    recursive_restructure_branch(scfg)
     if DEBUGGRAPH:
         MockAsmRenderer(scfg).view('branch')
     return scfg
 
 class Simulator:
-    def __init__(self, scfg: BlockMap, buf: StringIO, max_step):
+    def __init__(self, scfg: SCFG, buf: StringIO, max_step):
         self.vm = VM(buf)
         self.scfg = scfg
         self.region_stack = []
@@ -432,7 +448,7 @@ class Simulator:
         return {"jumpto": label}
 
 
-def simulate_scfg(scfg: BlockMap):
+def simulate_scfg(scfg: SCFG):
     with StringIO() as buf:
         Simulator(scfg, buf, max_step=1000).run()
         return buf.getvalue()
@@ -453,8 +469,8 @@ def compare_simulated_scfg(asm):
 
     return scfg
 
-def ensure_contains_region(scfg: BlockMap, loop: int, branch: int):
-    def recurse_find_regions(bbmap: BlockMap):
+def ensure_contains_region(scfg: SCFG, loop: int, branch: int):
+    def recurse_find_regions(bbmap: SCFG):
         for blk in bbmap.graph.values():
             if isinstance(blk, RegionBlock):
                 yield blk
@@ -564,7 +580,7 @@ def test_mock_scfg_doubly_loop():
     """)
     scfg = compare_simulated_scfg(asm)
     # Note: branch number if not correct
-    ensure_contains_region(scfg, loop=2, branch=0)
+    ensure_contains_region(scfg, loop=2, branch=6)
 
 
 def run_fuzzer(seed):
