@@ -544,6 +544,29 @@ def test_mock_scfg_double_exchange_loop():
 
 
 
+def test_mock_scfg_doubly_loop():
+    asm = textwrap.dedent("""
+            print Entry
+            goto Head
+       label Head
+            print Head
+            goto Midloop
+        label Midloop
+            print Midloop
+            ctr 2
+            brctr Head Tail
+        label Tail
+            print Tail
+            ctr 3
+            brctr Midloop Exit
+        label Exit
+            print Exit
+    """)
+    scfg = compare_simulated_scfg(asm)
+    # Note: branch number if not correct
+    ensure_contains_region(scfg, loop=2, branch=0)
+
+
 def run_fuzzer(seed):
     rng = random.Random(seed)
     pg = ProgramGen(rng)
