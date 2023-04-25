@@ -578,12 +578,13 @@ failing_case = {
 
 def test_mock_scfg_fuzzer():
     ct_term = 0
-    total = 10000
+    total = 100000
     for i in range(total):
         if i in failing_case:
             continue
         try:
-            run_fuzzer(i)
+            if run_fuzzer(i):
+                ct_term += 1
         except Exception:
             print("Failed case:", i)
         else:
