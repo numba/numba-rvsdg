@@ -1,7 +1,7 @@
 
 from unittest import main, TestCase
 from textwrap import dedent
-from numba_rvsdg.core.datastructures.scfg import SCFG
+from numba_rvsdg.core.datastructures.scfg import SCFG, NameGenerator
 
 from numba_rvsdg.tests.test_utils import SCFGComparator
 from numba_rvsdg.core.datastructures.basic_block import (BasicBlock,
@@ -9,9 +9,6 @@ from numba_rvsdg.core.datastructures.basic_block import (BasicBlock,
                                                          PythonBytecodeBlock,
                                                          )
 from numba_rvsdg.core.datastructures.byte_flow import ByteFlow
-from numba_rvsdg.core.datastructures.labels import (ControlLabel,
-                                                    PythonBytecodeLabel,
-                                                    )
 
 
 class TestSCFGConversion(SCFGComparator):
@@ -59,8 +56,8 @@ class TestSCFGConversion(SCFGComparator):
 
         for case in cases:
             case = dedent(case)
-            scfg = SCFG.from_yaml(case)
-            self.assertEqual(case, scfg.to_yaml())
+            scfg, block_dict = SCFG.from_yaml(case)
+            self.assertYAMLEqual(case, scfg.to_yaml(), {'0': block_dict['0']})
     
     def test_dict_conversion(self):
         # Case # 1: Acyclic graph, no back-edges
@@ -104,19 +101,22 @@ class TestSCFGConversion(SCFGComparator):
         "be": ["2"]}}]
 
         for case in cases:
-            scfg = SCFG.from_dict(case)
-            self.assertEqual(case, scfg.to_dict())
+            scfg, block_dict = SCFG.from_dict(case)
+            self.assertDictEqual(case, scfg.to_dict(), {'0': block_dict['0']})
 
 
 class TestSCFGIterator(SCFGComparator):
 
     def test_scfg_iter(self):
+        name_gen = NameGenerator()
+        block_0 = name_gen.new_block_name('basic')
+        block_1 = name_gen.new_block_name('basic')
         expected = [
-            (ControlLabel("0"), BasicBlock(label=ControlLabel("0"),
-                                           _jump_targets=(ControlLabel("1"),))),
-            (ControlLabel("1"), BasicBlock(label=ControlLabel("1"))),
+            (block_0, BasicBlock(name=block_0,
+                                           _jump_targets=(block_1,))),
+            (block_1, BasicBlock(name=block_1)),
         ]
-        scfg = SCFG.from_yaml("""
+        scfg, _ = SCFG.from_yaml("""
         "0":
             jt: ["1"]
         "1":
@@ -142,9 +142,9 @@ class TestConcealedRegionView(TestCase):
 
         flow = ByteFlow.from_bytecode(self.foo)
         restructured = flow._restructure_loop()
-        expected = [(PythonBytecodeLabel(index='0'), PythonBytecodeBlock),
-                    (PythonBytecodeLabel(index='1'), RegionBlock),
-                    (PythonBytecodeLabel(index='3'), PythonBytecodeBlock)]
+        expected = [('python_bytecode_block_0', PythonBytecodeBlock),
+                    ('python_bytecode_block_1', RegionBlock),
+                    ('python_bytecode_block_3', PythonBytecodeBlock)]
         received = list(((k, type(v)) for k,v in restructured.scfg.concealed_region_view.items()))
         self.assertEqual(expected, received)
 

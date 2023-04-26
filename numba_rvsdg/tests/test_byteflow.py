@@ -2,9 +2,8 @@ from dis import Bytecode, Instruction, Positions
 
 import unittest
 from numba_rvsdg.core.datastructures.basic_block import PythonBytecodeBlock
-from numba_rvsdg.core.datastructures.labels import PythonBytecodeLabel
 from numba_rvsdg.core.datastructures.byte_flow import ByteFlow
-from numba_rvsdg.core.datastructures.scfg import SCFG
+from numba_rvsdg.core.datastructures.scfg import SCFG, NameGenerator
 from numba_rvsdg.core.datastructures.flow_info import FlowInfo
 
 
@@ -14,12 +13,11 @@ def fun():
 
 
 bytecode = Bytecode(fun)
-
+# If the function definition line changes, just change the variable below, rest of it will adjust as long as function remains the same
+func_def_line = 10 
 
 class TestBCMapFromBytecode(unittest.TestCase):
     def test(self):
-        # If the function definition line changes, just change the variable below, rest of it will adjust as long as function remains the same
-        func_def_line = 11
         expected = {
             0: Instruction(
                 opname="RESUME",
@@ -108,14 +106,15 @@ class TestBCMapFromBytecode(unittest.TestCase):
 
 class TestPythonBytecodeBlock(unittest.TestCase):
     def test_constructor(self):
+        name_gen = NameGenerator()
         block = PythonBytecodeBlock(
-            label=PythonBytecodeLabel(index=0),
+            name=name_gen.new_block_name('python_bytecode'),
             begin=0,
             end=8,
             _jump_targets=(),
             backedges=(),
         )
-        self.assertEqual(block.label, PythonBytecodeLabel(index=0))
+        self.assertEqual(block.name, 'python_bytecode_block_0')
         self.assertEqual(block.begin, 0)
         self.assertEqual(block.end, 8)
         self.assertFalse(block.fallthrough)
@@ -124,21 +123,21 @@ class TestPythonBytecodeBlock(unittest.TestCase):
         self.assertEqual(block.backedges, ())
 
     def test_is_jump_target(self):
+        name_gen = NameGenerator()
         block = PythonBytecodeBlock(
-            label=PythonBytecodeLabel(index=0),
+            name=name_gen.new_block_name('python_bytecode'),
             begin=0,
             end=8,
-            _jump_targets=(PythonBytecodeLabel(index=1),),
+            _jump_targets=(name_gen.new_block_name('python_bytecode'),),
             backedges=(),
         )
-        self.assertEqual(block.jump_targets, (PythonBytecodeLabel(index=1),))
+        self.assertEqual(block.jump_targets, ('python_bytecode_block_1',))
         self.assertFalse(block.is_exiting)
 
     def test_get_instructions(self):
-        # If the function definition line changes, just change the variable below, rest of it will adjust as long as function remains the same
-        func_def_line = 11
+        name_gen = NameGenerator()
         block = PythonBytecodeBlock(
-            label=PythonBytecodeLabel(index=0),
+            name=name_gen.new_block_name('python_bytecode'),
             begin=0,
             end=8,
             _jump_targets=(),
@@ -229,10 +228,12 @@ class TestFlowInfo(unittest.TestCase):
         self.assertEqual(expected, received)
 
     def test_build_basic_blocks(self):
+        name_gen = NameGenerator()
+        new_name = name_gen.new_block_name('python_bytecode')
         expected = SCFG(
             graph={
-                PythonBytecodeLabel(index="0"): PythonBytecodeBlock(
-                    label=PythonBytecodeLabel(index="0"),
+                new_name: PythonBytecodeBlock(
+                    name=new_name,
                     begin=0,
                     end=10,
                     _jump_targets=(),
@@ -251,10 +252,12 @@ class TestByteFlow(unittest.TestCase):
         self.assertEqual(len(byteflow.scfg), 0)
 
     def test_from_bytecode(self):
+        name_gen = NameGenerator()
+        new_name = name_gen.new_block_name('python_bytecode')
         scfg = SCFG(
             graph={
-                PythonBytecodeLabel(index="0"): PythonBytecodeBlock(
-                    label=PythonBytecodeLabel(index="0"),
+                new_name: PythonBytecodeBlock(
+                    name=new_name,
                     begin=0,
                     end=10,
                     _jump_targets=(),
