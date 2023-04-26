@@ -9,16 +9,16 @@ class SCFGComparator(TestCase):
         if head_map:
             # If more than one head the corresponding map needs to be provided
             block_mapping = head_map
-            stack = set()
+            stack = []
             for _name in block_mapping.keys():
                 stack.add(_name)
         else:
             first_head = first_scfg.find_head()
             second_head = second_scfg.find_head()
             block_mapping = {first_head: second_head}
-            stack = set((first_head,))
+            stack = [first_head]
         seen = set()
-        
+
         while stack:
             node_name: BasicBlock = stack.pop()
             if node_name in seen:
@@ -37,8 +37,13 @@ class SCFGComparator(TestCase):
             # Add the jump targets as corresponding nodes in block mapping dictionary
             # Since order must be same we can simply add zip fucntionality as the 
             # correspondence function for nodes
-            for jt1, jt2 in zip(node._jump_targets, second_node._jump_targets):
+            for jt1, jt2 in zip(node.jump_targets, second_node.jump_targets):
                 block_mapping[jt1] = jt2
+                stack.append(jt1)
+
+            for be1, be2 in zip(node.backedges, second_node.backedges):
+                block_mapping[be1] = be2
+                stack.append(be1)
 
     def assertYAMLEqual(self, first_yaml: SCFG, second_yaml: SCFG, head_map: dict):
         self.assertDictEqual(yaml.safe_load(first_yaml),  yaml.safe_load(second_yaml), head_map)
