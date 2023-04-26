@@ -1,21 +1,74 @@
 from unittest import TestCase
+import yaml
+
+from numba_rvsdg.core.datastructures.scfg import SCFG
+from numba_rvsdg.core.datastructures.basic_block import BasicBlock
 
 class SCFGComparator(TestCase):
-    def assertSCFGEqual(self, first_scfg, second_scfg):
+    def assertSCFGEqual(self, first_scfg: SCFG, second_scfg: SCFG, head_map=None):
+        if head_map:
+            # If more than one head the corresponding map needs to be provided
+            block_mapping = head_map
+            stack = set()
+            for _name in block_mapping.keys():
+                stack.add(_name)
+        else:
+            first_head = first_scfg.find_head()
+            second_head = second_scfg.find_head()
+            block_mapping = {first_head: second_head}
+            stack = set((first_head,))
+        seen = set()
+        
+        while stack:
+            node_name: BasicBlock = stack.pop()
+            if node_name in seen:
+                continue
+            seen.add(node_name)
+            node: BasicBlock = first_scfg[node_name]
+            # Assert that there's a corresponding mapping of current node in second scfg
+            assert node_name in block_mapping.keys()
+            # Get the corresponding node in second graph
+            second_node_name = block_mapping[node_name]
+            second_node: BasicBlock = second_scfg[second_node_name]
+            # Both nodes should have equal number of jump targets and backedges
+            assert len(node.jump_targets) == len(second_node.jump_targets)
+            assert len(node.backedges) == len(second_node.backedges)
 
-        for key1, key2 in zip(
-            sorted(first_scfg.graph.keys(), key=lambda x: x.index),
-            sorted(second_scfg.graph.keys(), key=lambda x: x.index),
-        ):
-            # compare indices of labels
-            self.assertEqual(key1.index, key2.index)
-            # compare indices of jump_targets
-            self.assertEqual(
-                sorted([j.index for j in first_scfg[key1]._jump_targets]),
-                sorted([j.index for j in second_scfg[key2]._jump_targets]),
-            )
-            # compare indices of backedges
-            self.assertEqual(
-                sorted([j.index for j in first_scfg[key1].backedges]),
-                sorted([j.index for j in second_scfg[key2].backedges]),
-            )
+            # Add the jump targets as corresponding nodes in block mapping dictionary
+            # Since order must be same we can simply add zip fucntionality as the 
+            # correspondence function for nodes
+            for jt1, jt2 in zip(node._jump_targets, second_node._jump_targets):
+                block_mapping[jt1] = jt2
+
+    def assertYAMLEqual(self, first_yaml: SCFG, second_yaml: SCFG, head_map: dict):
+        self.assertDictEqual(yaml.safe_load(first_yaml),  yaml.safe_load(second_yaml), head_map)
+
+    def assertDictEqual(self, first_yaml: str, second_yaml: str, head_map: dict):
+        block_mapping = head_map
+        stack = set()
+        for _name in block_mapping.keys():
+            stack.add(_name)
+
+        seen = set()
+        
+        while stack:
+            node_name: BasicBlock = stack.pop()
+            if node_name in seen:
+                continue
+            seen.add(node_name)
+            node: BasicBlock = first_yaml[node_name]
+            # Assert that there's a corresponding mapping of current node in second scfg
+            assert node_name in block_mapping.keys()
+            # Get the corresponding node in second graph
+            second_node_name = block_mapping[node_name]
+            second_node: BasicBlock = second_yaml[second_node_name]
+            # Both nodes should have equal number of jump targets and backedges
+            assert len(node['jt']) == len(second_node['jt'])
+            if 'be' in node.keys():
+                assert len(node['be']) == len(second_node['be'])
+
+            # Add the jump targets as corresponding nodes in block mapping dictionary
+            # Since order must be same we can simply add zip fucntionality as the 
+            # correspondence function for nodes
+            for jt1, jt2 in zip(node['jt'], second_node['jt']):
+                block_mapping[jt1] = jt2
