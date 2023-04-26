@@ -3,19 +3,18 @@ from collections import ChainMap
 from typing import Tuple, Dict, List
 from dataclasses import dataclass, field, replace
 
-from numba_rvsdg.core.datastructures.labels import Label
 from numba_rvsdg.core.utils import _next_inst_offset
 
 
 @dataclass(frozen=True)
 class BasicBlock:
-    label: Label
-    """The corresponding Label for this block.  """
+    name: str
+    """The corresponding name for this block.  """
 
-    _jump_targets: Tuple[Label] = tuple()
+    _jump_targets: Tuple[str] = tuple()
     """Jump targets (branch destinations) for this block"""
 
-    backedges: Tuple[Label] = tuple()
+    backedges: Tuple[str] = tuple()
     """Backedges for this block."""
 
     @property
@@ -27,14 +26,14 @@ class BasicBlock:
         return len(self._jump_targets) == 1
 
     @property
-    def jump_targets(self) -> Tuple[Label]:
+    def jump_targets(self) -> Tuple[str]:
         acc = []
         for j in self._jump_targets:
             if j not in self.backedges:
                 acc.append(j)
         return tuple(acc)
 
-    def replace_backedge(self, target: Label) -> "BasicBlock":
+    def replace_backedge(self, target: str) -> "BasicBlock":
         if target in self.jump_targets:
             assert not self.backedges
             return replace(self, backedges=(target,))
@@ -112,12 +111,12 @@ class BranchBlock(BasicBlock):
 @dataclass(frozen=True)
 class RegionBlock(BasicBlock):
     kind: str = None
-    headers: Dict[Label, BasicBlock] = None
+    headers: Dict[str, BasicBlock] = None
     """The header of the region"""
     subregion: "SCFG" = None
     """The subgraph excluding the headers
     """
-    exiting: Label = None
+    exiting: str = None
     """The exiting node.
     """
 
