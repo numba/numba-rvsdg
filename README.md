@@ -42,10 +42,9 @@ numba_rvsdg
 ├── core
 │   ├── datastructures
 │   │   ├── basic_block.py  # BasicBlock implementation
-│   │   ├── scfg.py         # SCFG implementation, maps labels to blocks
+│   │   ├── scfg.py         # SCFG implementation, maps names to blocks
 │   │   ├── byte_flow.py    # ByteFlow implementation, SCFG + bytecode
 │   │   ├── flow_info.py    # Converts program to ByteFlow
-│   │   └── labels.py       # Collection of Label classes
 │   ├── transformations.py  # Algorithms
 │   └── utils.py            # Miscellaneous utilities
 ├── networkx_vendored
