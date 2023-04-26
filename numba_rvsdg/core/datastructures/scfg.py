@@ -61,58 +61,6 @@ class SCFG:
             # finally add any jump_targets to the list of labels to visit
             to_visit.extend(block.jump_targets)
 
-    def region_view_iterator(self, head:Label=None) -> Iterator[Label]:
-        """ Region View Iterator.
-
-        This iterator is region aware, which means that regions are "concealed"
-        and act as though they were a single block.
-
-        Parameters
-        ----------
-        head: Label, optional
-            The head block (or region) from which to start iterating. If None
-            is given, will discover the head automatically.
-
-        Returns
-        -------
-        blocks: iter of (Label, BasicBlock)
-            An iterator over labels and blocks (or regions)
-
-        """
-        # Initialise housekeeping datastructures:
-        # A set because we only need lookup and have unique items and a deque
-        # because we need a first in, first out (FIFO) structure.
-        to_visit, seen = deque([head if head else self.find_head()]), set()
-        while to_visit:
-            # get the next label on the list
-            label = to_visit.popleft()
-            # if we have visited this, we skip it
-            if label in seen:
-                continue
-            else:
-                seen.add(label)
-            # get the corresponding block for the label(could also be a region)
-            try:
-                block = self[label]
-            except KeyError:
-                # If this is outside the current graph, just disregard it.
-                # (might be the case if inside a region and the block being
-                # looked at is outside of the region.)
-                continue
-
-            # populate the to_vist
-            if type(block) == RegionBlock:
-                # If this is a region, continue on to the exiting block, i.e.
-                # the region is presented a single fall-through block to the
-                # consumer of this iterator.
-                to_visit.append(block.exit)
-            else:
-                # otherwise add any jump_targets to the list of labels to visit
-                to_visit.extend(block.jump_targets)
-
-            # finally, yield the label, block combo
-            yield (label, block)
-
     @property
     def concealed_region_view(self):
         return ConcealedRegionView(self)
