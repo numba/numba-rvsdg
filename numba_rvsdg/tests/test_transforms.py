@@ -2,6 +2,7 @@
 from unittest import main
 
 from numba_rvsdg.core.datastructures.scfg import SCFG
+from numba_rvsdg.core.datastructures.basic_block import BasicBlock
 from numba_rvsdg.core.transformations import loop_restructure_helper
 from numba_rvsdg.tests.test_utils import SCFGComparator
 
@@ -25,8 +26,9 @@ class TestInsertBlock(SCFGComparator):
         """
         expected_scfg, _ = SCFG.from_yaml(expected)
         new_name = original_scfg.name_gen.new_block_name('basic')
-        original_scfg.insert_block(
-            new_name, (block_dict["0"],), (block_dict["1"],)
+        original_scfg._insert_block(
+            new_name, (block_dict["0"],), (block_dict["1"],),
+            BasicBlock
         )
         self.assertSCFGEqual(expected_scfg, original_scfg)
 
@@ -52,8 +54,9 @@ class TestInsertBlock(SCFGComparator):
         """
         expected_scfg, expected_block_dict = SCFG.from_yaml(expected)
         new_name = original_scfg.name_gen.new_block_name('basic')
-        original_scfg.insert_block(
-            new_name, (block_dict["0"], block_dict["1"]), (block_dict["2"],)
+        original_scfg._insert_block(
+            new_name, (block_dict["0"], block_dict["1"]), (block_dict["2"],),
+            BasicBlock
         )
         self.assertSCFGEqual(expected_scfg, original_scfg, {block_dict["0"]: expected_block_dict["0"],
                                                             block_dict["1"]: expected_block_dict["1"]})
@@ -79,10 +82,11 @@ class TestInsertBlock(SCFGComparator):
             jt: ["1", "2"]
         """
         expected_scfg, _ = SCFG.from_yaml(expected)
-        original_scfg.insert_block(
+        original_scfg._insert_block(
             original_scfg.name_gen.new_block_name('basic'),
             (block_dict["0"],),
-            (block_dict["1"], block_dict["2"])
+            (block_dict["1"], block_dict["2"]),
+            BasicBlock
         )
         self.assertSCFGEqual(expected_scfg, original_scfg)
 
@@ -115,10 +119,11 @@ class TestInsertBlock(SCFGComparator):
             jt: ["3", "4"]
         """
         expected_scfg, _ = SCFG.from_yaml(expected)
-        original_scfg.insert_block(
+        original_scfg._insert_block(
             original_scfg.name_gen.new_block_name('basic'),
             (block_dict["1"], block_dict["2"]),
-            (block_dict["3"], block_dict["4"])
+            (block_dict["3"], block_dict["4"]),
+            BasicBlock
         )
         self.assertSCFGEqual(expected_scfg, original_scfg)
 
@@ -151,10 +156,11 @@ class TestInsertBlock(SCFGComparator):
             jt: ["3", "4"]
         """
         expected_scfg, expected_block_dict = SCFG.from_yaml(expected)
-        original_scfg.insert_block(
+        original_scfg._insert_block(
             original_scfg.name_gen.new_block_name('basic'),
             (block_dict["1"], block_dict["2"]),
-            (block_dict["3"], block_dict["4"])
+            (block_dict["3"], block_dict["4"]),
+            BasicBlock
         )
         self.assertSCFGEqual(expected_scfg, original_scfg, {block_dict["0"]: expected_block_dict["0"],
                                                             block_dict["2"]: expected_block_dict["2"]})

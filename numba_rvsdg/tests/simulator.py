@@ -6,6 +6,7 @@ from numba_rvsdg.core.datastructures.basic_block import (
     BasicBlock,
     PythonBytecodeBlock,
     RegionBlock,
+    SyntheticBlock,
 )
 
 import builtins
@@ -53,6 +54,7 @@ class Simulator:
     def __init__(self, flow: ByteFlow, globals: dict):
 
         self.flow = flow
+        self.scfg = flow.scfg
         self.globals = ChainMap(globals, builtins.__dict__)
 
         self.bcmap = {inst.offset: inst for inst in flow.bc}
@@ -107,7 +109,7 @@ class Simulator:
 
         """
         self.varmap.update(args)
-        name = 'python_bytecode_block_0'
+        name = self.scfg.find_head()
         while True:
             action = self.run_BasicBlock(name)
             if "return" in action:
@@ -134,11 +136,10 @@ class Simulator:
         self.trace.append((name, block))
         if isinstance(block, RegionBlock):
             return self.run_RegionBlock(name)
-
-        if name.startswith('synth'):
-            self.run_synth_block(name)
-        elif name.startswith('python_bytecode'):
+        elif isinstance(block, PythonBytecodeBlock):
             self.run_PythonBytecodeBlock(name)
+        elif isinstance(block, SyntheticBlock):
+            self.run_synth_block(name)
         if block.fallthrough:
             [name] = block.jump_targets
             return {"jumpto": name}
@@ -225,7 +226,7 @@ class Simulator:
         print("----", name)
         print(f"control variable map: {self.ctrl_varmap}")
         block = self.get_block(name)
-        handler = getattr(self, 'synth_' + name.split("_")[1])
+        handler = getattr(self, 'synth_' + block.__class__.__name__)
         handler(name, block)
 
     def run_inst(self, inst: Instruction):
@@ -246,30 +247,36 @@ class Simulator:
         print(f"stack after: {self.stack}")
 
     ### Synthetic Instructions ###
-    def synth_assign(self, control_name, block):
+    def synth_SyntheticAssignmentBlock(self, control_name, block):
         self.ctrl_varmap.update(block.variable_assignment)
 
     def _synth_branch(self, control_name, block):
         jump_target = block.branch_value_table[self.ctrl_varmap[block.variable]]
         self.branch = bool(block._jump_targets.index(jump_target))
 
-    def synth_exit_latch(self, control_name, block):
+    def synth_SyntheticExitingLatch(self, control_name, block):
         self._synth_branch(control_name, block)
 
-    def synth_head(self, control_name, block):
+    def synth_SyntheticExitBranch(self, control_name, block):
         self._synth_branch(control_name, block)
 
-    def synth_exit(self, control_name, block):
+    def synth_SyntheticHead(self, control_name, block):
         self._synth_branch(control_name, block)
 
-    def synth_return(self, control_name, block):
+    def synth_SyntheticExit(self, control_name, block):
         pass
 
-    def synth_tail(self, control_name, block):
+    def synth_SyntheticTail(self, control_name, block):
         pass
 
-    def synth_branch(self, control_name, block):
+    def synth_SyntheticReturn(self, control_name, block):
         pass
+
+    def synth_SyntheticBlock(self, control_name, block):
+        raise NotImplementedError("SyntheticBlock should not be instantiated")
+
+    def synth_SyntheticBranch(self, control_name, block):
+        raise NotImplementedError("SyntheticBranch should not be instantiated")
 
     ### Bytecode Instructions ###
     def op_LOAD_CONST(self, inst):

@@ -4,8 +4,9 @@ from typing import Set, Dict, List
 from numba_rvsdg.core.datastructures.scfg import SCFG
 from numba_rvsdg.core.datastructures.basic_block import (
     BasicBlock,
-    ControlVariableBlock,
-    BranchBlock,
+    SyntheticAssignmentBlock,
+    SyntheticExitingLatch,
+    SyntheticExitBranch,
     RegionBlock,
 )
 
@@ -121,7 +122,7 @@ def loop_restructure_helper(scfg: SCFG, loop: Set[str]):
                     variable_assignment[backedge_variable]  = reverse_lookup(backedge_value_table,
                         synth_exit if needs_synth_exit else next(iter(exit_blocks)))
                     # Create the actual control variable block
-                    synth_assign_block = ControlVariableBlock(
+                    synth_assign_block = SyntheticAssignmentBlock(
                         name=synth_assign,
                         _jump_targets=(synth_exiting_latch,),
                         backedges=(),
@@ -156,7 +157,7 @@ def loop_restructure_helper(scfg: SCFG, loop: Set[str]):
                     scfg.add_block(block.replace_jump_targets(jump_targets=tuple(jts)))
                     # Setup the assignment block and initialize it with the
                     # correct jump_targets and variable assignment.
-                    synth_assign_block = ControlVariableBlock(
+                    synth_assign_block = SyntheticAssignmentBlock(
                         name=synth_assign,
                         _jump_targets=(synth_exiting_latch,),
                         backedges=(),
@@ -174,7 +175,7 @@ def loop_restructure_helper(scfg: SCFG, loop: Set[str]):
     loop.update(new_blocks)
 
     # Insert the exiting latch, add it to the loop and to the graph.
-    synth_exiting_latch_block = BranchBlock(
+    synth_exiting_latch_block = SyntheticExitingLatch(
         name=synth_exiting_latch,
         _jump_targets=(synth_exit if needs_synth_exit else next(iter(exit_blocks)), loop_head),
         backedges=(loop_head,),
@@ -186,7 +187,7 @@ def loop_restructure_helper(scfg: SCFG, loop: Set[str]):
     # If an exit is to be created, we do so too, but only add it to the scfg,
     # since it isn't part of the loop
     if needs_synth_exit:
-        synth_exit_block = BranchBlock(
+        synth_exit_block = SyntheticExitBranch(
             name=synth_exit,
             _jump_targets=tuple(exit_blocks),
             backedges=(),
@@ -365,10 +366,10 @@ def restructure_branch(scfg: SCFG):
                 _, _ = scfg.join_tails_and_exits(exiting_blocks, tail_headers)
 
         else:
-            # Insert SyntheticBranch
+            # Insert SyntheticFill, a placeholder for an empty branch region
             tail_headers, _ = scfg.find_headers_and_entries(tail_region_blocks)
-            synthetic_branch_block_name = scfg.name_gen.new_block_name("synth_branch")
-            scfg.insert_block(synthetic_branch_block_name, (begin,), tail_headers)
+            synthetic_branch_block_name = scfg.name_gen.new_block_name("synth_fill")
+            scfg.insert_SyntheticFill(synthetic_branch_block_name, (begin,), tail_headers)
 
     # Recompute regions.
     head_region_blocks = find_head_blocks(scfg, begin)

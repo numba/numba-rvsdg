@@ -8,8 +8,15 @@ from collections.abc import Mapping
 
 from numba_rvsdg.core.datastructures.basic_block import (
     BasicBlock,
-    ControlVariableBlock,
-    BranchBlock,
+    SyntheticBlock,
+    SyntheticAssignmentBlock,
+    SyntheticHead,
+    SyntheticExitingLatch,
+    SyntheticExitBranch,
+    SyntheticExit,
+    SyntheticTail,
+    SyntheticReturn,
+    SyntheticFill,
     RegionBlock,
 )
 
@@ -233,12 +240,13 @@ class SCFG:
         for name in names:
             del self.graph[name]
 
-    def insert_block(
-        self, new_name: str, predecessors: Set[str], successors: Set[str]
+    def _insert_block(
+        self, new_name: str, predecessors: Set[str], successors: Set[str],
+        block_type: SyntheticBlock
     ):
         # TODO: needs a diagram and documentaion
         # initialize new block
-        new_block = BasicBlock(
+        new_block = block_type(
             name=new_name, _jump_targets=successors, backedges=set()
         )
         # add block to self
@@ -258,6 +266,26 @@ class SCFG:
             else:
                 jt.append(new_name)
             self.add_block(block.replace_jump_targets(jump_targets=tuple(jt)))
+
+    def insert_SyntheticExit(
+        self, new_name: str, predecessors: Set[str], successors: Set[str],
+    ):
+        self._insert_block(new_name, predecessors, successors, SyntheticExit)
+
+    def insert_SyntheticTail(
+        self, new_name: str, predecessors: Set[str], successors: Set[str],
+    ):
+        self._insert_block(new_name, predecessors, successors, SyntheticTail)
+
+    def insert_SyntheticReturn(
+        self, new_name: str, predecessors: Set[str], successors: Set[str],
+    ):
+        self._insert_block(new_name, predecessors, successors, SyntheticReturn)
+
+    def insert_SyntheticFill(
+        self, new_name: str, predecessors: Set[str], successors: Set[str],
+    ):
+        self._insert_block(new_name, predecessors, successors, SyntheticReturn)
 
     def insert_block_and_control_blocks(
         self, new_name: str, predecessors: Set[str], successors: Set[str]
@@ -281,7 +309,7 @@ class SCFG:
                 synth_assign = self.name_gen.new_block_name("synth_assign")
                 variable_assignment = {}
                 variable_assignment[branch_variable] = branch_variable_value
-                synth_assign_block = ControlVariableBlock(
+                synth_assign_block = SyntheticAssignmentBlock(
                     name=synth_assign,
                     _jump_targets=(new_name,),
                     backedges=(),
@@ -300,7 +328,7 @@ class SCFG:
                 self.graph.pop(name).replace_jump_targets(jump_targets=tuple(jt))
             )
         # initialize new block, which will hold the branching table
-        new_block = BranchBlock(
+        new_block = SyntheticHead(
             name=new_name,
             _jump_targets=tuple(successors),
             backedges=set(),
@@ -321,7 +349,7 @@ class SCFG:
         # close if more than one is found
         if len(return_nodes) > 1:
             return_solo_name = self.name_gen.new_block_name("synth_return")
-            self.insert_block(return_solo_name, return_nodes, tuple())
+            self.insert_SyntheticReturn(return_solo_name, return_nodes, tuple())
 
     def join_tails_and_exits(self, tails: Set[str], exits: Set[str]):
         if len(tails) == 1 and len(exits) == 1:
@@ -334,22 +362,22 @@ class SCFG:
             # join only exits
             solo_tail_name = next(iter(tails))
             solo_exit_name = self.name_gen.new_block_name("synth_exit")
-            self.insert_block(solo_exit_name, tails, exits)
+            self.insert_SyntheticExit(solo_exit_name, tails, exits)
             return solo_tail_name, solo_exit_name
 
         if len(tails) >= 2 and len(exits) == 1:
             # join only tails
             solo_tail_name = self.name_gen.new_block_name("synth_tail")
             solo_exit_name = next(iter(exits))
-            self.insert_block(solo_tail_name, tails, exits)
+            self.insert_SyntheticTail(solo_tail_name, tails, exits)
             return solo_tail_name, solo_exit_name
 
         if len(tails) >= 2 and len(exits) >= 2:
             # join both tails and exits
             solo_tail_name = self.name_gen.new_block_name("synth_tail")
             solo_exit_name = self.name_gen.new_block_name("synth_exit")
-            self.insert_block(solo_tail_name, tails, exits)
-            self.insert_block(solo_exit_name, set((solo_tail_name,)), exits)
+            self.insert_SyntheticTail(solo_tail_name, tails, exits)
+            self.insert_SyntheticExit(solo_exit_name, set((solo_tail_name,)), exits)
             return solo_tail_name, solo_exit_name
 
     @staticmethod

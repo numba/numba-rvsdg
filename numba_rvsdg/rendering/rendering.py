@@ -3,8 +3,10 @@ from numba_rvsdg.core.datastructures.basic_block import (
     BasicBlock,
     RegionBlock,
     PythonBytecodeBlock,
-    ControlVariableBlock,
-    BranchBlock,
+    SyntheticAssignmentBlock,
+    SyntheticBranch,
+    SyntheticBlock,
+    SyntheticExit,
 )
 from numba_rvsdg.core.datastructures.scfg import SCFG
 from numba_rvsdg.core.datastructures.byte_flow import ByteFlow
@@ -79,10 +81,12 @@ class ByteFlowRenderer(object):
             self.render_basic_block(digraph, name, block)
         elif type(block) == PythonBytecodeBlock:
             self.render_basic_block(digraph, name, block)
-        elif type(block) == ControlVariableBlock:
+        elif type(block) == SyntheticAssignmentBlock:
             self.render_control_variable_block(digraph, name, block)
-        elif type(block) == BranchBlock:
+        elif type(block) == SyntheticBranch:
             self.render_branching_block(digraph, name, block)
+        elif isinstance(block, SyntheticBlock):
+            self.render_basic_block(digraph, name, block)
         elif type(block) == RegionBlock:
             self.render_region_block(digraph, name, block)
         else:
@@ -95,8 +99,10 @@ class ByteFlowRenderer(object):
                     if type(block) in (
                         PythonBytecodeBlock,
                         BasicBlock,
-                        ControlVariableBlock,
-                        BranchBlock,
+                        SyntheticBlock,
+                        SyntheticAssignmentBlock,
+                        SyntheticExit,
+                        SyntheticBranch,
                     ):
                         self.g.edge(str(name), str(dst))
                     elif type(block) == RegionBlock:

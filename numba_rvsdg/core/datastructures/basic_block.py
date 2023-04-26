@@ -73,12 +73,32 @@ class PythonBytecodeBlock(BasicBlock):
 
 
 @dataclass(frozen=True)
-class ControlVariableBlock(BasicBlock):
+class SyntheticBlock(BasicBlock):
+    pass
+
+@dataclass(frozen=True)
+class SyntheticExit(BasicBlock):
+    pass
+
+@dataclass(frozen=True)
+class SyntheticReturn(BasicBlock):
+    pass
+
+@dataclass(frozen=True)
+class SyntheticTail(BasicBlock):
+    pass
+
+@dataclass(frozen=True)
+class SyntheticFill(BasicBlock):
+    pass
+
+@dataclass(frozen=True)
+class SyntheticAssignmentBlock(SyntheticBlock):
     variable_assignment: dict = None
 
 
 @dataclass(frozen=True)
-class BranchBlock(BasicBlock):
+class SyntheticBranch(SyntheticBlock):
     variable: str = None
     branch_value_table: dict = None
 
@@ -106,6 +126,21 @@ class BranchBlock(BasicBlock):
             _jump_targets=jump_targets,
             branch_value_table=new_branch_value_table,
         )
+
+
+@dataclass(frozen=True)
+class SyntheticHead(SyntheticBranch):
+    pass
+
+
+@dataclass(frozen=True)
+class SyntheticExitingLatch(SyntheticBranch):
+    pass
+
+
+@dataclass(frozen=True)
+class SyntheticExitBranch(SyntheticBranch):
+    pass
 
 
 @dataclass(frozen=True)
