@@ -1,11 +1,17 @@
 
-from unittest import main
+from unittest import main, TestCase
 from textwrap import dedent
 from numba_rvsdg.core.datastructures.scfg import SCFG
 
 from numba_rvsdg.tests.test_utils import SCFGComparator
-from numba_rvsdg.core.datastructures.basic_block import BasicBlock
-from numba_rvsdg.core.datastructures.labels import ControlLabel
+from numba_rvsdg.core.datastructures.basic_block import (BasicBlock,
+                                                         RegionBlock,
+                                                         PythonBytecodeBlock,
+                                                         )
+from numba_rvsdg.core.datastructures.byte_flow import ByteFlow
+from numba_rvsdg.core.datastructures.labels import (ControlLabel,
+                                                    PythonBytecodeLabel,
+                                                    )
 
 
 class TestSCFGConversion(SCFGComparator):
@@ -120,6 +126,28 @@ class TestSCFGIterator(SCFGComparator):
         self.assertEqual(expected, received)
 
 
+class TestConcealedRegionView(TestCase):
+
+    def setUp(self):
+
+        def foo(n):
+            c = 0
+            for i in range(n):
+                c += i
+            return c
+
+        self.foo = foo
+
+    def test_concealed_region_view_iter(self):
+
+        flow = ByteFlow.from_bytecode(self.foo)
+        restructured = flow._restructure_loop()
+        expected = [(PythonBytecodeLabel(index='0'), PythonBytecodeBlock),
+                    (PythonBytecodeLabel(index='1'), RegionBlock),
+                    (PythonBytecodeLabel(index='3'), PythonBytecodeBlock)]
+        received = list(((k, type(v)) for k,v in restructured.scfg.concealed_region_view.items()))
+        self.assertEqual(expected, received)
+
+
 if __name__ == "__main__":
     main()
-           
