@@ -48,7 +48,7 @@ def loop_restructure_helper(scfg: SCFG, loop: Set[str]):
     # backedge to the loop header) we can exit early, since the condition for
     # SCFG is fullfilled.
     backedge_blocks = [
-        block for block in loop if headers.intersection(scfg[block].jump_targets)
+        block for block in loop if set(headers).intersection(scfg[block].jump_targets)
     ]
     if (len(backedge_blocks) == 1 and len(exiting_blocks) == 1
         and backedge_blocks[0] == next(iter(exiting_blocks))):

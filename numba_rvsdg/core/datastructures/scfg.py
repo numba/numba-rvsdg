@@ -187,7 +187,7 @@ class SCFG:
         # the CFG.
         if not headers:
             headers = {self.find_head()}
-        return headers, entries
+        return sorted(headers), sorted(entries)
 
     def find_exiting_and_exits(
         self, subgraph: Set[str]
@@ -212,7 +212,7 @@ class SCFG:
             # any returns
             if self.graph[inside].is_exiting:
                 exiting.add(inside)
-        return exiting, exits
+        return sorted(exiting), sorted(exits)
 
     def is_reachable_dfs(self, begin: str, end: str):  # -> TypeGuard:
         """Is end reachable from begin."""
