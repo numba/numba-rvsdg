@@ -117,8 +117,8 @@ class RegionBlock(BasicBlock):
     subregion: "SCFG" = None
     """The subgraph excluding the headers
     """
-    exit: Label = None
-    """The exit node.
+    exiting: Label = None
+    """The exiting node.
     """
 
     def get_full_graph(self):

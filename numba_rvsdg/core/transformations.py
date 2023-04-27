@@ -310,9 +310,9 @@ def extract_region(scfg, region_blocks, region_kind):
     )
 
     if isinstance(scfg[region_exiting], RegionBlock):
-        region_exit = scfg[region_exiting].exit
+        region_exiting = scfg[region_exiting].exiting
     else:
-        region_exit = region_exiting
+        region_exiting = region_exiting
 
     subregion = RegionBlock(
         label=region_header,
@@ -321,7 +321,7 @@ def extract_region(scfg, region_blocks, region_kind):
         kind=region_kind,
         headers=headers,
         subregion=head_subgraph,
-        exit=region_exit,
+        exiting=region_exiting,
     )
     scfg.remove_blocks(region_blocks)
     scfg.graph[region_header] = subregion
