@@ -452,7 +452,7 @@ class ConcealedRegionView(AbstractGraphView):
                 # If this is a region, continue on to the exiting block, i.e.
                 # the region is presented a single fall-through block to the
                 # consumer of this iterator.
-                to_visit.append(block.exit)
+                to_visit.extend(block.subregion[block.exit].jump_targets)
             else:
                 # otherwise add any jump_targets to the list of labels to visit
                 to_visit.extend(block.jump_targets)
