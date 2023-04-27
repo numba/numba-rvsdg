@@ -77,19 +77,19 @@ class SyntheticBlock(BasicBlock):
     pass
 
 @dataclass(frozen=True)
-class SyntheticExit(BasicBlock):
+class SyntheticExit(SyntheticBlock):
     pass
 
 @dataclass(frozen=True)
-class SyntheticReturn(BasicBlock):
+class SyntheticReturn(SyntheticBlock):
     pass
 
 @dataclass(frozen=True)
-class SyntheticTail(BasicBlock):
+class SyntheticTail(SyntheticBlock):
     pass
 
 @dataclass(frozen=True)
-class SyntheticFill(BasicBlock):
+class SyntheticFill(SyntheticBlock):
     pass
 
 @dataclass(frozen=True)

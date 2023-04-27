@@ -4,8 +4,11 @@ from numba_rvsdg.core.datastructures.basic_block import (
     RegionBlock,
     PythonBytecodeBlock,
     SyntheticAssignmentBlock,
+    SyntheticExitingLatch,
+    SyntheticExitBranch,
     SyntheticBranch,
     SyntheticBlock,
+    SyntheticHead,
     SyntheticExit,
 )
 from numba_rvsdg.core.datastructures.scfg import SCFG
@@ -83,7 +86,7 @@ class ByteFlowRenderer(object):
             self.render_basic_block(digraph, name, block)
         elif type(block) == SyntheticAssignmentBlock:
             self.render_control_variable_block(digraph, name, block)
-        elif type(block) == SyntheticBranch:
+        elif isinstance(block, SyntheticBranch):
             self.render_branching_block(digraph, name, block)
         elif isinstance(block, SyntheticBlock):
             self.render_basic_block(digraph, name, block)
@@ -101,6 +104,9 @@ class ByteFlowRenderer(object):
                         BasicBlock,
                         SyntheticBlock,
                         SyntheticAssignmentBlock,
+                        SyntheticExitingLatch,
+                        SyntheticExitBranch,
+                        SyntheticHead,
                         SyntheticExit,
                         SyntheticBranch,
                     ):
@@ -111,7 +117,7 @@ class ByteFlowRenderer(object):
                         else:
                             self.g.edge(str(name), str(dst))
                     else:
-                        raise Exception("unreachable")
+                        raise Exception("unreachable " + str(block))
             for dst in block.backedges:
                 # assert dst in blocks
                 self.g.edge(
