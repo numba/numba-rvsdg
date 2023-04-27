@@ -9,9 +9,7 @@ class SCFGComparator(TestCase):
         if head_map:
             # If more than one head the corresponding map needs to be provided
             block_mapping = head_map
-            stack = []
-            for _name in block_mapping.keys():
-                stack.add(_name)
+            stack = list(block_mapping.keys())
         else:
             first_head = first_scfg.find_head()
             second_head = second_scfg.find_head()
