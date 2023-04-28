@@ -474,13 +474,13 @@ class ConcealedRegionView(AbstractGraphView):
 
         Parameters
         ----------
-        head: Label, optional
+        head: str, optional
             The head block (or region) from which to start iterating. If None
             is given, will discover the head automatically.
 
         Returns
         -------
-        blocks: iter of Label
+        blocks: iter of str
             An iterator over blocks (or regions)
 
         """
@@ -489,16 +489,16 @@ class ConcealedRegionView(AbstractGraphView):
         # because we need a first in, first out (FIFO) structure.
         to_visit, seen = deque([head if head else self.scfg.find_head()]), set()
         while to_visit:
-            # get the next label on the list
-            label = to_visit.popleft()
+            # get the next name on the list
+            name = to_visit.popleft()
             # if we have visited this, we skip it
-            if label in seen:
+            if name in seen:
                 continue
             else:
-                seen.add(label)
-            # get the corresponding block for the label(could also be a region)
+                seen.add(name)
+            # get the corresponding block for the name (could also be a region)
             try:
-                block = self[label]
+                block = self[name]
             except KeyError:
                 # If this is outside the current graph, just disregard it.
                 # (might be the case if inside a region and the block being
@@ -512,11 +512,11 @@ class ConcealedRegionView(AbstractGraphView):
                 # consumer of this iterator.
                 to_visit.extend(block.subregion[block.exiting].jump_targets)
             else:
-                # otherwise add any jump_targets to the list of labels to visit
+                # otherwise add any jump_targets to the list of names to visit
                 to_visit.extend(block.jump_targets)
 
-            # finally, yield the label
-            yield label
+            # finally, yield the name
+            yield name
 
     def __len__(self):
         return len(self.scfg)
