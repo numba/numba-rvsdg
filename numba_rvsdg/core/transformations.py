@@ -4,7 +4,7 @@ from typing import Set, Dict, List
 from numba_rvsdg.core.datastructures.scfg import SCFG
 from numba_rvsdg.core.datastructures.basic_block import (
     BasicBlock,
-    SyntheticAssignmentBlock,
+    SyntheticAssignment,
     SyntheticExitingLatch,
     SyntheticExitBranch,
     RegionBlock,
@@ -122,7 +122,7 @@ def loop_restructure_helper(scfg: SCFG, loop: Set[str]):
                     variable_assignment[backedge_variable]  = reverse_lookup(backedge_value_table,
                         synth_exit if needs_synth_exit else next(iter(exit_blocks)))
                     # Create the actual control variable block
-                    synth_assign_block = SyntheticAssignmentBlock(
+                    synth_assign_block = SyntheticAssignment(
                         name=synth_assign,
                         _jump_targets=(synth_exiting_latch,),
                         backedges=(),
@@ -157,7 +157,7 @@ def loop_restructure_helper(scfg: SCFG, loop: Set[str]):
                     scfg.add_block(block.replace_jump_targets(jump_targets=tuple(jts)))
                     # Setup the assignment block and initialize it with the
                     # correct jump_targets and variable assignment.
-                    synth_assign_block = SyntheticAssignmentBlock(
+                    synth_assign_block = SyntheticAssignment(
                         name=synth_assign,
                         _jump_targets=(synth_exiting_latch,),
                         backedges=(),

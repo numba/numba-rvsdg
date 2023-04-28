@@ -247,7 +247,7 @@ class Simulator:
         print(f"stack after: {self.stack}")
 
     ### Synthetic Instructions ###
-    def synth_SyntheticAssignmentBlock(self, control_name, block):
+    def synth_SyntheticAssignment(self, control_name, block):
         self.ctrl_varmap.update(block.variable_assignment)
 
     def _synth_branch(self, control_name, block):

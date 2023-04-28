@@ -93,7 +93,7 @@ class SyntheticFill(SyntheticBlock):
     pass
 
 @dataclass(frozen=True)
-class SyntheticAssignmentBlock(SyntheticBlock):
+class SyntheticAssignment(SyntheticBlock):
     variable_assignment: dict = None
 
 

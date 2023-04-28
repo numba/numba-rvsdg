@@ -9,7 +9,7 @@ from collections.abc import Mapping
 from numba_rvsdg.core.datastructures.basic_block import (
     BasicBlock,
     SyntheticBlock,
-    SyntheticAssignmentBlock,
+    SyntheticAssignment,
     SyntheticHead,
     SyntheticExitingLatch,
     SyntheticExitBranch,
@@ -309,7 +309,7 @@ class SCFG:
                 synth_assign = self.name_gen.new_block_name("synth_assign")
                 variable_assignment = {}
                 variable_assignment[branch_variable] = branch_variable_value
-                synth_assign_block = SyntheticAssignmentBlock(
+                synth_assign_block = SyntheticAssignment(
                     name=synth_assign,
                     _jump_targets=(new_name,),
                     backedges=(),

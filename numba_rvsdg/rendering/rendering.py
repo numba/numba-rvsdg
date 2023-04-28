@@ -3,7 +3,7 @@ from numba_rvsdg.core.datastructures.basic_block import (
     BasicBlock,
     RegionBlock,
     PythonBytecodeBlock,
-    SyntheticAssignmentBlock,
+    SyntheticAssignment,
     SyntheticExitingLatch,
     SyntheticExitBranch,
     SyntheticBranch,
@@ -84,7 +84,7 @@ class ByteFlowRenderer(object):
             self.render_basic_block(digraph, name, block)
         elif type(block) == PythonBytecodeBlock:
             self.render_basic_block(digraph, name, block)
-        elif type(block) == SyntheticAssignmentBlock:
+        elif type(block) == SyntheticAssignment:
             self.render_control_variable_block(digraph, name, block)
         elif isinstance(block, SyntheticBranch):
             self.render_branching_block(digraph, name, block)
@@ -103,7 +103,7 @@ class ByteFlowRenderer(object):
                         PythonBytecodeBlock,
                         BasicBlock,
                         SyntheticBlock,
-                        SyntheticAssignmentBlock,
+                        SyntheticAssignment,
                         SyntheticExitingLatch,
                         SyntheticExitBranch,
                         SyntheticHead,
