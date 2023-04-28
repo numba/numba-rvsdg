@@ -113,8 +113,8 @@ class ByteFlowRenderer(object):
                     ):
                         self.g.edge(str(label), str(dst))
                     elif type(block) == RegionBlock:
-                        if block.exit is not None:
-                            self.g.edge(str(block.exit), str(dst))
+                        if block.exiting is not None:
+                            self.g.edge(str(block.exiting), str(dst))
                         else:
                             self.g.edge(str(label), str(dst))
                     else:
