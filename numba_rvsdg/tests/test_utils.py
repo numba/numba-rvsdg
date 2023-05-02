@@ -51,9 +51,7 @@ class SCFGComparator(TestCase):
 
     def assertDictEqual(self, first_yaml: str, second_yaml: str, head_map: dict):
         block_mapping = head_map
-        stack = []
-        for _name in block_mapping.keys():
-            stack.append(_name)
+        stack = list(block_mapping.keys())
         # Assert number of blocks are equal in both SCFGs
         assert len(first_yaml) == len(second_yaml), "Number of blocks in both graphs are not equal"
         seen = set()
