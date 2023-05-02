@@ -9,7 +9,7 @@ from numba_rvsdg.core.datastructures.basic_block import (BasicBlock,
                                                          PythonBytecodeBlock,
                                                          )
 from numba_rvsdg.core.datastructures.byte_flow import ByteFlow
-
+from numba_rvsdg.core.datastructures import block_names
 
 class TestSCFGConversion(SCFGComparator):
 
@@ -109,8 +109,8 @@ class TestSCFGIterator(SCFGComparator):
 
     def test_scfg_iter(self):
         name_gen = NameGenerator()
-        block_0 = name_gen.new_block_name('basic')
-        block_1 = name_gen.new_block_name('basic')
+        block_0 = name_gen.new_block_name(block_names.BASIC)
+        block_1 = name_gen.new_block_name(block_names.BASIC)
         expected = [
             (block_0, BasicBlock(name=block_0,
                                            _jump_targets=(block_1,))),

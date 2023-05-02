@@ -4,6 +4,7 @@ from typing import Set, Tuple, Dict, Sequence
 from dataclasses import dataclass, field
 
 from numba_rvsdg.core.datastructures.basic_block import PythonBytecodeBlock
+from numba_rvsdg.core.datastructures import block_names
 from numba_rvsdg.core.datastructures.scfg import SCFG
 from numba_rvsdg.core.utils import (
     is_conditional_jump,
@@ -70,7 +71,7 @@ class FlowInfo:
         offsets = sorted(self.block_offsets)
         # enumerate names
         names = dict(
-            (offset, scfg.name_gen.new_block_name("python_bytecode")) for offset in offsets
+            (offset, scfg.name_gen.new_block_name(block_names.PYTHON_BYTECODE)) for offset in offsets
         )
         if end_offset is None:
             end_offset = _next_inst_offset(self.last_offset)

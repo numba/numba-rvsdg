@@ -5,7 +5,7 @@ from numba_rvsdg.core.datastructures.basic_block import PythonBytecodeBlock
 from numba_rvsdg.core.datastructures.byte_flow import ByteFlow
 from numba_rvsdg.core.datastructures.scfg import SCFG, NameGenerator
 from numba_rvsdg.core.datastructures.flow_info import FlowInfo
-
+from numba_rvsdg.core.datastructures import block_names
 
 def fun():
     x = 1
@@ -108,7 +108,7 @@ class TestPythonBytecodeBlock(unittest.TestCase):
     def test_constructor(self):
         name_gen = NameGenerator()
         block = PythonBytecodeBlock(
-            name=name_gen.new_block_name('python_bytecode'),
+            name=name_gen.new_block_name(block_names.PYTHON_BYTECODE),
             begin=0,
             end=8,
             _jump_targets=(),
@@ -125,10 +125,10 @@ class TestPythonBytecodeBlock(unittest.TestCase):
     def test_is_jump_target(self):
         name_gen = NameGenerator()
         block = PythonBytecodeBlock(
-            name=name_gen.new_block_name('python_bytecode'),
+            name=name_gen.new_block_name(block_names.PYTHON_BYTECODE),
             begin=0,
             end=8,
-            _jump_targets=(name_gen.new_block_name('python_bytecode'),),
+            _jump_targets=(name_gen.new_block_name(block_names.PYTHON_BYTECODE),),
             backedges=(),
         )
         self.assertEqual(block.jump_targets, ('python_bytecode_block_1',))
@@ -137,7 +137,7 @@ class TestPythonBytecodeBlock(unittest.TestCase):
     def test_get_instructions(self):
         name_gen = NameGenerator()
         block = PythonBytecodeBlock(
-            name=name_gen.new_block_name('python_bytecode'),
+            name=name_gen.new_block_name(block_names.PYTHON_BYTECODE),
             begin=0,
             end=8,
             _jump_targets=(),
@@ -229,7 +229,7 @@ class TestFlowInfo(unittest.TestCase):
 
     def test_build_basic_blocks(self):
         name_gen = NameGenerator()
-        new_name = name_gen.new_block_name('python_bytecode')
+        new_name = name_gen.new_block_name(block_names.PYTHON_BYTECODE)
         expected = SCFG(
             graph={
                 new_name: PythonBytecodeBlock(
@@ -253,7 +253,7 @@ class TestByteFlow(unittest.TestCase):
 
     def test_from_bytecode(self):
         name_gen = NameGenerator()
-        new_name = name_gen.new_block_name('python_bytecode')
+        new_name = name_gen.new_block_name(block_names.PYTHON_BYTECODE)
         scfg = SCFG(
             graph={
                 new_name: PythonBytecodeBlock(

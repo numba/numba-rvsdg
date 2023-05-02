@@ -5,7 +5,7 @@ from numba_rvsdg.core.datastructures.scfg import SCFG
 from numba_rvsdg.core.datastructures.basic_block import BasicBlock
 from numba_rvsdg.core.transformations import loop_restructure_helper
 from numba_rvsdg.tests.test_utils import SCFGComparator
-
+from numba_rvsdg.core.datastructures import block_names
 
 class TestInsertBlock(SCFGComparator):
     def test_linear(self):
@@ -25,7 +25,7 @@ class TestInsertBlock(SCFGComparator):
             jt: ["1"]
         """
         expected_scfg, _ = SCFG.from_yaml(expected)
-        new_name = original_scfg.name_gen.new_block_name('basic')
+        new_name = original_scfg.name_gen.new_block_name(block_names.BASIC)
         original_scfg._insert_block(
             new_name, (block_dict["0"],), (block_dict["1"],),
             BasicBlock
@@ -53,7 +53,7 @@ class TestInsertBlock(SCFGComparator):
             jt: ["2"]
         """
         expected_scfg, expected_block_dict = SCFG.from_yaml(expected)
-        new_name = original_scfg.name_gen.new_block_name('basic')
+        new_name = original_scfg.name_gen.new_block_name(block_names.BASIC)
         original_scfg._insert_block(
             new_name, (block_dict["0"], block_dict["1"]), (block_dict["2"],),
             BasicBlock
@@ -83,7 +83,7 @@ class TestInsertBlock(SCFGComparator):
         """
         expected_scfg, _ = SCFG.from_yaml(expected)
         original_scfg._insert_block(
-            original_scfg.name_gen.new_block_name('basic'),
+            original_scfg.name_gen.new_block_name(block_names.BASIC),
             (block_dict["0"],),
             (block_dict["1"], block_dict["2"]),
             BasicBlock
@@ -120,7 +120,7 @@ class TestInsertBlock(SCFGComparator):
         """
         expected_scfg, _ = SCFG.from_yaml(expected)
         original_scfg._insert_block(
-            original_scfg.name_gen.new_block_name('basic'),
+            original_scfg.name_gen.new_block_name(block_names.BASIC),
             (block_dict["1"], block_dict["2"]),
             (block_dict["3"], block_dict["4"]),
             BasicBlock
@@ -157,7 +157,7 @@ class TestInsertBlock(SCFGComparator):
         """
         expected_scfg, expected_block_dict = SCFG.from_yaml(expected)
         original_scfg._insert_block(
-            original_scfg.name_gen.new_block_name('basic'),
+            original_scfg.name_gen.new_block_name(block_names.BASIC),
             (block_dict["1"], block_dict["2"]),
             (block_dict["3"], block_dict["4"]),
             BasicBlock
@@ -253,7 +253,7 @@ class TestJoinTailsAndExits(SCFGComparator):
 
         self.assertSCFGEqual(expected_scfg, original_scfg)
         self.assertEqual(block_dict["0"], solo_tail_name)
-        self.assertEqual(expected_scfg.name_gen.new_block_name('synth_exit'), solo_exit_name)
+        self.assertEqual(expected_scfg.name_gen.new_block_name(block_names.SYNTH_EXIT), solo_exit_name)
 
     def test_join_tails_and_exits_case_02_01(self):
         original = """
@@ -288,7 +288,7 @@ class TestJoinTailsAndExits(SCFGComparator):
         )
 
         self.assertSCFGEqual(expected_scfg, original_scfg)
-        self.assertEqual(expected_scfg.name_gen.new_block_name('synth_tail'), solo_tail_name)
+        self.assertEqual(expected_scfg.name_gen.new_block_name(block_names.SYNTH_TAIL), solo_tail_name)
         self.assertEqual(block_dict["3"], solo_exit_name)
 
     def test_join_tails_and_exits_case_02_02(self):
@@ -324,7 +324,7 @@ class TestJoinTailsAndExits(SCFGComparator):
             tails, exits
         )
         self.assertSCFGEqual(expected_scfg, original_scfg)
-        self.assertEqual(expected_scfg.name_gen.new_block_name('synth_tail'), solo_tail_name)
+        self.assertEqual(expected_scfg.name_gen.new_block_name(block_names.SYNTH_TAIL), solo_tail_name)
         self.assertEqual(block_dict["3"], solo_exit_name)
 
     def test_join_tails_and_exits_case_03_01(self):
@@ -370,8 +370,8 @@ class TestJoinTailsAndExits(SCFGComparator):
             tails, exits
         )
         self.assertSCFGEqual(expected_scfg, original_scfg)
-        self.assertEqual(expected_scfg.name_gen.new_block_name('synth_tail'), solo_tail_name)
-        self.assertEqual(expected_scfg.name_gen.new_block_name('synth_exit'), solo_exit_name)
+        self.assertEqual(expected_scfg.name_gen.new_block_name(block_names.SYNTH_TAIL), solo_tail_name)
+        self.assertEqual(expected_scfg.name_gen.new_block_name(block_names.SYNTH_EXIT), solo_exit_name)
 
     def test_join_tails_and_exits_case_03_02(self):
 
@@ -415,8 +415,8 @@ class TestJoinTailsAndExits(SCFGComparator):
             tails, exits
         )
         self.assertSCFGEqual(expected_scfg, original_scfg)
-        self.assertEqual(expected_scfg.name_gen.new_block_name('synth_tail'), solo_tail_name)
-        self.assertEqual(expected_scfg.name_gen.new_block_name('synth_exit'), solo_exit_name)
+        self.assertEqual(expected_scfg.name_gen.new_block_name(block_names.SYNTH_TAIL), solo_tail_name)
+        self.assertEqual(expected_scfg.name_gen.new_block_name(block_names.SYNTH_EXIT), solo_exit_name)
 
 
 class TestLoopRestructure(SCFGComparator):

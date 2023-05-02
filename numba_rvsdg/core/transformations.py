@@ -9,6 +9,7 @@ from numba_rvsdg.core.datastructures.basic_block import (
     SyntheticExitBranch,
     RegionBlock,
 )
+from numba_rvsdg.core.datastructures import block_names
 
 from numba_rvsdg.core.utils import _logger
 
@@ -38,7 +39,7 @@ def loop_restructure_helper(scfg: SCFG, loop: Set[str]):
     # such that only a single loop header remains.
     if len(headers) > 1:
         headers_were_unified = True
-        solo_head_name = scfg.name_gen.new_block_name("synth_head")
+        solo_head_name = scfg.name_gen.new_block_name(block_names.SYNTH_HEAD)
         scfg.insert_block_and_control_blocks(solo_head_name, entries, headers)
         loop.add(solo_head_name)
         loop_head: str = solo_head_name
@@ -58,12 +59,12 @@ def loop_restructure_helper(scfg: SCFG, loop: Set[str]):
     # The synthetic exiting latch and synthetic exit need to be created
     # based on the state of the cfg. If there are multiple exits, we need a
     # SyntheticExit, otherwise we only need a SyntheticExitingLatch
-    synth_exiting_latch = scfg.name_gen.new_block_name("synth_exit_latch")
+    synth_exiting_latch = scfg.name_gen.new_block_name(block_names.SYNTH_EXIT_LATCH)
     # Set a flag, this will determine the variable assignment and block
     # insertion later on
     needs_synth_exit = len(exit_blocks) > 1
     if needs_synth_exit:
-        synth_exit = scfg.name_gen.new_block_name("synth_exit")
+        synth_exit = scfg.name_gen.new_block_name(block_names.SYNTH_EXIT)
 
     # This sets up the various control variables.
     # If there were multiple headers, we must re-use the variable that was used
@@ -111,7 +112,7 @@ def loop_restructure_helper(scfg: SCFG, loop: Set[str]):
                 # If the target is an exit block
                 if jt in exit_blocks:
                     # Create a new assignment name and record it
-                    synth_assign = scfg.name_gen.new_block_name("synth_assign")
+                    synth_assign = scfg.name_gen.new_block_name(block_names.SYNTH_ASSIGN)
                     new_blocks.add(synth_assign)
                     # Setup the table for the variable assignment
                     variable_assignment = {}
@@ -137,7 +138,7 @@ def loop_restructure_helper(scfg: SCFG, loop: Set[str]):
                 # If the target is the loop_head
                 elif jt in headers and name not in doms[jt]:
                     # Create the assignment and record it
-                    synth_assign = scfg.name_gen.new_block_name("synth_assign")
+                    synth_assign = scfg.name_gen.new_block_name(block_names.SYNTH_ASSIGN)
                     new_blocks.add(synth_assign)
                     # Setup the variables in the assignment table to point to
                     # the correct blocks
@@ -343,7 +344,7 @@ def restructure_branch(scfg: SCFG):
     # Unify headers of tail subregion if need be.
     headers, entries = scfg.find_headers_and_entries(tail_region_blocks)
     if len(headers) > 1:
-        end = scfg.name_gen.new_block_name("synth_head")
+        end = scfg.name_gen.new_block_name(block_names.SYNTH_HEAD)
         scfg.insert_block_and_control_blocks(end, entries, headers)
 
     # Recompute regions.
@@ -368,7 +369,7 @@ def restructure_branch(scfg: SCFG):
         else:
             # Insert SyntheticFill, a placeholder for an empty branch region
             tail_headers, _ = scfg.find_headers_and_entries(tail_region_blocks)
-            synthetic_branch_block_name = scfg.name_gen.new_block_name("synth_fill")
+            synthetic_branch_block_name = scfg.name_gen.new_block_name(block_names.SYNTH_FILL)
             scfg.insert_SyntheticFill(synthetic_branch_block_name, (begin,), tail_headers)
 
     # Recompute regions.
