@@ -48,7 +48,7 @@ class ByteFlowRenderer(object):
             body = name + "\l"
             body += "\l".join(
                 [f"{inst.offset:3}: {inst.opname}" for inst in instlist] + [""]
-            )    
+            )
         else:
             body = name + "\l"
 
@@ -150,6 +150,7 @@ logging.basicConfig(level=logging.DEBUG)
 def render_func(func):
     render_flow(ByteFlow.from_bytecode(func))
 
+
 def render_flow(flow):
     ByteFlowRenderer().render_byteflow(flow).view("before")
 
@@ -161,6 +162,7 @@ def render_flow(flow):
 
     bflow = lflow._restructure_branch()
     ByteFlowRenderer().render_byteflow(bflow).view("branch restructured")
+
 
 def render_scfg(scfg):
     ByteFlowRenderer().render_scfg(scfg).view("scfg")

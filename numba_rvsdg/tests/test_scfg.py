@@ -58,7 +58,7 @@ class TestSCFGConversion(SCFGComparator):
             case = dedent(case)
             scfg, block_dict = SCFG.from_yaml(case)
             self.assertYAMLEqual(case, scfg.to_yaml(), {'0': block_dict['0']})
-    
+
     def test_dict_conversion(self):
         # Case # 1: Acyclic graph, no back-edges
         cases = [{

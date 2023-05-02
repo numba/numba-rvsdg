@@ -66,7 +66,7 @@ class Simulator:
         self.branch = None
         self.return_value = None
 
-    def get_block(self, name:str):
+    def get_block(self, name: str):
         """Return the BasicBlock object for a give name.
 
         This method is aware of the recusion level of the `Simulator` into the

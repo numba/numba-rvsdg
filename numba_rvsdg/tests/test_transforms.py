@@ -610,7 +610,7 @@ class TestLoopRestructure(SCFGComparator):
 
         Two headers that need to be multiplexed to, on additional branch that
         becomes the exiting latch and one branch that becomes the exit.
-        
+
         """
         original = """
         "0":

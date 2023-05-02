@@ -389,7 +389,7 @@ class SCFG:
         return scfg, block_dict
 
     @staticmethod
-    def from_dict(graph_dict: dict):        
+    def from_dict(graph_dict: dict):
         scfg_graph = {}
         name_gen = NameGenerator()
         block_dict = {}
@@ -417,7 +417,7 @@ class SCFG:
             jump_targets = [i for i in value._jump_targets]
             jump_targets = str(jump_targets).replace("\'", "\"")
             back_edges = [i for i in value.backedges]
-            jump_target_str= f"""
+            jump_target_str = f"""
                 "{key}":
                     jt: {jump_targets}"""
 
@@ -464,7 +464,7 @@ class ConcealedRegionView(AbstractGraphView):
     def __iter__(self):
         return self.region_view_iterator()
 
-    def region_view_iterator(self, head:str=None) -> Iterator[str]:
+    def region_view_iterator(self, head: str = None) -> Iterator[str]:
         """ Region View Iterator.
 
         This iterator is region aware, which means that regions are "concealed"

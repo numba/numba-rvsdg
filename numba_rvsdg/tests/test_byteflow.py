@@ -14,7 +14,7 @@ def fun():
 
 bytecode = Bytecode(fun)
 # If the function definition line changes, just change the variable below, rest of it will adjust as long as function remains the same
-func_def_line = 10 
+func_def_line = 10
 
 class TestBCMapFromBytecode(unittest.TestCase):
     def test(self):

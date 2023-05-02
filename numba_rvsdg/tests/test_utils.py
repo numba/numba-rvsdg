@@ -15,7 +15,7 @@ class SCFGComparator(TestCase):
             second_head = second_scfg.find_head()
             block_mapping = {first_head: second_head}
             stack = [first_head]
-        
+
         # Assert number of blocks are equal in both SCFGs
         assert len(first_scfg.graph) == len(second_scfg.graph), "Number of blocks in both graphs are not equal"
         seen = set()
@@ -36,7 +36,7 @@ class SCFGComparator(TestCase):
             assert len(node.backedges) == len(second_node.backedges)
 
             # Add the jump targets as corresponding nodes in block mapping dictionary
-            # Since order must be same we can simply add zip fucntionality as the 
+            # Since order must be same we can simply add zip fucntionality as the
             # correspondence function for nodes
             for jt1, jt2 in zip(node.jump_targets, second_node.jump_targets):
                 block_mapping[jt1] = jt2
@@ -55,7 +55,7 @@ class SCFGComparator(TestCase):
         # Assert number of blocks are equal in both SCFGs
         assert len(first_yaml) == len(second_yaml), "Number of blocks in both graphs are not equal"
         seen = set()
-        
+
         while stack:
             node_name: BasicBlock = stack.pop()
             if node_name in seen:
@@ -73,7 +73,7 @@ class SCFGComparator(TestCase):
                 assert len(node['be']) == len(second_node['be'])
 
             # Add the jump targets as corresponding nodes in block mapping dictionary
-            # Since order must be same we can simply add zip fucntionality as the 
+            # Since order must be same we can simply add zip fucntionality as the
             # correspondence function for nodes
             for jt1, jt2 in zip(node['jt'], second_node['jt']):
                 block_mapping[jt1] = jt2
