@@ -22,7 +22,7 @@ from numba_rvsdg.core.datastructures import block_names
 class NameGenerator:
     kinds: dict[str, int] = field(default_factory=dict)
 
-    def new_block_name(self, kind: str):
+    def new_block_name(self, kind: str) -> str:
         if kind in self.kinds.keys():
             idx = self.kinds[kind]
             name = str(kind) + '_block_' + str(idx)
@@ -33,7 +33,7 @@ class NameGenerator:
             self.kinds[kind] = idx + 1
         return name
 
-    def new_region_name(self, kind: str):
+    def new_region_name(self, kind: str) -> str:
         if kind in self.kinds.keys():
             idx = self.kinds[kind]
             name = str(kind) + '_region_' + str(idx)
@@ -43,8 +43,8 @@ class NameGenerator:
             name = str(kind) + '_region_' + str(idx)
             self.kinds[kind] = idx + 1
         return name
-    
-    def new_var_name(self, kind: str):
+
+    def new_var_name(self, kind: str) -> str:
         if kind in self.kinds.keys():
             idx = self.kinds[kind]
             name = str(kind) + '_var_' + str(idx)
