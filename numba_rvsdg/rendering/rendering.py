@@ -3,15 +3,15 @@ from numba_rvsdg.core.datastructures.basic_block import (
     BasicBlock,
     RegionBlock,
     PythonBytecodeBlock,
-    ControlVariableBlock,
-    BranchBlock,
+    SyntheticAssignment,
+    SyntheticExitingLatch,
+    SyntheticExitBranch,
+    SyntheticBranch,
+    SyntheticBlock,
+    SyntheticHead,
+    SyntheticExit,
 )
 from numba_rvsdg.core.datastructures.scfg import SCFG
-from numba_rvsdg.core.datastructures.labels import (
-    Label,
-    PythonBytecodeLabel,
-    ControlLabel,
-)
 from numba_rvsdg.core.datastructures.byte_flow import ByteFlow
 import dis
 from typing import Dict
@@ -24,11 +24,11 @@ class ByteFlowRenderer(object):
         self.g = Digraph()
 
     def render_region_block(
-        self, digraph: "Digraph", label: Label, regionblock: RegionBlock
+        self, digraph: "Digraph", name: str, regionblock: RegionBlock
     ):
         # render subgraph
         graph = regionblock.get_full_graph()
-        with digraph.subgraph(name=f"cluster_{label}") as subg:
+        with digraph.subgraph(name=f"cluster_{name}") as subg:
             color = "blue"
             if regionblock.kind == "branch":
                 color = "green"
@@ -37,107 +37,106 @@ class ByteFlowRenderer(object):
             if regionblock.kind == "head":
                 color = "red"
             subg.attr(color=color, label=regionblock.kind)
-            for label, block in graph.items():
-                self.render_block(subg, label, block)
+            for name, block in graph.items():
+                self.render_block(subg, name, block)
         # render edges within this region
         self.render_edges(graph)
 
-    def render_basic_block(self, digraph: "Digraph", label: Label, block: BasicBlock):
-        if isinstance(label, PythonBytecodeLabel):
+    def render_basic_block(self, digraph: "Digraph", name: str, block: BasicBlock):
+        if name.startswith('python_bytecode'):
             instlist = block.get_instructions(self.bcmap)
-            body = label.__class__.__name__ + ": " + str(label.index) + "\l"
+            body = name + "\l"
             body += "\l".join(
                 [f"{inst.offset:3}: {inst.opname}" for inst in instlist] + [""]
             )
-        elif isinstance(label, ControlLabel):
-            body = label.__class__.__name__ + ": " + str(label.index)
         else:
-            raise Exception("Unknown label type: " + label)
-        digraph.node(str(label), shape="rect", label=body)
+            body = name + "\l"
+
+        digraph.node(str(name), shape="rect", label=body)
 
     def render_control_variable_block(
-        self, digraph: "Digraph", label: Label, block: BasicBlock
+        self, digraph: "Digraph", name: str, block: BasicBlock
     ):
-        if isinstance(label, ControlLabel):
-            body = label.__class__.__name__ + ": " + str(label.index) + "\l"
+        if isinstance(name, str):
+            body = name + "\l"
             body += "\l".join(
                 (f"{k} = {v}" for k, v in block.variable_assignment.items())
             )
         else:
-            raise Exception("Unknown label type: " + label)
-        digraph.node(str(label), shape="rect", label=body)
+            raise Exception("Unknown name type: " + name)
+        digraph.node(str(name), shape="rect", label=body)
 
     def render_branching_block(
-        self, digraph: "Digraph", label: Label, block: BasicBlock
+        self, digraph: "Digraph", name: str, block: BasicBlock
     ):
-        if isinstance(label, ControlLabel):
-
-            def find_index(v):
-                if hasattr(v, "offset"):
-                    return v.offset
-                if hasattr(v, "index"):
-                    return v.index
-
-            body = label.__class__.__name__ + ": " + str(label.index) + "\l"
+        if isinstance(name, str):
+            body = name + "\l"
             body += f"variable: {block.variable}\l"
             body += "\l".join(
-                (f"{k}=>{find_index(v)}" for k, v in block.branch_value_table.items())
+                (f"{k}=>{v}" for k, v in block.branch_value_table.items())
             )
         else:
-            raise Exception("Unknown label type: " + label)
-        digraph.node(str(label), shape="rect", label=body)
+            raise Exception("Unknown name type: " + name)
+        digraph.node(str(name), shape="rect", label=body)
 
-    def render_block(self, digraph: "Digraph", label: Label, block: BasicBlock):
+    def render_block(self, digraph: "Digraph", name: str, block: BasicBlock):
         if type(block) == BasicBlock:
-            self.render_basic_block(digraph, label, block)
+            self.render_basic_block(digraph, name, block)
         elif type(block) == PythonBytecodeBlock:
-            self.render_basic_block(digraph, label, block)
-        elif type(block) == ControlVariableBlock:
-            self.render_control_variable_block(digraph, label, block)
-        elif type(block) == BranchBlock:
-            self.render_branching_block(digraph, label, block)
+            self.render_basic_block(digraph, name, block)
+        elif type(block) == SyntheticAssignment:
+            self.render_control_variable_block(digraph, name, block)
+        elif isinstance(block, SyntheticBranch):
+            self.render_branching_block(digraph, name, block)
+        elif isinstance(block, SyntheticBlock):
+            self.render_basic_block(digraph, name, block)
         elif type(block) == RegionBlock:
-            self.render_region_block(digraph, label, block)
+            self.render_region_block(digraph, name, block)
         else:
             raise Exception("unreachable")
 
-    def render_edges(self, blocks: Dict[Label, BasicBlock]):
-        for label, block in blocks.items():
+    def render_edges(self, blocks: Dict[str, BasicBlock]):
+        for name, block in blocks.items():
             for dst in block.jump_targets:
                 if dst in blocks:
                     if type(block) in (
                         PythonBytecodeBlock,
                         BasicBlock,
-                        ControlVariableBlock,
-                        BranchBlock,
+                        SyntheticBlock,
+                        SyntheticAssignment,
+                        SyntheticExitingLatch,
+                        SyntheticExitBranch,
+                        SyntheticHead,
+                        SyntheticExit,
+                        SyntheticBranch,
                     ):
-                        self.g.edge(str(label), str(dst))
+                        self.g.edge(str(name), str(dst))
                     elif type(block) == RegionBlock:
                         if block.exiting is not None:
                             self.g.edge(str(block.exiting), str(dst))
                         else:
-                            self.g.edge(str(label), str(dst))
+                            self.g.edge(str(name), str(dst))
                     else:
-                        raise Exception("unreachable")
+                        raise Exception("unreachable " + str(block))
             for dst in block.backedges:
                 # assert dst in blocks
                 self.g.edge(
-                    str(label), str(dst), style="dashed", color="grey", constraint="0"
+                    str(name), str(dst), style="dashed", color="grey", constraint="0"
                 )
 
     def render_byteflow(self, byteflow: ByteFlow):
         self.bcmap_from_bytecode(byteflow.bc)
 
         # render nodes
-        for label, block in byteflow.scfg.graph.items():
-            self.render_block(self.g, label, block)
+        for name, block in byteflow.scfg.graph.items():
+            self.render_block(self.g, name, block)
         self.render_edges(byteflow.scfg.graph)
         return self.g
 
     def render_scfg(self, scfg):
         # render nodes
-        for label, block in scfg.graph.items():
-            self.render_block(self.g, label, block)
+        for name, block in scfg.graph.items():
+            self.render_block(self.g, name, block)
         self.render_edges(scfg.graph)
         return self.g
 
@@ -151,6 +150,7 @@ logging.basicConfig(level=logging.DEBUG)
 def render_func(func):
     render_flow(ByteFlow.from_bytecode(func))
 
+
 def render_flow(flow):
     ByteFlowRenderer().render_byteflow(flow).view("before")
 
@@ -162,6 +162,7 @@ def render_flow(flow):
 
     bflow = lflow._restructure_branch()
     ByteFlowRenderer().render_byteflow(bflow).view("branch restructured")
+
 
 def render_scfg(scfg):
     ByteFlowRenderer().render_scfg(scfg).view("scfg")

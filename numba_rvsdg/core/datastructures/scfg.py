@@ -8,28 +8,61 @@ from collections.abc import Mapping
 
 from numba_rvsdg.core.datastructures.basic_block import (
     BasicBlock,
-    ControlVariableBlock,
-    BranchBlock,
-    RegionBlock,
-)
-from numba_rvsdg.core.datastructures.labels import (
-    Label,
-    ControlLabelGenerator,
-    SynthenticAssignment,
+    SyntheticBlock,
+    SyntheticAssignment,
+    SyntheticHead,
     SyntheticExit,
     SyntheticTail,
     SyntheticReturn,
-    ControlLabel
+    RegionBlock,
 )
+from numba_rvsdg.core.datastructures import block_names
+
+@dataclass(frozen=True)
+class NameGenerator:
+    kinds: dict[str, int] = field(default_factory=dict)
+
+    def new_block_name(self, kind: str) -> str:
+        if kind in self.kinds.keys():
+            idx = self.kinds[kind]
+            name = str(kind) + '_block_' + str(idx)
+            self.kinds[kind] = idx + 1
+        else:
+            idx = 0
+            name = str(kind) + '_block_' + str(idx)
+            self.kinds[kind] = idx + 1
+        return name
+
+    def new_region_name(self, kind: str) -> str:
+        if kind in self.kinds.keys():
+            idx = self.kinds[kind]
+            name = str(kind) + '_region_' + str(idx)
+            self.kinds[kind] = idx + 1
+        else:
+            idx = 0
+            name = str(kind) + '_region_' + str(idx)
+            self.kinds[kind] = idx + 1
+        return name
+
+    def new_var_name(self, kind: str) -> str:
+        if kind in self.kinds.keys():
+            idx = self.kinds[kind]
+            name = str(kind) + '_var_' + str(idx)
+            self.kinds[kind] = idx + 1
+        else:
+            idx = 0
+            name = str(kind) + '_var_' + str(idx)
+            self.kinds[kind] = idx + 1
+        return name
 
 
 @dataclass(frozen=True)
 class SCFG:
-    """Map of Labels to Blocks."""
+    """Map of Names to Blocks."""
 
-    graph: Dict[Label, BasicBlock] = field(default_factory=dict)
-    clg: ControlLabelGenerator = field(
-        default_factory=ControlLabelGenerator, compare=False
+    graph: Dict[str, BasicBlock] = field(default_factory=dict)
+    name_gen: NameGenerator = field(
+        default_factory=NameGenerator, compare=False
     )
 
     def __getitem__(self, index):
@@ -43,35 +76,35 @@ class SCFG:
         # initialise housekeeping datastructures
         to_visit, seen = [self.find_head()], []
         while to_visit:
-            # get the next label on the list
-            label = to_visit.pop(0)
+            # get the next name on the list
+            name = to_visit.pop(0)
             # if we have visited this, we skip it
-            if label in seen:
+            if name in seen:
                 continue
             else:
-                seen.append(label)
-            # get the corresponding block for the label
-            block = self[label]
-            # yield the label, block combo
-            yield (label, block)
+                seen.append(name)
+            # get the corresponding block for the name
+            block = self[name]
+            # yield the name, block combo
+            yield (name, block)
             # if this is a region, recursively yield everything from that region
             if type(block) == RegionBlock:
                 for i in block.subregion:
                     yield i
-            # finally add any jump_targets to the list of labels to visit
+            # finally add any jump_targets to the list of names to visit
             to_visit.extend(block.jump_targets)
 
     @property
     def concealed_region_view(self):
         return ConcealedRegionView(self)
 
-    def exclude_blocks(self, exclude_blocks: Set[Label]) -> Iterator[Label]:
+    def exclude_blocks(self, exclude_blocks: Set[str]) -> Iterator[str]:
         """Iterator over all nodes not in exclude_blocks."""
         for block in self.graph:
             if block not in exclude_blocks:
                 yield block
 
-    def find_head(self) -> Label:
+    def find_head(self) -> str:
         """Find the head block of the CFG.
 
         Assuming the CFG is closed, this will find the block
@@ -79,14 +112,14 @@ class SCFG:
 
         """
         heads = set(self.graph.keys())
-        for label in self.graph.keys():
-            block = self.graph[label]
+        for name in self.graph.keys():
+            block = self.graph[name]
             for jt in block.jump_targets:
                 heads.discard(jt)
         assert len(heads) == 1
         return next(iter(heads))
 
-    def compute_scc(self) -> List[Set[Label]]:
+    def compute_scc(self) -> List[Set[str]]:
         """
         Strongly-connected component for detecting loops.
         """
@@ -106,7 +139,7 @@ class SCFG:
 
         return list(scc(GraphWrap(self.graph)))
 
-    def compute_scc_subgraph(self, subgraph) -> List[Set[Label]]:
+    def compute_scc_subgraph(self, subgraph) -> List[Set[str]]:
         """
         Strongly-connected component for detecting loops inside a subgraph.
         """
@@ -128,8 +161,8 @@ class SCFG:
         return list(scc(GraphWrap(self.graph, subgraph)))
 
     def find_headers_and_entries(
-        self, subgraph: Set[Label]
-    ) -> Tuple[Set[Label], Set[Label]]:
+        self, subgraph: Set[str]
+    ) -> Tuple[Set[str], Set[str]]:
         """Find entries and headers in a given subgraph.
 
         Entries are blocks outside the subgraph that have an edge pointing to
@@ -139,9 +172,9 @@ class SCFG:
         entries.
 
         """
-        outside: Label
-        entries: Set[Label] = set()
-        headers: Set[Label] = set()
+        outside: str
+        entries: Set[str] = set()
+        headers: Set[str] = set()
 
         for outside in self.exclude_blocks(subgraph):
             nodes_jump_in_loop = subgraph.intersection(self.graph[outside].jump_targets)
@@ -152,11 +185,11 @@ class SCFG:
         # the CFG.
         if not headers:
             headers = {self.find_head()}
-        return headers, entries
+        return sorted(headers), sorted(entries)
 
     def find_exiting_and_exits(
-        self, subgraph: Set[Label]
-    ) -> Tuple[Set[Label], Set[Label]]:
+        self, subgraph: Set[str]
+    ) -> Tuple[Set[str], Set[str]]:
         """Find exiting and exit blocks in a given subgraph.
 
         Existing blocks are blocks inside the subgraph that have edges to
@@ -165,9 +198,9 @@ class SCFG:
         blocks point to exits and exits and pointed to by exiting blocks.
 
         """
-        inside: Label
-        exiting: Set[Label] = set()
-        exits: Set[Label] = set()
+        inside: str
+        exiting: Set[str] = set()
+        exits: Set[str] = set()
         for inside in subgraph:
             # any node inside that points outside the loop
             for jt in self.graph[inside].jump_targets:
@@ -177,9 +210,9 @@ class SCFG:
             # any returns
             if self.graph[inside].is_exiting:
                 exiting.add(inside)
-        return exiting, exits
+        return sorted(exiting), sorted(exits)
 
-    def is_reachable_dfs(self, begin: Label, end: Label):  # -> TypeGuard:
+    def is_reachable_dfs(self, begin: str, end: str):  # -> TypeGuard:
         """Is end reachable from begin."""
         seen = set()
         to_vist = list(self.graph[begin].jump_targets)
@@ -199,63 +232,84 @@ class SCFG:
                     to_vist.extend(self.graph[block].jump_targets)
 
     def add_block(self, basicblock: BasicBlock):
-        self.graph[basicblock.label] = basicblock
+        self.graph[basicblock.name] = basicblock
 
-    def remove_blocks(self, labels: Set[Label]):
-        for label in labels:
-            del self.graph[label]
+    def remove_blocks(self, names: Set[str]):
+        for name in names:
+            del self.graph[name]
 
-    def insert_block(
-        self, new_label: Label, predecessors: Set[Label], successors: Set[Label]
+    def _insert_block(
+        self, new_name: str, predecessors: Set[str], successors: Set[str],
+        block_type: SyntheticBlock
     ):
         # TODO: needs a diagram and documentaion
         # initialize new block
-        new_block = BasicBlock(
-            label=new_label, _jump_targets=successors, backedges=set()
+        new_block = block_type(
+            name=new_name, _jump_targets=successors, backedges=set()
         )
         # add block to self
         self.add_block(new_block)
         # Replace any arcs from any of predecessors to any of successors with
         # an arc through the inserted block instead.
-        for label in predecessors:
-            block = self.graph.pop(label)
+        for name in predecessors:
+            block = self.graph.pop(name)
             jt = list(block.jump_targets)
             if successors:
                 for s in successors:
                     if s in jt:
-                        if new_label not in jt:
-                            jt[jt.index(s)] = new_label
+                        if new_name not in jt:
+                            jt[jt.index(s)] = new_name
                         else:
                             jt.pop(jt.index(s))
             else:
-                jt.append(new_label)
+                jt.append(new_name)
             self.add_block(block.replace_jump_targets(jump_targets=tuple(jt)))
 
+    def insert_SyntheticExit(
+        self, new_name: str, predecessors: Set[str], successors: Set[str],
+    ):
+        self._insert_block(new_name, predecessors, successors, SyntheticExit)
+
+    def insert_SyntheticTail(
+        self, new_name: str, predecessors: Set[str], successors: Set[str],
+    ):
+        self._insert_block(new_name, predecessors, successors, SyntheticTail)
+
+    def insert_SyntheticReturn(
+        self, new_name: str, predecessors: Set[str], successors: Set[str],
+    ):
+        self._insert_block(new_name, predecessors, successors, SyntheticReturn)
+
+    def insert_SyntheticFill(
+        self, new_name: str, predecessors: Set[str], successors: Set[str],
+    ):
+        self._insert_block(new_name, predecessors, successors, SyntheticReturn)
+
     def insert_block_and_control_blocks(
-        self, new_label: Label, predecessors: Set[Label], successors: Set[Label]
+        self, new_name: str, predecessors: Set[str], successors: Set[str]
     ):
         # TODO: needs a diagram and documentaion
         # name of the variable for this branching assignment
-        branch_variable = self.clg.new_variable()
+        branch_variable = self.name_gen.new_var_name("control")
         # initial value of the assignment
         branch_variable_value = 0
-        # store for the mapping from variable value to label
+        # store for the mapping from variable value to name
         branch_value_table = {}
         # Replace any arcs from any of predecessors to any of successors with
         # an arc through the to be inserted block instead.
-        for label in predecessors:
-            block = self.graph[label]
+        for name in predecessors:
+            block = self.graph[name]
             jt = list(block.jump_targets)
             # Need to create synthetic assignments for each arc from a
             # predecessors to a successor and insert it between the predecessor
             # and the newly created block
             for s in set(jt).intersection(successors):
-                synth_assign = SynthenticAssignment(str(self.clg.new_index()))
+                synth_assign = self.name_gen.new_block_name(block_names.SYNTH_ASSIGN)
                 variable_assignment = {}
                 variable_assignment[branch_variable] = branch_variable_value
-                synth_assign_block = ControlVariableBlock(
-                    label=synth_assign,
-                    _jump_targets=(new_label,),
+                synth_assign_block = SyntheticAssignment(
+                    name=synth_assign,
+                    _jump_targets=(new_name,),
                     backedges=(),
                     variable_assignment=variable_assignment,
                 )
@@ -269,11 +323,11 @@ class SCFG:
                 jt[jt.index(s)] = synth_assign
             # finally, replace the jump_targets
             self.add_block(
-                self.graph.pop(label).replace_jump_targets(jump_targets=tuple(jt))
+                self.graph.pop(name).replace_jump_targets(jump_targets=tuple(jt))
             )
         # initialize new block, which will hold the branching table
-        new_block = BranchBlock(
-            label=new_label,
+        new_block = SyntheticHead(
+            name=new_name,
             _jump_targets=tuple(successors),
             backedges=set(),
             variable=branch_variable,
@@ -292,37 +346,37 @@ class SCFG:
         return_nodes = [node for node in self.graph if self.graph[node].is_exiting]
         # close if more than one is found
         if len(return_nodes) > 1:
-            return_solo_label = SyntheticReturn(str(self.clg.new_index()))
-            self.insert_block(return_solo_label, return_nodes, tuple())
+            return_solo_name = self.name_gen.new_block_name(block_names.SYNTH_RETURN)
+            self.insert_SyntheticReturn(return_solo_name, return_nodes, tuple())
 
-    def join_tails_and_exits(self, tails: Set[Label], exits: Set[Label]):
+    def join_tails_and_exits(self, tails: Set[str], exits: Set[str]):
         if len(tails) == 1 and len(exits) == 1:
             # no-op
-            solo_tail_label = next(iter(tails))
-            solo_exit_label = next(iter(exits))
-            return solo_tail_label, solo_exit_label
+            solo_tail_name = next(iter(tails))
+            solo_exit_name = next(iter(exits))
+            return solo_tail_name, solo_exit_name
 
         if len(tails) == 1 and len(exits) == 2:
             # join only exits
-            solo_tail_label = next(iter(tails))
-            solo_exit_label = SyntheticExit(str(self.clg.new_index()))
-            self.insert_block(solo_exit_label, tails, exits)
-            return solo_tail_label, solo_exit_label
+            solo_tail_name = next(iter(tails))
+            solo_exit_name = self.name_gen.new_block_name(block_names.SYNTH_EXIT)
+            self.insert_SyntheticExit(solo_exit_name, tails, exits)
+            return solo_tail_name, solo_exit_name
 
         if len(tails) >= 2 and len(exits) == 1:
             # join only tails
-            solo_tail_label = SyntheticTail(str(self.clg.new_index()))
-            solo_exit_label = next(iter(exits))
-            self.insert_block(solo_tail_label, tails, exits)
-            return solo_tail_label, solo_exit_label
+            solo_tail_name = self.name_gen.new_block_name(block_names.SYNTH_TAIL)
+            solo_exit_name = next(iter(exits))
+            self.insert_SyntheticTail(solo_tail_name, tails, exits)
+            return solo_tail_name, solo_exit_name
 
         if len(tails) >= 2 and len(exits) >= 2:
             # join both tails and exits
-            solo_tail_label = SyntheticTail(str(self.clg.new_index()))
-            solo_exit_label = SyntheticExit(str(self.clg.new_index()))
-            self.insert_block(solo_tail_label, tails, exits)
-            self.insert_block(solo_exit_label, set((solo_tail_label,)), exits)
-            return solo_tail_label, solo_exit_label
+            solo_tail_name = self.name_gen.new_block_name(block_names.SYNTH_TAIL)
+            solo_exit_name = self.name_gen.new_block_name(block_names.SYNTH_EXIT)
+            self.insert_SyntheticTail(solo_tail_name, tails, exits)
+            self.insert_SyntheticExit(solo_exit_name, set((solo_tail_name,)), exits)
+            return solo_tail_name, solo_exit_name
 
     @staticmethod
     def bcmap_from_bytecode(bc: dis.Bytecode):
@@ -331,23 +385,28 @@ class SCFG:
     @staticmethod
     def from_yaml(yaml_string):
         data = yaml.safe_load(yaml_string)
-        return SCFG.from_dict(data)
+        scfg, block_dict = SCFG.from_dict(data)
+        return scfg, block_dict
 
     @staticmethod
-    def from_dict(graph_dict):        
+    def from_dict(graph_dict: dict):
         scfg_graph = {}
-        clg = ControlLabelGenerator()
+        name_gen = NameGenerator()
+        block_dict = {}
+        for index in graph_dict.keys():
+            block_dict[index] = name_gen.new_block_name(block_names.BASIC)
         for index, attributes in graph_dict.items():
             jump_targets = attributes["jt"]
             backedges = attributes.get("be", ())
-            label = ControlLabel(str(clg.new_index()))
+            name = block_dict[index]
             block = BasicBlock(
-                label=label,
-                backedges=wrap_id(backedges),
-                _jump_targets=wrap_id(jump_targets),
+                name=name,
+                backedges=tuple(block_dict[idx] for idx in backedges),
+                _jump_targets=tuple(block_dict[idx] for idx in jump_targets),
             )
-            scfg_graph[label] = block
-        return SCFG(scfg_graph, clg=clg)
+            scfg_graph[name] = block
+        scfg = SCFG(scfg_graph, name_gen=name_gen)
+        return scfg, block_dict
 
     def to_yaml(self):
         # Convert to yaml
@@ -355,11 +414,11 @@ class SCFG:
         yaml_string = """"""
 
         for key, value in scfg_graph.items():
-            jump_targets = [f"{i.index}" for i in value._jump_targets]
+            jump_targets = [i for i in value._jump_targets]
             jump_targets = str(jump_targets).replace("\'", "\"")
-            back_edges = [f"{i.index}" for i in value.backedges]
-            jump_target_str= f"""
-                "{str(key.index)}":
+            back_edges = [i for i in value.backedges]
+            jump_target_str = f"""
+                "{key}":
                     jt: {jump_targets}"""
 
             if back_edges:
@@ -375,14 +434,11 @@ class SCFG:
         graph_dict = {}
         for key, value in scfg_graph.items():
             curr_dict = {}
-            curr_dict["jt"] = [f"{i.index}" for i in value._jump_targets]
+            curr_dict["jt"] = [i for i in value._jump_targets]
             if value.backedges:
-                curr_dict["be"] = [f"{i.index}" for i in value.backedges]
-            graph_dict[str(key.index)] = curr_dict
+                curr_dict["be"] = [i for i in value.backedges]
+            graph_dict[key] = curr_dict
         return graph_dict
-
-def wrap_id(indices: Set[Label]):
-    return tuple([ControlLabel(i) for i in indices])
 
 
 class AbstractGraphView(Mapping):
@@ -408,7 +464,7 @@ class ConcealedRegionView(AbstractGraphView):
     def __iter__(self):
         return self.region_view_iterator()
 
-    def region_view_iterator(self, head:Label=None) -> Iterator[Label]:
+    def region_view_iterator(self, head: str = None) -> Iterator[str]:
         """ Region View Iterator.
 
         This iterator is region aware, which means that regions are "concealed"
@@ -416,13 +472,13 @@ class ConcealedRegionView(AbstractGraphView):
 
         Parameters
         ----------
-        head: Label, optional
+        head: str, optional
             The head block (or region) from which to start iterating. If None
             is given, will discover the head automatically.
 
         Returns
         -------
-        blocks: iter of Label
+        blocks: iter of str
             An iterator over blocks (or regions)
 
         """
@@ -431,16 +487,16 @@ class ConcealedRegionView(AbstractGraphView):
         # because we need a first in, first out (FIFO) structure.
         to_visit, seen = deque([head if head else self.scfg.find_head()]), set()
         while to_visit:
-            # get the next label on the list
-            label = to_visit.popleft()
+            # get the next name on the list
+            name = to_visit.popleft()
             # if we have visited this, we skip it
-            if label in seen:
+            if name in seen:
                 continue
             else:
-                seen.add(label)
-            # get the corresponding block for the label(could also be a region)
+                seen.add(name)
+            # get the corresponding block for the name (could also be a region)
             try:
-                block = self[label]
+                block = self[name]
             except KeyError:
                 # If this is outside the current graph, just disregard it.
                 # (might be the case if inside a region and the block being
@@ -454,11 +510,11 @@ class ConcealedRegionView(AbstractGraphView):
                 # consumer of this iterator.
                 to_visit.extend(block.subregion[block.exiting].jump_targets)
             else:
-                # otherwise add any jump_targets to the list of labels to visit
+                # otherwise add any jump_targets to the list of names to visit
                 to_visit.extend(block.jump_targets)
 
-            # finally, yield the label
-            yield label
+            # finally, yield the name
+            yield name
 
     def __len__(self):
         return len(self.scfg)

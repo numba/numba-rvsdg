@@ -37,5 +37,6 @@ def test_fig3():
     f = make_flow()
     f.restructure()
 
+
 if __name__ == "__main__":
     render_flow(make_flow())

@@ -4,12 +4,8 @@ from typing import Set, Tuple, Dict, Sequence
 from dataclasses import dataclass, field
 
 from numba_rvsdg.core.datastructures.basic_block import PythonBytecodeBlock
+from numba_rvsdg.core.datastructures import block_names
 from numba_rvsdg.core.datastructures.scfg import SCFG
-from numba_rvsdg.core.datastructures.labels import (
-    Label,
-    ControlLabelGenerator,
-    PythonBytecodeLabel,
-)
 from numba_rvsdg.core.utils import (
     is_conditional_jump,
     _next_inst_offset,
@@ -34,10 +30,6 @@ class FlowInfo:
     last_offset: int = field(default=0)
     """Offset of the last bytecode instruction.
     """
-
-    clg: ControlLabelGenerator = field(
-        default_factory=ControlLabelGenerator, compare=False
-    )
 
     def _add_jump_inst(self, offset: int, targets: Sequence[int]):
         """Add jump instruction to FlowInfo."""
@@ -75,25 +67,26 @@ class FlowInfo:
         """
         Build a graph of basic-blocks
         """
+        scfg = SCFG()
         offsets = sorted(self.block_offsets)
-        # enumerate labels
-        labels = dict(
-            (offset, PythonBytecodeLabel(str(self.clg.new_index()))) for offset in offsets
+        # enumerate names
+        names = dict(
+            (offset, scfg.name_gen.new_block_name(block_names.PYTHON_BYTECODE)) for offset in offsets
         )
         if end_offset is None:
             end_offset = _next_inst_offset(self.last_offset)
-        scfg = SCFG(graph={}, clg=self.clg)
+
         for begin, end in zip(offsets, [*offsets[1:], end_offset]):
-            label = labels[begin]
-            targets: Tuple[Label, ...]
+            name = names[begin]
+            targets: Tuple[str, ...]
             term_offset = _prev_inst_offset(end)
             if term_offset not in self.jump_insts:
                 # implicit jump
-                targets = (labels[end],)
+                targets = (names[end],)
             else:
-                targets = tuple(labels[o] for o in self.jump_insts[term_offset])
+                targets = tuple(names[o] for o in self.jump_insts[term_offset])
             block = PythonBytecodeBlock(
-                label=label,
+                name=name,
                 begin=begin,
                 end=end,
                 _jump_targets=targets,
