@@ -138,7 +138,7 @@ def test_fig3():
     flow = make_flow()
     restructured = flow.restructure()
     dot_output = ByteFlowRenderer().render_byteflow(restructured)
-    assert expected == str(dot_output)
+    assert expected == str(dot_output).strip()
 
 
 if __name__ == "__main__":

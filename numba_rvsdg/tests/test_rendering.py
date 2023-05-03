@@ -93,4 +93,4 @@ def test_simple():
 	synth_asign_block_0 -> synth_head_block_0
 	synth_asign_block_1 -> synth_head_block_0
 }"""
-    assert expected == str(dot)
+    assert expected == str(dot).strip()
