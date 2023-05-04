@@ -112,8 +112,7 @@ class TestSCFGIterator(SCFGComparator):
         block_0 = name_gen.new_block_name(block_names.BASIC)
         block_1 = name_gen.new_block_name(block_names.BASIC)
         expected = [
-            (block_0, BasicBlock(name=block_0,
-                                           _jump_targets=(block_1,))),
+            (block_0, BasicBlock(name=block_0)),
             (block_1, BasicBlock(name=block_1)),
         ]
         scfg, _ = SCFG.from_yaml("""

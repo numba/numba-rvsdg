@@ -11,37 +11,6 @@ class BasicBlock:
     name: str
     """The corresponding name for this block.  """
 
-    _jump_targets: Tuple[str] = tuple()
-    """Jump targets (branch destinations) for this block"""
-
-    backedges: Tuple[str] = tuple()
-    """Backedges for this block."""
-
-    @property
-    def is_exiting(self) -> bool:
-        return not self.jump_targets
-
-    @property
-    def fallthrough(self) -> bool:
-        return len(self._jump_targets) == 1
-
-    @property
-    def jump_targets(self) -> Tuple[str]:
-        acc = []
-        for j in self._jump_targets:
-            if j not in self.backedges:
-                acc.append(j)
-        return tuple(acc)
-
-    def replace_backedge(self, target: str) -> "BasicBlock":
-        if target in self.jump_targets:
-            assert not self.backedges
-            return replace(self, backedges=(target,))
-        return self
-
-    def replace_jump_targets(self, jump_targets: Tuple) -> "BasicBlock":
-        return replace(self, _jump_targets=jump_targets)
-
 
 @dataclass(frozen=True)
 class PythonBytecodeBlock(BasicBlock):
@@ -102,31 +71,6 @@ class SyntheticBranch(SyntheticBlock):
     variable: str = None
     branch_value_table: dict = None
 
-    def replace_jump_targets(self, jump_targets: Tuple) -> "BasicBlock":
-        fallthrough = len(jump_targets) == 1
-        old_branch_value_table = self.branch_value_table
-        new_branch_value_table = {}
-        for target in self.jump_targets:
-            if target not in jump_targets:
-                # ASSUMPTION: only one jump_target is being updated
-                diff = set(jump_targets).difference(self.jump_targets)
-                assert len(diff) == 1
-                new_target = next(iter(diff))
-                for k, v in old_branch_value_table.items():
-                    if v == target:
-                        new_branch_value_table[k] = new_target
-            else:
-                # copy all old values
-                for k, v in old_branch_value_table.items():
-                    if v == target:
-                        new_branch_value_table[k] = v
-
-        return replace(
-            self,
-            _jump_targets=jump_targets,
-            branch_value_table=new_branch_value_table,
-        )
-
 
 @dataclass(frozen=True)
 class SyntheticHead(SyntheticBranch):
@@ -156,5 +100,5 @@ class RegionBlock(BasicBlock):
     """
 
     def get_full_graph(self):
-        graph = ChainMap(self.subregion.graph, self.headers)
+        graph = ChainMap(self.subregion.blocks, self.headers)
         return graph

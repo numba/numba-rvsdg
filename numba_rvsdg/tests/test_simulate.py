@@ -190,5 +190,7 @@ class SimulatorTest(unittest.TestCase):
         self._run(foo, flow, {"s": 23, "e": 28})
 
 
-if __name__ == "__main__":
-    unittest.main()
+# if __name__ == "__main__":
+#     unittest.main()
+x = SimulatorTest()
+x.test_andor()

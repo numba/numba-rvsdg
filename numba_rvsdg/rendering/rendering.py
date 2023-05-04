@@ -40,15 +40,15 @@ class ByteFlowRenderer(object):
             for name, block in graph.items():
                 self.render_block(subg, name, block)
         # render edges within this region
-        self.render_edges(graph)
+        self.render_edges(regionblock.subregion)
 
     def render_basic_block(self, digraph: "Digraph", name: str, block: BasicBlock):
         if name.startswith('python_bytecode'):
-            instlist = block.get_instructions(self.bcmap)
+            # instlist = block.get_instructions(self.bcmap)
             body = name + "\l"
-            body += "\l".join(
-                [f"{inst.offset:3}: {inst.opname}" for inst in instlist] + [""]
-            )
+            # body += "\l".join(
+            #     [f"{inst.offset:3}: {inst.opname}" for inst in instlist] + [""]
+            # )
         else:
             body = name + "\l"
 
@@ -95,10 +95,10 @@ class ByteFlowRenderer(object):
         else:
             raise Exception("unreachable")
 
-    def render_edges(self, blocks: Dict[str, BasicBlock]):
-        for name, block in blocks.items():
-            for dst in block.jump_targets:
-                if dst in blocks:
+    def render_edges(self, scfg: SCFG):
+        for name, block in scfg.blocks.items():
+            for dst in scfg.jump_targets[name]:
+                if dst in scfg.blocks:
                     if type(block) in (
                         PythonBytecodeBlock,
                         BasicBlock,
@@ -118,7 +118,7 @@ class ByteFlowRenderer(object):
                             self.g.edge(str(name), str(dst))
                     else:
                         raise Exception("unreachable " + str(block))
-            for dst in block.backedges:
+            for dst in scfg.back_edges[name]:
                 # assert dst in blocks
                 self.g.edge(
                     str(name), str(dst), style="dashed", color="grey", constraint="0"
@@ -128,16 +128,16 @@ class ByteFlowRenderer(object):
         self.bcmap_from_bytecode(byteflow.bc)
 
         # render nodes
-        for name, block in byteflow.scfg.graph.items():
+        for name, block in byteflow.scfg.blocks.items():
             self.render_block(self.g, name, block)
-        self.render_edges(byteflow.scfg.graph)
+        self.render_edges(byteflow.scfg)
         return self.g
 
-    def render_scfg(self, scfg):
+    def render_scfg(self, scfg: SCFG):
         # render nodes
-        for name, block in scfg.graph.items():
+        for name, block in scfg.blocks.items():
             self.render_block(self.g, name, block)
-        self.render_edges(scfg.graph)
+        self.render_edges(scfg)
         return self.g
 
     def bcmap_from_bytecode(self, bc: dis.Bytecode):

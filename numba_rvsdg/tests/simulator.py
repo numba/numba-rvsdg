@@ -140,11 +140,11 @@ class Simulator:
             self.run_PythonBytecodeBlock(name)
         elif isinstance(block, SyntheticBlock):
             self.run_synth_block(name)
-        if block.fallthrough:
-            [name] = block.jump_targets
+        if self.scfg.is_fallthrough(name):
+            [name] = self.scfg.jump_targets[name]
             return {"jumpto": name}
-        elif len(block._jump_targets) == 2:
-            [br_false, br_true] = block._jump_targets
+        elif len(self.scfg._jump_targets[name]) == 2:
+            [br_false, br_true] = self.scfg._jump_targets[name]
             return {"jumpto": br_true if self.branch else br_false}
         else:
             return {"return": self.return_value}
@@ -188,7 +188,7 @@ class Simulator:
             elif "jumpto" in action:
                 name = action["jumpto"]
                 # Otherwise check if we stay in the region and break otherwise
-                if name in region.subregion.graph:
+                if name in region.subregion.blocks.keys():
                     continue  # stay in the region
                 else:
                     break  # break and return action
@@ -223,7 +223,7 @@ class Simulator:
             The str for the block.
 
         """
-        print("----", name)
+        print("----RUNNING SYNTHETIC BLOCK------", name)
         print(f"control variable map: {self.ctrl_varmap}")
         block = self.get_block(name)
         handler = getattr(self, 'synth_' + block.__class__.__name__)
@@ -250,9 +250,9 @@ class Simulator:
     def synth_SyntheticAssignment(self, control_name, block):
         self.ctrl_varmap.update(block.variable_assignment)
 
-    def _synth_branch(self, control_name, block):
+    def _synth_branch(self, control_name, block: BasicBlock):
         jump_target = block.branch_value_table[self.ctrl_varmap[block.variable]]
-        self.branch = bool(block._jump_targets.index(jump_target))
+        self.branch = bool(self.scfg._jump_targets[block.name].index(jump_target))
 
     def synth_SyntheticExitingLatch(self, control_name, block):
         self._synth_branch(control_name, block)
