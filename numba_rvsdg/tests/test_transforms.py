@@ -525,7 +525,7 @@ class TestLoopRestructure(SCFGComparator):
         "0":
             jt: ["1"]
         "1":
-            jt: ["2", "5"]
+            jt: ["5", "2"]
         "2":
             jt: ["6", "7"]
         "3":
