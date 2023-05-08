@@ -140,11 +140,11 @@ class Simulator:
             self.run_PythonBytecodeBlock(name)
         elif isinstance(block, SyntheticBlock):
             self.run_synth_block(name)
-        if self.scfg.is_fallthrough(name):
-            [name] = self.scfg.jump_targets[name]
+        if self.region_stack[-1].subregion.is_fallthrough(name):
+            [name] = self.region_stack[-1].subregion.jump_targets[name]
             return {"jumpto": name}
-        elif len(self.scfg._jump_targets[name]) == 2:
-            [br_false, br_true] = self.scfg._jump_targets[name]
+        elif len(self.region_stack[-1].subregion._jump_targets[name]) == 2:
+            [br_false, br_true] = self.region_stack[-1].subregion._jump_targets[name]
             return {"jumpto": br_true if self.branch else br_false}
         else:
             return {"return": self.return_value}
@@ -252,7 +252,7 @@ class Simulator:
 
     def _synth_branch(self, control_name, block: BasicBlock):
         jump_target = block.branch_value_table[self.ctrl_varmap[block.variable]]
-        self.branch = bool(self.scfg._jump_targets[block.name].index(jump_target))
+        self.branch = bool(self.region_stack[-1].subregion._jump_targets[block.name].index(jump_target))
 
     def synth_SyntheticExitingLatch(self, control_name, block):
         self._synth_branch(control_name, block)

@@ -305,10 +305,12 @@ def extract_region(scfg: SCFG, region_blocks, region_kind):
         subregion=head_subgraph,
         exiting=region_exiting,
     )
+
+    region_exit_paths = scfg.jump_targets[region_exiting]
     scfg.remove_blocks(region_blocks)
-    scfg.blocks[region_header] = subregion
-    scfg._jump_targets[region_header] = scfg.jump_targets[region_exiting]
     scfg.back_edges[region_header] = []
+    scfg.blocks[region_header] = subregion
+    scfg._jump_targets[region_header] = region_exit_paths
 
 
 def restructure_branch(scfg: SCFG):

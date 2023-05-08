@@ -193,4 +193,4 @@ class SimulatorTest(unittest.TestCase):
 # if __name__ == "__main__":
 #     unittest.main()
 x = SimulatorTest()
-x.test_andor()
+x.test_for_loop_with_exit()

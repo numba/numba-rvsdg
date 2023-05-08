@@ -255,6 +255,8 @@ class SCFG:
     def remove_blocks(self, names: Set[str]):
         for name in names:
             del self.blocks[name]
+            del self._jump_targets[name]
+            del self.back_edges[name]
 
     def is_exiting(self, block_name: str) -> bool:
         return not self.jump_targets[block_name]
@@ -276,6 +278,10 @@ class SCFG:
         # Replace any arcs from any of predecessors to any of successors with
         # an arc through the inserted block instead.
         for name in predecessors:
+            if hasattr(self.blocks[name], 'branch_value_table'):
+                for key, value in self.blocks[name].branch_value_table.items():
+                    if value in successors:
+                        self.blocks[name].branch_value_table[key] = new_name
             jt = list(self.jump_targets[name])
             if successors:
                 for s in successors:
