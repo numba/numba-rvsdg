@@ -10,7 +10,7 @@ Intermediary Representation (IR) suitable for regularizing Python bytecode
 within Numba.
 
 The code in this repository is an implementation of the CFG restructuring
-algorithms in Bahmann2015, specifically those from section 4.1 and 4.2: namely
+algorithms in Bahmann 2015, specifically those from section 4.1 and 4.2: namely
 "loop restructuring" and "branch restructuring". These are interesting for
 Numba because they serve to clearly identify regions withing the Python
 bytecode.
@@ -21,7 +21,7 @@ bytecode.
 * graphviz
 * pyyaml
 
-As of 2023-03-06 you can create a conda env using the following:
+You can create a conda env using the following:
 
 ```
 conda env create -n numba-rvsdg python=3.11 python-graphviz
