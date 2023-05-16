@@ -1,20 +1,21 @@
 from collections import defaultdict
 from typing import Set, Dict, List
 
-from numba_rvsdg.core.datastructures.scfg import SCFG
+from numba_rvsdg.core.datastructures.scfg import SCFG, RegionView
 from numba_rvsdg.core.datastructures.basic_block import (
     BasicBlock,
     SyntheticAssignment,
     SyntheticExitingLatch,
     SyntheticExitBranch,
     RegionBlock,
+    Region
 )
 from numba_rvsdg.core.datastructures import block_names
 
 from numba_rvsdg.core.utils import _logger
 
 
-def loop_restructure_helper(scfg: SCFG, loop: Set[str]):
+def loop_restructure_helper(region_view: RegionView, loop: Set[str], parent_region: str):
     """Loop Restructuring
 
     Applies the algorithm LOOP RESTRUCTURING from section 4.1 of Bahmann2015.
@@ -29,9 +30,8 @@ def loop_restructure_helper(scfg: SCFG, loop: Set[str]):
         The loop (strongly connected components) that is to be restructured
 
     """
-
-    headers, entries = scfg.find_headers_and_entries(loop)
-    exiting_blocks, exit_blocks = scfg.find_exiting_and_exits(loop)
+    headers, entries = region_view.find_headers_and_entries(loop)
+    exiting_blocks, exit_blocks = region_view.find_exiting_and_exits(loop)
     #assert len(entries) == 1
     headers_were_unified = False
 
@@ -39,8 +39,8 @@ def loop_restructure_helper(scfg: SCFG, loop: Set[str]):
     # such that only a single loop header remains.
     if len(headers) > 1:
         headers_were_unified = True
-        solo_head_name = scfg.name_gen.new_block_name(block_names.SYNTH_HEAD)
-        scfg.insert_block_and_control_blocks(solo_head_name, entries, headers)
+        solo_head_name = region_view.scfg.name_gen.new_block_name(block_names.SYNTH_HEAD)
+        region_view.scfg.insert_block_and_control_blocks(solo_head_name, entries, headers)
         loop.add(solo_head_name)
         loop_head: str = solo_head_name
     else:
@@ -198,13 +198,15 @@ def loop_restructure_helper(scfg: SCFG, loop: Set[str]):
         scfg.add_block(synth_exit_block)
 
 
-def restructure_loop(scfg: SCFG):
+def restructure_loop(scfg: SCFG, region=None):
     """Inplace restructuring of the given graph to extract loops using
     strongly-connected components
     """
+    # Get a region view of currently specified region
+    region_view = scfg.region_view(region)
     # obtain a List of Sets of names, where all names in each set are strongly
     # connected, i.e. all reachable from one another by traversing the subset
-    scc: List[Set[str]] = scfg.compute_scc()
+    scc: List[Set[str]] = region_view.compute_scc()
     # loops are defined as strongly connected subsets who have more than a
     # single name and single name loops that point back to to themselves.
     loops: List[Set[str]] = [
@@ -218,8 +220,12 @@ def restructure_loop(scfg: SCFG):
     )
     # rotate and extract loop
     for loop in loops:
-        loop_restructure_helper(scfg, loop)
-        extract_region(scfg, loop, "loop")
+        loop_restructure_helper(region_view, loop)
+        region_view = scfg.region_view(region)
+        header, entries = region_view.find_headers_and_entries(loop)
+        exiting, exit = region_view.find_exiting_and_exits(loop)
+        region_name = scfg.make_region(header, exiting, "loop", region)
+        restructure_loop(scfg, region_name)
 
 
 def find_head_blocks(scfg: SCFG, begin: str) -> Set[str]:
@@ -288,37 +294,6 @@ def find_tail_blocks(
     # exclude parents
     tail_subregion.discard(begin)
     return tail_subregion
-
-
-def extract_region(scfg, region_blocks, region_kind):
-    headers, entries = scfg.find_headers_and_entries(region_blocks)
-    exiting_blocks, exit_blocks = scfg.find_exiting_and_exits(region_blocks)
-    assert len(headers) == 1
-    assert len(exiting_blocks) == 1
-    region_header = next(iter(headers))
-    region_exiting = next(iter(exiting_blocks))
-
-    head_subgraph = SCFG(
-        {name: scfg.graph[name] for name in region_blocks}, name_gen=scfg.name_gen
-    )
-
-    if isinstance(scfg[region_exiting], RegionBlock):
-        region_exiting = scfg[region_exiting].exiting
-    else:
-        region_exiting = region_exiting
-
-    subregion = RegionBlock(
-        name=region_header,
-        _jump_targets=scfg[region_exiting].jump_targets,
-        backedges=(),
-        kind=region_kind,
-        headers=headers,
-        subregion=head_subgraph,
-        exiting=region_exiting,
-    )
-    scfg.remove_blocks(region_blocks)
-    scfg.graph[region_header] = subregion
-
 
 def restructure_branch(scfg: SCFG):
     print("restructure_branch", scfg.graph)
@@ -392,7 +367,7 @@ def restructure_branch(scfg: SCFG):
 def _iter_branch_regions(
     scfg: SCFG, immdoms: Dict[str, str], postimmdoms: Dict[str, str]
 ):
-    for begin, node in scfg.concealed_region_view.items():
+    for begin, node in scfg.region_view.items():
         if len(node.jump_targets) > 1:
             # found branch
             if begin in postimmdoms:
@@ -510,3 +485,46 @@ def _find_dominators_internal(entries, nodes, preds_table, succs_table):
             doms[n] = new_doms
             todo.extend(succs_table[n])
     return doms
+
+
+def join_returns(scfg):
+    """Close the CFG.
+
+    A closed CFG is a CFG with a unique entry and exit node that have no
+    predescessors and no successors respectively.
+    """
+    # for all nodes that contain a return
+    return_nodes = [node for node in scfg.graph if scfg.graph[node].is_exiting]
+    # close if more than one is found
+    if len(return_nodes) > 1:
+        return_solo_name = scfg.name_gen.new_block_name(block_names.SYNTH_RETURN)
+        scfg.insert_SyntheticReturn(return_solo_name, return_nodes, tuple())
+
+def join_tails_and_exits(scfg, tails: Set[str], exits: Set[str]):
+    if len(tails) == 1 and len(exits) == 1:
+        # no-op
+        solo_tail_name = next(iter(tails))
+        solo_exit_name = next(iter(exits))
+        return solo_tail_name, solo_exit_name
+
+    if len(tails) == 1 and len(exits) == 2:
+        # join only exits
+        solo_tail_name = next(iter(tails))
+        solo_exit_name = scfg.name_gen.new_block_name(block_names.SYNTH_EXIT)
+        scfg.insert_SyntheticExit(solo_exit_name, tails, exits)
+        return solo_tail_name, solo_exit_name
+
+    if len(tails) >= 2 and len(exits) == 1:
+        # join only tails
+        solo_tail_name = scfg.name_gen.new_block_name(block_names.SYNTH_TAIL)
+        solo_exit_name = next(iter(exits))
+        scfg.insert_SyntheticTail(solo_tail_name, tails, exits)
+        return solo_tail_name, solo_exit_name
+
+    if len(tails) >= 2 and len(exits) >= 2:
+        # join both tails and exits
+        solo_tail_name = scfg.name_gen.new_block_name(block_names.SYNTH_TAIL)
+        solo_exit_name = scfg.name_gen.new_block_name(block_names.SYNTH_EXIT)
+        scfg.insert_SyntheticTail(solo_tail_name, tails, exits)
+        scfg.insert_SyntheticExit(solo_exit_name, set((solo_tail_name,)), exits)
+        return solo_tail_name, solo_exit_name

@@ -4,7 +4,6 @@ from textwrap import dedent
 from typing import Set, Tuple, Dict, List, Iterator
 from dataclasses import dataclass, field
 from collections import deque
-from collections.abc import Mapping
 
 from numba_rvsdg.core.datastructures.basic_block import (
     BasicBlock,
@@ -15,6 +14,7 @@ from numba_rvsdg.core.datastructures.basic_block import (
     SyntheticTail,
     SyntheticReturn,
     RegionBlock,
+    Region
 )
 from numba_rvsdg.core.datastructures import block_names
 
@@ -65,6 +65,20 @@ class SCFG:
         default_factory=NameGenerator, compare=False
     )
 
+    # This is the top-level region
+    meta_region: str = field(init=False)
+
+    # This is the region storage. It maps region names to the Region objects,
+    # which themselves contain the header and exiting blocks of this region
+    regions: Dict[str, Region] = field(default_factory=dict, init=False)
+
+    def __post_init__(self):
+        name = self.name_gen.new_region_name("meta")
+        new_region = Region(name = name, kind="meta", header=None, exiting=None, parent=None)
+        region_name = new_region.name
+        self.regions[region_name] = new_region
+        object.__setattr__(self, "meta_region", region_name)
+
     def __getitem__(self, index):
         return self.graph[index]
 
@@ -87,16 +101,14 @@ class SCFG:
             block = self[name]
             # yield the name, block combo
             yield (name, block)
-            # if this is a region, recursively yield everything from that region
-            if type(block) == RegionBlock:
-                for i in block.subregion:
-                    yield i
             # finally add any jump_targets to the list of names to visit
             to_visit.extend(block.jump_targets)
 
-    @property
-    def concealed_region_view(self):
-        return ConcealedRegionView(self)
+    def region_view(self, region=None):
+        return RegionView(self, region)
+
+    def block_view(self, region=None):
+        return BlockView(self, region)
 
     def exclude_blocks(self, exclude_blocks: Set[str]) -> Iterator[str]:
         """Iterator over all nodes not in exclude_blocks."""
@@ -104,135 +116,28 @@ class SCFG:
             if block not in exclude_blocks:
                 yield block
 
-    def find_head(self) -> str:
-        """Find the head block of the CFG.
-
-        Assuming the CFG is closed, this will find the block
-        that no other blocks are pointing to.
-
-        """
-        heads = set(self.graph.keys())
-        for name in self.graph.keys():
-            block = self.graph[name]
-            for jt in block.jump_targets:
-                heads.discard(jt)
-        assert len(heads) == 1
-        return next(iter(heads))
-
-    def compute_scc(self) -> List[Set[str]]:
-        """
-        Strongly-connected component for detecting loops.
-        """
-        from numba_rvsdg.networkx_vendored.scc import scc
-
-        class GraphWrap:
-            def __init__(self, graph):
-                self.graph = graph
-
-            def __getitem__(self, vertex):
-                out = self.graph[vertex].jump_targets
-                # Exclude node outside of the subgraph
-                return [k for k in out if k in self.graph]
-
-            def __iter__(self):
-                return iter(self.graph.keys())
-
-        return list(scc(GraphWrap(self.graph)))
-
-    def compute_scc_subgraph(self, subgraph) -> List[Set[str]]:
-        """
-        Strongly-connected component for detecting loops inside a subgraph.
-        """
-        from numba_rvsdg.networkx_vendored.scc import scc
-
-        class GraphWrap:
-            def __init__(self, graph, subgraph):
-                self.graph = graph
-                self.subgraph = subgraph
-
-            def __getitem__(self, vertex):
-                out = self.graph[vertex].jump_targets
-                # Exclude node outside of the subgraph
-                return [k for k in out if k in subgraph]
-
-            def __iter__(self):
-                return iter(self.graph.keys())
-
-        return list(scc(GraphWrap(self.graph, subgraph)))
-
-    def find_headers_and_entries(
-        self, subgraph: Set[str]
-    ) -> Tuple[Set[str], Set[str]]:
-        """Find entries and headers in a given subgraph.
-
-        Entries are blocks outside the subgraph that have an edge pointing to
-        the subgraph headers. Headers are blocks that are part of the strongly
-        connected subset and that have incoming edges from outside the
-        subgraph. Entries point to headers and headers are pointed to by
-        entries.
-
-        """
-        outside: str
-        entries: Set[str] = set()
-        headers: Set[str] = set()
-
-        for outside in self.exclude_blocks(subgraph):
-            nodes_jump_in_loop = subgraph.intersection(self.graph[outside].jump_targets)
-            headers.update(nodes_jump_in_loop)
-            if nodes_jump_in_loop:
-                entries.add(outside)
-        # If the loop has no headers or entries, the only header is the head of
-        # the CFG.
-        if not headers:
-            headers = {self.find_head()}
-        return sorted(headers), sorted(entries)
-
-    def find_exiting_and_exits(
-        self, subgraph: Set[str]
-    ) -> Tuple[Set[str], Set[str]]:
-        """Find exiting and exit blocks in a given subgraph.
-
-        Existing blocks are blocks inside the subgraph that have edges to
-        blocks outside of the subgraph. Exit blocks are blocks outside the
-        subgraph that have incoming edges from within the subgraph. Exiting
-        blocks point to exits and exits and pointed to by exiting blocks.
-
-        """
-        inside: str
-        exiting: Set[str] = set()
-        exits: Set[str] = set()
-        for inside in subgraph:
-            # any node inside that points outside the loop
-            for jt in self.graph[inside].jump_targets:
-                if jt not in subgraph:
-                    exiting.add(inside)
-                    exits.add(jt)
-            # any returns
-            if self.graph[inside].is_exiting:
-                exiting.add(inside)
-        return sorted(exiting), sorted(exits)
-
-    def is_reachable_dfs(self, begin: str, end: str):  # -> TypeGuard:
-        """Is end reachable from begin."""
-        seen = set()
-        to_vist = list(self.graph[begin].jump_targets)
-        while True:
-            if to_vist:
-                block = to_vist.pop()
-            else:
-                return False
-
-            if block in seen:
-                continue
-            elif block == end:
-                return True
-            elif block not in seen:
-                seen.add(block)
-                if block in self.graph:
-                    to_vist.extend(self.graph[block].jump_targets)
-
     def add_block(self, basicblock: BasicBlock):
         self.graph[basicblock.name] = basicblock
+    
+    def make_region(self, header, exiting, region_kind, parent_region=None):
+        assert len(header) == 1
+        assert len(exiting) == 1
+        region_header = next(iter(header))
+        region_exiting = next(iter(exiting))
+        region_name = self.name_gen.new_region_name(region_kind)
+
+        if parent_region is None:
+            parent_region = self.meta_region
+        
+        subregion = Region(
+            name=region_name,
+            kind=region_kind,
+            headers=region_header,
+            exiting=region_exiting,
+            parent=parent_region
+        )
+        self.regions[region_name] = subregion
+        return region_name
 
     def remove_blocks(self, names: Set[str]):
         for name in names:
@@ -336,78 +241,6 @@ class SCFG:
         # add block to self
         self.add_block(new_block)
 
-    def join_returns(self):
-        """Close the CFG.
-
-        A closed CFG is a CFG with a unique entry and exit node that have no
-        predescessors and no successors respectively.
-        """
-        # for all nodes that contain a return
-        return_nodes = [node for node in self.graph if self.graph[node].is_exiting]
-        # close if more than one is found
-        if len(return_nodes) > 1:
-            return_solo_name = self.name_gen.new_block_name(block_names.SYNTH_RETURN)
-            self.insert_SyntheticReturn(return_solo_name, return_nodes, tuple())
-
-    def join_tails_and_exits(self, tails: Set[str], exits: Set[str]):
-        if len(tails) == 1 and len(exits) == 1:
-            # no-op
-            solo_tail_name = next(iter(tails))
-            solo_exit_name = next(iter(exits))
-            return solo_tail_name, solo_exit_name
-
-        if len(tails) == 1 and len(exits) == 2:
-            # join only exits
-            solo_tail_name = next(iter(tails))
-            solo_exit_name = self.name_gen.new_block_name(block_names.SYNTH_EXIT)
-            self.insert_SyntheticExit(solo_exit_name, tails, exits)
-            return solo_tail_name, solo_exit_name
-
-        if len(tails) >= 2 and len(exits) == 1:
-            # join only tails
-            solo_tail_name = self.name_gen.new_block_name(block_names.SYNTH_TAIL)
-            solo_exit_name = next(iter(exits))
-            self.insert_SyntheticTail(solo_tail_name, tails, exits)
-            return solo_tail_name, solo_exit_name
-
-        if len(tails) >= 2 and len(exits) >= 2:
-            # join both tails and exits
-            solo_tail_name = self.name_gen.new_block_name(block_names.SYNTH_TAIL)
-            solo_exit_name = self.name_gen.new_block_name(block_names.SYNTH_EXIT)
-            self.insert_SyntheticTail(solo_tail_name, tails, exits)
-            self.insert_SyntheticExit(solo_exit_name, set((solo_tail_name,)), exits)
-            return solo_tail_name, solo_exit_name
-
-    @staticmethod
-    def bcmap_from_bytecode(bc: dis.Bytecode):
-        return {inst.offset: inst for inst in bc}
-
-    @staticmethod
-    def from_yaml(yaml_string):
-        data = yaml.safe_load(yaml_string)
-        scfg, block_dict = SCFG.from_dict(data)
-        return scfg, block_dict
-
-    @staticmethod
-    def from_dict(graph_dict: dict):
-        scfg_graph = {}
-        name_gen = NameGenerator()
-        block_dict = {}
-        for index in graph_dict.keys():
-            block_dict[index] = name_gen.new_block_name(block_names.BASIC)
-        for index, attributes in graph_dict.items():
-            jump_targets = attributes["jt"]
-            backedges = attributes.get("be", ())
-            name = block_dict[index]
-            block = BasicBlock(
-                name=name,
-                backedges=tuple(block_dict[idx] for idx in backedges),
-                _jump_targets=tuple(block_dict[idx] for idx in jump_targets),
-            )
-            scfg_graph[name] = block
-        scfg = SCFG(scfg_graph, name_gen=name_gen)
-        return scfg, block_dict
-
     def to_yaml(self):
         # Convert to yaml
         scfg_graph = self.graph
@@ -441,10 +274,9 @@ class SCFG:
         return graph_dict
 
 
-class AbstractGraphView(Mapping):
-
-    def __getitem__(self, item):
-        raise NotImplementedError
+class AbstractGraphView:
+    scfg: SCFG
+    region_name: str
 
     def __iter__(self):
         raise NotImplementedError
@@ -452,69 +284,179 @@ class AbstractGraphView(Mapping):
     def __len__(self):
         raise NotImplementedError
 
+    def find_head(self) -> str:
+        """Find the head block of the CFG.
 
-class ConcealedRegionView(AbstractGraphView):
+        Assuming the CFG is closed, this will find the block
+        that no other blocks are pointing to.
+        """
+        heads = self.blocks
+        for name in self._jump_targets.keys():
+            for jt in self._jump_targets[name]:
+                heads.discard(jt)
+        assert len(heads) == 1
+        return next(iter(heads))
 
-    def __init__(self, scfg):
-        self.scfg = scfg
+    def compute_scc(self) -> List[Set[str]]:
+        """
+        Strongly-connected component for detecting loops.
+        """
+        from numba_rvsdg.networkx_vendored.scc import scc
+        jump_targets = self.jump_targets
+        blocks = self.blocks
 
-    def __getitem__(self, item):
-        return self.scfg[item]
+        class GraphWrap:
+            def __getitem__(self, vertex):
+                out = jump_targets[vertex]
+                # Exclude node outside of the subgraph
+                return [k for k in out if k in blocks]
 
-    def __iter__(self):
-        return self.region_view_iterator()
+            def __iter__(self):
+                return iter(blocks)
 
-    def region_view_iterator(self, head: str = None) -> Iterator[str]:
-        """ Region View Iterator.
+        return list(scc(GraphWrap()))
 
-        This iterator is region aware, which means that regions are "concealed"
-        and act as though they were a single block.
+    def find_headers_and_entries(
+        self, subgraph: Set[str]
+    ) -> Tuple[Set[str], Set[str]]:
+        """Find entries and headers in a given subgraph.
 
-        Parameters
-        ----------
-        head: str, optional
-            The head block (or region) from which to start iterating. If None
-            is given, will discover the head automatically.
-
-        Returns
-        -------
-        blocks: iter of str
-            An iterator over blocks (or regions)
+        Entries are blocks outside the subgraph that have an edge pointing to
+        the subgraph headers. Headers are blocks that are part of the strongly
+        connected subset and that have incoming edges from outside the
+        subgraph. Entries point to headers and headers are pointed to by
+        entries.
 
         """
-        # Initialise housekeeping datastructures:
-        # A set because we only need lookup and have unique items and a deque
-        # because we need a first in, first out (FIFO) structure.
-        to_visit, seen = deque([head if head else self.scfg.find_head()]), set()
+        outside: str
+        entries: Set[str] = set()
+        headers: Set[str] = set()
+
+        for outside in self.exclude_blocks(subgraph):
+            nodes_jump_in_loop = subgraph.intersection(self.graph[outside].jump_targets)
+            headers.update(nodes_jump_in_loop)
+            if nodes_jump_in_loop:
+                entries.add(outside)
+        # If the loop has no headers or entries, the only header is the head of
+        # the CFG.
+        if not headers:
+            headers = {self.find_head()}
+        return sorted(headers), sorted(entries)
+
+    def find_exiting_and_exits(
+        self, subgraph: Set[str]
+    ) -> Tuple[Set[str], Set[str]]:
+        """Find exiting and exit blocks in a given subgraph.
+
+        Existing blocks are blocks inside the subgraph that have edges to
+        blocks outside of the subgraph. Exit blocks are blocks outside the
+        subgraph that have incoming edges from within the subgraph. Exiting
+        blocks point to exits and exits and pointed to by exiting blocks.
+
+        """
+        inside: str
+        exiting: Set[str] = set()
+        exits: Set[str] = set()
+        for inside in subgraph:
+            # any node inside that points outside the loop
+            for jt in self.graph[inside].jump_targets:
+                if jt not in subgraph:
+                    exiting.add(inside)
+                    exits.add(jt)
+            # any returns
+            if self.graph[inside].is_exiting:
+                exiting.add(inside)
+        return sorted(exiting), sorted(exits)
+
+    def is_reachable_dfs(self, begin: str, end: str):  # -> TypeGuard:
+        """Is end reachable from begin."""
+        seen = set()
+        to_vist = list(self.graph[begin].jump_targets)
+        while True:
+            if to_vist:
+                block = to_vist.pop()
+            else:
+                return False
+
+            if block in seen:
+                continue
+            elif block == end:
+                return True
+            elif block not in seen:
+                seen.add(block)
+                if block in self.graph:
+                    to_vist.extend(self.graph[block].jump_targets)
+
+    def get_region_blocks(self, region_name):
+        if region_name == self.scfg.meta_region:
+            return set(block for _, block in self.scfg.graph.items())
+
+        region = self.scfg.regions[region_name]
+        header = region.header
+        exiting = region.exiting
+        region_blocks = set()
+
+        # initialise housekeeping datastructures
+        to_visit, seen = [header], []
         while to_visit:
             # get the next name on the list
-            name = to_visit.popleft()
+            name = to_visit.pop(0)
             # if we have visited this, we skip it
-            if name in seen:
+            if name in seen or name in exiting:
                 continue
             else:
-                seen.add(name)
-            # get the corresponding block for the name (could also be a region)
-            try:
-                block = self[name]
-            except KeyError:
-                # If this is outside the current graph, just disregard it.
-                # (might be the case if inside a region and the block being
-                # looked at is outside of the region.)
-                continue
+                seen.append(name)
+            # get the corresponding block for the name
+            block = self.scfg[name]
+            region_blocks.add(block)
+            # finally add any jump_targets to the list of names to visit
+            to_visit.extend(block.jump_targets)
 
-            # populate the to_vist
-            if type(block) == RegionBlock:
-                # If this is a region, continue on to the exiting block, i.e.
-                # the region is presented a single fall-through block to the
-                # consumer of this iterator.
-                to_visit.extend(block.subregion[block.exiting].jump_targets)
-            else:
-                # otherwise add any jump_targets to the list of names to visit
-                to_visit.extend(block.jump_targets)
 
-            # finally, yield the name
-            yield name
+class RegionView(AbstractGraphView):
+    def __init__(self, scfg, region_name):
+        self.scfg = scfg
+        if region_name is None:
+            region_name = self.scfg.meta_region
+            self.region_name = region_name
+        assert region_name in self.scfg.regions.keys()
+    
+    def _jump_targets(self, block):
+        pass
+
+    def jump_targets(self, block):
+        pass
+
+    def back_edges(self, block):
+        pass
+
+    def __iter__(self):
+        pass
 
     def __len__(self):
-        return len(self.scfg)
+        pass
+
+
+class BlockView(AbstractGraphView):
+
+    def __init__(self, scfg, region_name):
+        self.scfg = scfg
+        if region_name is None:
+            region_name = self.scfg.meta_region
+            self.region_name = region_name
+        assert region_name in self.scfg.regions.keys()
+    
+    def _jump_targets(self, block):
+        pass
+
+    def jump_targets(self, block):
+        pass
+
+    def back_edges(self, block):
+        pass
+    
+    def __iter__(self):
+        pass
+
+    def __len__(self):
+        pass

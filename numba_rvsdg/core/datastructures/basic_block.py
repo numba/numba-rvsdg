@@ -146,15 +146,21 @@ class SyntheticExitBranch(SyntheticBranch):
 @dataclass(frozen=True)
 class RegionBlock(BasicBlock):
     kind: str = None
-    headers: Dict[str, BasicBlock] = None
+    header: str = None
     """The header of the region"""
-    subregion: "SCFG" = None
-    """The subgraph excluding the headers
-    """
     exiting: str = None
     """The exiting node.
     """
 
-    def get_full_graph(self):
-        graph = ChainMap(self.subregion.graph, self.headers)
-        return graph
+
+@dataclass(frozen=True)
+class Region:
+    name: str
+    kind: str
+    header: str
+    """The header of the region"""
+    exiting: str
+    """The exiting node.
+    """
+    parent: str
+    subregions: set[str] = field(default_factory=set)

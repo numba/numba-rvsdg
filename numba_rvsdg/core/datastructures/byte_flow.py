@@ -32,15 +32,11 @@ class ByteFlow:
     def _restructure_loop(self):
         scfg = deepcopy(self.scfg)
         restructure_loop(scfg)
-        for region in _iter_subregions(scfg):
-            restructure_loop(region.subregion)
         return ByteFlow(bc=self.bc, scfg=scfg)
 
     def _restructure_branch(self):
         scfg = deepcopy(self.scfg)
         restructure_branch(scfg)
-        for region in _iter_subregions(scfg):
-            restructure_branch(region.subregion)
         return ByteFlow(bc=self.bc, scfg=scfg)
 
     def restructure(self):
@@ -49,17 +45,7 @@ class ByteFlow:
         scfg.join_returns()
         # handle loop
         restructure_loop(scfg)
-        for region in _iter_subregions(scfg):
-            restructure_loop(region.subregion)
         # handle branch
         restructure_branch(scfg)
-        for region in _iter_subregions(scfg):
-            restructure_branch(region.subregion)
         return ByteFlow(bc=self.bc, scfg=scfg)
 
-
-def _iter_subregions(scfg: "SCFG"):
-    for node in scfg.graph.values():
-        if isinstance(node, RegionBlock):
-            yield node
-            yield from _iter_subregions(node.subregion)

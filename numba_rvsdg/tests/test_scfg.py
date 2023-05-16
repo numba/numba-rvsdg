@@ -126,7 +126,7 @@ class TestSCFGIterator(SCFGComparator):
         self.assertEqual(expected, received)
 
 
-class TestConcealedRegionView(TestCase):
+class TestRegionView(TestCase):
 
     def setUp(self):
 
@@ -138,14 +138,14 @@ class TestConcealedRegionView(TestCase):
 
         self.foo = foo
 
-    def test_concealed_region_view_iter(self):
+    def test_region_view_iter(self):
 
         flow = ByteFlow.from_bytecode(self.foo)
         restructured = flow._restructure_loop()
         expected = [('python_bytecode_block_0', PythonBytecodeBlock),
                     ('python_bytecode_block_1', RegionBlock),
                     ('python_bytecode_block_3', PythonBytecodeBlock)]
-        received = list(((k, type(v)) for k,v in restructured.scfg.concealed_region_view.items()))
+        received = list(((k, type(v)) for k,v in restructured.scfg.region_view.items()))
         self.assertEqual(expected, received)
 
 
