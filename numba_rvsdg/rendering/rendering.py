@@ -62,6 +62,10 @@ class BaseRenderer(object):
 
 
 class ByteFlowRenderer(BaseRenderer):
+    """
+        The `ByteFlowRenderer`` class is used to render the visual 
+        representation of a `ByteFlow`` object.
+    """
     def __init__(self):
         from graphviz import Digraph
 
@@ -121,6 +125,9 @@ class ByteFlowRenderer(BaseRenderer):
         digraph.node(str(name), shape="rect", label=body)
 
     def render_byteflow(self, byteflow: ByteFlow):
+        """
+            Renders the provided `ByteFlow` object.
+        """
         self.bcmap_from_bytecode(byteflow.bc)
         # render nodes
         for name, block in byteflow.scfg.graph.items():
@@ -210,10 +217,25 @@ logging.basicConfig(level=logging.DEBUG)
 
 
 def render_func(func):
+    """
+    The `render_func`` function takes a `func` parameter as the Python 
+    function to be transformed and rendered and renders the byte flow 
+    representation of the bytecode of the function. 
+    Internally, it constucts a ByteFlow object using the bytecode of 
+    the given function and calls `render_flow` on the generated 
+    `ByteFlow` object.
+    """
     render_flow(ByteFlow.from_bytecode(func))
 
 
 def render_flow(flow):
+    """
+    The `render_flow`` function takes a `flow` parameter as the `ByteFlow` to be transformed and rendered and performs the following operations:
+        - Renders the pure `ByteFlow` representation of the function using `ByteFlowRenderer` and displays it as a document named "before".
+        - Joins the return blocks in the `ByteFlow` object graph and renders the graph, displaying it as a document named "closed".
+        - Restructures the loops recursively in the `ByteFlow` object graph and renders the graph, displaying it as named "loop restructured".
+        - Restructures the branch recursively in the `ByteFlow` object graph and renders the graph, displaying it as named "branch restructured".
+    """
     ByteFlowRenderer().render_byteflow(flow).view("before")
 
     cflow = flow._join_returns()
@@ -227,4 +249,10 @@ def render_flow(flow):
 
 
 def render_scfg(scfg):
+    """
+    The `render_scfg` function takes an `scfg` parameter as the `SCFG` 
+    graph to be rendered and renders the Static Control Flow Graph (SCFG) 
+    representation using `ByteFlowRenderer`, displaying it as a document 
+    named  "scfg".
+    """
     ByteFlowRenderer().render_scfg(scfg).view("scfg")
