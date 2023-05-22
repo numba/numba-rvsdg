@@ -26,8 +26,10 @@ dependencies = [
 packages = ["numba_rvsdg"]
 
 [project.optional-dependencies]
-doc = [
+dev = [
     "sphinx",
     "myst-parser",
-    "furo"
+    "furo",
+    "pytest",
+    "sphinx-rtd-theme"
 ]
