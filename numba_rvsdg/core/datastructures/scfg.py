@@ -437,6 +437,9 @@ class SCFG:
             graph_dict[key] = curr_dict
         return graph_dict
 
+    def view(self, name: str=None):
+        from numba_rvsdg.rendering.rendering import SCFGRenderer
+        SCFGRenderer(self).view(name)
 
 class AbstractGraphView(Mapping):
 
