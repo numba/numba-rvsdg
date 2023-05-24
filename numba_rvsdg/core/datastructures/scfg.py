@@ -65,6 +65,18 @@ class SCFG:
         default_factory=NameGenerator, compare=False
     )
 
+    # This is the top-level region
+    parent_region: RegionBlock = field(init=False, compare=False)
+
+    # This is the region storage. It maps region names to the Region objects,
+    # which themselves contain the header and exiting blocks of this region
+    regions: Dict[str, RegionBlock] = field(default_factory=dict, init=False)
+
+    def __post_init__(self):
+        name = self.name_gen.new_region_name("meta")
+        new_region = RegionBlock(name = name, kind="meta", header=None, exiting=None, parent_region=None, subregion=self)
+        object.__setattr__(self, "parent_region", new_region)
+
     def __getitem__(self, index):
         return self.graph[index]
 
@@ -84,7 +96,13 @@ class SCFG:
             else:
                 seen.append(name)
             # get the corresponding block for the name
-            block = self[name]
+            if name in self:
+                block = self[name]
+            else:
+                # If this is outside the current graph, just disregard it.
+                # (might be the case if inside a region and the block being
+                # looked at is outside of the region.)
+                continue
             # yield the name, block combo
             yield (name, block)
             # if this is a region, recursively yield everything from that region
@@ -139,27 +157,6 @@ class SCFG:
 
         return list(scc(GraphWrap(self.graph)))
 
-    def compute_scc_subgraph(self, subgraph) -> List[Set[str]]:
-        """
-        Strongly-connected component for detecting loops inside a subgraph.
-        """
-        from numba_rvsdg.networkx_vendored.scc import scc
-
-        class GraphWrap:
-            def __init__(self, graph, subgraph):
-                self.graph = graph
-                self.subgraph = subgraph
-
-            def __getitem__(self, vertex):
-                out = self.graph[vertex].jump_targets
-                # Exclude node outside of the subgraph
-                return [k for k in out if k in subgraph]
-
-            def __iter__(self):
-                return iter(self.graph.keys())
-
-        return list(scc(GraphWrap(self.graph, subgraph)))
-
     def find_headers_and_entries(
         self, subgraph: Set[str]
     ) -> Tuple[Set[str], Set[str]]:
@@ -177,7 +174,7 @@ class SCFG:
         headers: Set[str] = set()
 
         for outside in self.exclude_blocks(subgraph):
-            nodes_jump_in_loop = subgraph.intersection(self.graph[outside].jump_targets)
+            nodes_jump_in_loop = subgraph.intersection(self.graph[outside]._jump_targets)
             headers.update(nodes_jump_in_loop)
             if nodes_jump_in_loop:
                 entries.add(outside)
