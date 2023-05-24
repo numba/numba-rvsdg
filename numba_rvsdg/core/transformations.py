@@ -53,7 +53,7 @@ def loop_restructure_helper(scfg: SCFG, loop: Set[str]):
     ]
     if (len(backedge_blocks) == 1 and len(exiting_blocks) == 1
         and backedge_blocks[0] == next(iter(exiting_blocks))):
-        scfg.add_block(scfg.graph.pop(backedge_blocks[0]).replace_backedge(loop_head))
+        scfg.add_block(scfg.graph.pop(backedge_blocks[0]).declare_backedge(loop_head))
         return
 
     # The synthetic exiting latch and synthetic exit need to be created
@@ -198,10 +198,11 @@ def loop_restructure_helper(scfg: SCFG, loop: Set[str]):
         scfg.add_block(synth_exit_block)
 
 
-def restructure_loop(scfg: SCFG):
+def restructure_loop(parent_region: RegionBlock):
     """Inplace restructuring of the given graph to extract loops using
     strongly-connected components
     """
+    scfg = parent_region.subregion
     # obtain a List of Sets of names, where all names in each set are strongly
     # connected, i.e. all reachable from one another by traversing the subset
     scc: List[Set[str]] = scfg.compute_scc()
@@ -219,7 +220,7 @@ def restructure_loop(scfg: SCFG):
     # rotate and extract loop
     for loop in loops:
         loop_restructure_helper(scfg, loop)
-        extract_region(scfg, loop, "loop")
+        extract_region(scfg, loop, "loop", parent_region)
 
 
 def find_head_blocks(scfg: SCFG, begin: str) -> Set[str]:
@@ -290,7 +291,7 @@ def find_tail_blocks(
     return tail_subregion
 
 
-def extract_region(scfg, region_blocks, region_kind):
+def extract_region(scfg: SCFG, region_blocks, region_kind, parent_region: RegionBlock):
     headers, entries = scfg.find_headers_and_entries(region_blocks)
     exiting_blocks, exit_blocks = scfg.find_exiting_and_exits(region_blocks)
     assert len(headers) == 1
@@ -298,29 +299,76 @@ def extract_region(scfg, region_blocks, region_kind):
     region_header = next(iter(headers))
     region_exiting = next(iter(exiting_blocks))
 
+    # Generate a new region name
+    region_name = scfg.name_gen.new_region_name(region_kind)
     head_subgraph = SCFG(
         {name: scfg.graph[name] for name in region_blocks}, name_gen=scfg.name_gen
     )
 
-    if isinstance(scfg[region_exiting], RegionBlock):
-        region_exiting = scfg[region_exiting].exiting
-    else:
-        region_exiting = region_exiting
+    def update_exiting(region_block: RegionBlock):
+        # Recursively updates the exiting blocks of a regionblock
+        region_exiting = region_block.exiting
+        region_exiting_block: BasicBlock = region_block.subregion.graph.pop(region_exiting)
+        jt = list(region_exiting_block.jump_targets)
+        for idx, s in enumerate(jt):
+            if s is region_header:
+                jt[idx] = region_name
+        region_exiting_block = region_exiting_block.replace_jump_targets(jump_targets=tuple(jt))
+        be = list(region_exiting_block.backedges)
+        for idx, s in enumerate(be):
+            if s is region_header:
+                be[idx] = region_name
+        region_exiting_block = region_exiting_block.replace_backedges(backedges=tuple(be))
+        if isinstance(region_exiting_block, RegionBlock):
+            region_exiting_block = update_exiting(region_exiting_block)
+        region_block.subregion.add_block(region_exiting_block)
+        return region_block
 
-    subregion = RegionBlock(
-        name=region_header,
-        _jump_targets=scfg[region_exiting].jump_targets,
-        backedges=(),
+    for name in entries:
+        # For all entries, replace the header as a jump target
+        # with the newly created region as a jump target.
+        entry = scfg.graph.pop(name)
+        jt = list(entry._jump_targets)
+        for idx, s in enumerate(jt):
+            if s is region_header:
+                jt[idx] = region_name
+        entry = entry.replace_jump_targets(jump_targets=tuple(jt))
+        be = list(entry.backedges)
+        for idx, s in enumerate(be):
+            if s is region_header:
+                be[idx] = region_name
+        entry = entry.replace_backedges(backedges=tuple(be))
+        # If the entry itself is a region, update it's
+        # exiting blocks too, recursively
+        if isinstance(entry, RegionBlock):
+            entry = update_exiting(entry)
+        scfg.add_block(entry)
+
+    region = RegionBlock(
+        name=region_name,
+        _jump_targets=scfg[region_exiting]._jump_targets,
+        backedges=scfg[region_exiting].backedges,
         kind=region_kind,
-        headers=headers,
+        header=region_header,
         subregion=head_subgraph,
         exiting=region_exiting,
+        parent_region=parent_region.name
     )
     scfg.remove_blocks(region_blocks)
-    scfg.graph[region_header] = subregion
+    scfg.graph[region_name] = region
+    scfg.regions[region_name] = region
+
+    # Set the parent region of the newly generated regional
+    # graph as the current region
+    object.__setattr__(region.subregion, "parent_region", region)
+    if region_header == parent_region.header:
+        parent_region.replace_header(region_name)
+    if region_exiting == parent_region.exiting:
+        parent_region.replace_exiting(region_name)
 
 
-def restructure_branch(scfg: SCFG):
+def restructure_branch(parent_region: RegionBlock):
+    scfg: SCFG = parent_region.subregion
     print("restructure_branch", scfg.graph)
     doms = _doms(scfg)
     postdoms = _post_doms(scfg)
@@ -380,13 +428,13 @@ def restructure_branch(scfg: SCFG):
     )
 
     # extract subregions
-    extract_region(scfg, head_region_blocks, "head")
+    extract_region(scfg, head_region_blocks, "head", parent_region)
     for region in branch_regions:
         if region:
             bra_start, inner_nodes = region
             if inner_nodes:
-                extract_region(scfg, inner_nodes, "branch")
-    extract_region(scfg, tail_region_blocks, "tail")
+                extract_region(scfg, inner_nodes, "branch", parent_region)
+    extract_region(scfg, tail_region_blocks, "tail", parent_region)
 
 
 def _iter_branch_regions(

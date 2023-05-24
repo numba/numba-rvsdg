@@ -31,16 +31,16 @@ class ByteFlow:
 
     def _restructure_loop(self):
         scfg = deepcopy(self.scfg)
-        restructure_loop(scfg)
+        restructure_loop(scfg.parent_region)
         for region in _iter_subregions(scfg):
-            restructure_loop(region.subregion)
+            restructure_loop(region)
         return ByteFlow(bc=self.bc, scfg=scfg)
 
     def _restructure_branch(self):
         scfg = deepcopy(self.scfg)
-        restructure_branch(scfg)
+        restructure_branch(scfg.parent_region)
         for region in _iter_subregions(scfg):
-            restructure_branch(region.subregion)
+            restructure_branch(region)
         return ByteFlow(bc=self.bc, scfg=scfg)
 
     def restructure(self):
@@ -48,13 +48,13 @@ class ByteFlow:
         # close
         scfg.join_returns()
         # handle loop
-        restructure_loop(scfg)
+        restructure_loop(scfg.parent_region)
         for region in _iter_subregions(scfg):
-            restructure_loop(region.subregion)
+            restructure_loop(region)
         # handle branch
-        restructure_branch(scfg)
+        restructure_branch(scfg.parent_region)
         for region in _iter_subregions(scfg):
-            restructure_branch(region.subregion)
+            restructure_branch(region)
         return ByteFlow(bc=self.bc, scfg=scfg)
 
 
