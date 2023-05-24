@@ -309,7 +309,7 @@ def extract_region(scfg: SCFG, region_blocks, region_kind, parent_region: Region
         # Recursively updates the exiting blocks of a regionblock
         region_exiting = region_block.exiting
         region_exiting_block: BasicBlock = region_block.subregion.graph.pop(region_exiting)
-        jt = list(region_exiting_block.jump_targets)
+        jt = list(region_exiting_block._jump_targets)
         for idx, s in enumerate(jt):
             if s is region_header:
                 jt[idx] = region_name
