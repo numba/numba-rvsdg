@@ -180,6 +180,10 @@ class Simulator:
         region: RegionBlock = self.get_block(name)
         self.region_stack.append(region)
         while True:
+            # If the given name is of the same region,
+            # we execute it's first block, i.e. head
+            if name == region.name:
+                name = region.subregion.find_head()
             # Execute the first block of the region.
             action = self.run_BasicBlock(name)
             # If we need to return, break and do so
