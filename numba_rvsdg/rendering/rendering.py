@@ -27,7 +27,6 @@ class ByteFlowRenderer(object):
         self, digraph: "Digraph", name: str, regionblock: RegionBlock
     ):
         # render subgraph
-        graph = regionblock.get_full_graph()
         with digraph.subgraph(name=f"cluster_{name}") as subg:
             color = "blue"
             if regionblock.kind == "branch":
@@ -36,11 +35,9 @@ class ByteFlowRenderer(object):
                 color = "purple"
             if regionblock.kind == "head":
                 color = "red"
-            subg.attr(color=color, label=regionblock.kind)
-            for name, block in graph.items():
+            subg.attr(color=color, label=regionblock.name)
+            for name, block in regionblock.subregion.graph.items():
                 self.render_block(subg, name, block)
-        # render edges within this region
-        self.render_edges(graph)
 
     def render_basic_block(self, digraph: "Digraph", name: str, block: BasicBlock):
         if name.startswith('python_bytecode'):
@@ -95,49 +92,45 @@ class ByteFlowRenderer(object):
         else:
             raise Exception("unreachable")
 
-    def render_edges(self, blocks: Dict[str, BasicBlock]):
-        for name, block in blocks.items():
-            for dst in block.jump_targets:
-                if dst in blocks:
-                    if type(block) in (
-                        PythonBytecodeBlock,
-                        BasicBlock,
-                        SyntheticBlock,
-                        SyntheticAssignment,
-                        SyntheticExitingLatch,
-                        SyntheticExitBranch,
-                        SyntheticHead,
-                        SyntheticExit,
-                        SyntheticBranch,
-                    ):
-                        self.g.edge(str(name), str(dst))
-                    elif type(block) == RegionBlock:
-                        if block.exiting is not None:
-                            self.g.edge(str(block.exiting), str(dst))
-                        else:
-                            self.g.edge(str(name), str(dst))
-                    else:
-                        raise Exception("unreachable " + str(block))
-            for dst in block.backedges:
-                # assert dst in blocks
-                self.g.edge(
-                    str(name), str(dst), style="dashed", color="grey", constraint="0"
-                )
+    def render_edges(self, scfg: SCFG):
+        blocks = dict(scfg)
+        def find_base_header(block: BasicBlock):
+            if isinstance(block, RegionBlock):
+                block = blocks[block.header]
+                block = find_base_header(block)
+            return block
+
+        for _, src_block in blocks.items():
+            if isinstance(src_block, RegionBlock):
+                continue
+            src_block = find_base_header(src_block)
+            for dst_name in src_block.jump_targets:
+                dst_name = find_base_header(blocks[dst_name]).name
+                if dst_name in blocks.keys():
+                    self.g.edge(str(src_block.name), str(dst_name))
+                else:
+                    raise Exception("unreachable " + str(src_block))
+            for dst_name in src_block.backedges:
+                if dst_name in blocks.keys():
+                    self.g.edge(
+                        str(src_block.name), str(dst_name), style="dashed", color="grey", constraint="0"
+                    )
+                else:
+                    raise Exception("unreachable " + str(src_block))
 
     def render_byteflow(self, byteflow: ByteFlow):
         self.bcmap_from_bytecode(byteflow.bc)
-
         # render nodes
         for name, block in byteflow.scfg.graph.items():
             self.render_block(self.g, name, block)
-        self.render_edges(byteflow.scfg.graph)
+        self.render_edges(byteflow.scfg)
         return self.g
 
     def render_scfg(self, scfg):
         # render nodes
         for name, block in scfg.graph.items():
             self.render_block(self.g, name, block)
-        self.render_edges(scfg.graph)
+        self.render_edges(scfg)
         return self.g
 
     def bcmap_from_bytecode(self, bc: dis.Bytecode):
