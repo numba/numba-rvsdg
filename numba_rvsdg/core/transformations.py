@@ -324,9 +324,16 @@ def extract_region(scfg: SCFG, region_blocks, region_kind, parent_region: Region
         region_block.subregion.add_block(region_exiting_block)
         return region_block
 
+    # For all entries, replace the header as a jump target
+    # with the newly created region as a jump target.
     for name in entries:
-        # For all entries, replace the header as a jump target
-        # with the newly created region as a jump target.
+        # Case in which entry is outside the given sub-graph
+        if name not in scfg.graph.keys():
+            # If it's actually outside the graph, a check to see
+            # if it's a valid assumption, is that the region that
+            # the SCFG represents should not be the meta region.
+            assert scfg.region.kind != "meta"
+            continue
         entry = scfg.graph.pop(name)
         jt = list(entry._jump_targets)
         for idx, s in enumerate(jt):
@@ -352,19 +359,27 @@ def extract_region(scfg: SCFG, region_blocks, region_kind, parent_region: Region
         header=region_header,
         subregion=head_subgraph,
         exiting=region_exiting,
-        parent_region=parent_region.name
+        parent_region=parent_region
     )
     scfg.remove_blocks(region_blocks)
     scfg.graph[region_name] = region
-    scfg.regions[region_name] = region
 
     # Set the parent region of the newly generated regional
-    # graph as the current region
-    object.__setattr__(region.subregion, "parent_region", region)
+    # graph as the current region.
+    object.__setattr__(region.subregion, "region", region)
+    # If the region is a header of the parent region replace
+    # it accordingly.
     if region_header == parent_region.header:
         parent_region.replace_header(region_name)
+    # If the region is a header of the parent region replace
+    # it accordingly.
     if region_exiting == parent_region.exiting:
         parent_region.replace_exiting(region_name)
+    # For every region block inside the newly created region,
+    # update the parent region
+    for k, v in region.subregion.graph.items():
+        if isinstance(v, RegionBlock):
+            object.__setattr__(v, "parent_region", region)
 
 
 def restructure_branch(parent_region: RegionBlock):

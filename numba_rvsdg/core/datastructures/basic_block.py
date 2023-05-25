@@ -171,7 +171,7 @@ class RegionBlock(BasicBlock):
     kind: str = None
     """The kind of region. Can be 'head', 'tail', 'branch', 
     'loop' or 'meta' strings"""
-    parent_region: str = None
+    parent_region: "RegionBlock" = None
     """The parent region of this region as per the SCFG."""
     header: str = None
     """The header node of the region"""

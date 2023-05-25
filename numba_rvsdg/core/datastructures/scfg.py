@@ -65,17 +65,13 @@ class SCFG:
         default_factory=NameGenerator, compare=False
     )
 
-    # This is the top-level region
-    parent_region: RegionBlock = field(init=False, compare=False)
-
-    # This is the region storage. It maps region names to the Region objects,
-    # which themselves contain the header and exiting blocks of this region
-    regions: Dict[str, RegionBlock] = field(default_factory=dict, init=False)
+    # This is the top-level region that this SCFG represents.
+    region: RegionBlock = field(init=False, compare=False)
 
     def __post_init__(self):
         name = self.name_gen.new_region_name("meta")
         new_region = RegionBlock(name = name, kind="meta", header=None, exiting=None, parent_region=None, subregion=self)
-        object.__setattr__(self, "parent_region", new_region)
+        object.__setattr__(self, "region", new_region)
 
     def __getitem__(self, index):
         return self.graph[index]
@@ -182,6 +178,9 @@ class SCFG:
         # the CFG.
         if not headers:
             headers = {self.find_head()}
+            if self.region.kind != "meta":
+                grandparent_region = self.region.parent_region
+                _, entries = grandparent_region.subregion.find_headers_and_entries({self.region.name})
         return sorted(headers), sorted(entries)
 
     def find_exiting_and_exits(
