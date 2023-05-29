@@ -136,7 +136,7 @@ def loop_restructure_helper(scfg: SCFG, loop: Set[str]):
                     # matters in this case.
                     new_jt[new_jt.index(jt)] = synth_assign
                 # If the target is the loop_head
-                elif jt in headers and name not in doms[jt]:
+                elif jt in headers and (name not in doms[jt] or name == jt):
                     # Create the assignment and record it
                     synth_assign = scfg.name_gen.new_block_name(block_names.SYNTH_ASSIGN)
                     new_blocks.add(synth_assign)

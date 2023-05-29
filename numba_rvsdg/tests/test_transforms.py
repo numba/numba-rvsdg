@@ -510,6 +510,41 @@ class TestLoopRestructure(SCFGComparator):
         loop_restructure_helper(original_scfg, set({block_dict["1"], block_dict["2"]}))
         self.assertSCFGEqual(expected_scfg, original_scfg)
 
+    def test_multi_back_edge_with_backedge_from_header(self):
+        original = """
+        "0":
+            jt: ["1"]
+        "1":
+            jt: ["1", "2"]
+        "2":
+            jt: ["1", "3"]
+        "3":
+            jt: []
+        """
+        expected = """
+        "0":
+            jt: ["1"]
+        "1":
+            jt: ["5", "2"]
+        "2":
+            jt: ["6", "7"]
+        "3":
+            jt: []
+        "4":
+            jt: ["1", "3"]
+            be: ["1"]
+        "5":
+            jt: ["4"]
+        "6":
+            jt: ["4"]
+        "7":
+            jt: ["4"]
+        """
+        original_scfg, block_dict = SCFG.from_yaml(original)
+        expected_scfg, _ = SCFG.from_yaml(expected)
+        loop_restructure_helper(original_scfg, set({block_dict["1"], block_dict["2"]}))
+        self.assertSCFGEqual(expected_scfg, original_scfg)
+
     def test_double_exit(self):
         """Loop has two exiting blocks.
 
