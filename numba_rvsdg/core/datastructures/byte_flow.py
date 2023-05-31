@@ -59,7 +59,7 @@ class ByteFlow:
 
 
 def _iter_subregions(scfg: "SCFG"):
-    for node in scfg.graph.values():
+    for node in scfg.blocks.values():
         if isinstance(node, RegionBlock):
             yield node
             yield from _iter_subregions(node.subregion)

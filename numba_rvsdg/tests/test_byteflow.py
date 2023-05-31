@@ -106,42 +106,38 @@ class TestBCMapFromBytecode(unittest.TestCase):
 
 class TestPythonBytecodeBlock(unittest.TestCase):
     def test_constructor(self):
-        name_gen = NameGenerator()
+        scfg = SCFG()
         block = PythonBytecodeBlock(
-            name=name_gen.new_block_name(block_names.PYTHON_BYTECODE),
+            name=scfg.name_gen.new_block_name(block_names.PYTHON_BYTECODE),
             begin=0,
-            end=8,
-            _jump_targets=(),
-            backedges=(),
+            end=8
         )
+        scfg.add_block(block, [], [])
         self.assertEqual(block.name, 'python_bytecode_block_0')
         self.assertEqual(block.begin, 0)
         self.assertEqual(block.end, 8)
-        self.assertFalse(block.fallthrough)
-        self.assertTrue(block.is_exiting)
-        self.assertEqual(block.jump_targets, ())
-        self.assertEqual(block.backedges, ())
+        self.assertFalse(scfg.is_fallthrough(block.name))
+        self.assertTrue(scfg.is_exiting(block.name))
+        self.assertEqual(scfg.jump_targets[block.name], [])
+        self.assertEqual(scfg.back_edges[block.name], [])
 
     def test_is_jump_target(self):
-        name_gen = NameGenerator()
+        scfg = SCFG()
         block = PythonBytecodeBlock(
-            name=name_gen.new_block_name(block_names.PYTHON_BYTECODE),
+            name=scfg.name_gen.new_block_name(block_names.PYTHON_BYTECODE),
             begin=0,
-            end=8,
-            _jump_targets=(name_gen.new_block_name(block_names.PYTHON_BYTECODE),),
-            backedges=(),
+            end=8
         )
-        self.assertEqual(block.jump_targets, ('python_bytecode_block_1',))
-        self.assertFalse(block.is_exiting)
+        scfg.add_block(block, [scfg.name_gen.new_block_name(block_names.PYTHON_BYTECODE)], [])
+        self.assertEqual(scfg.jump_targets[block.name], ['python_bytecode_block_1'])
+        self.assertFalse(scfg.is_exiting(block.name))
 
     def test_get_instructions(self):
         name_gen = NameGenerator()
         block = PythonBytecodeBlock(
             name=name_gen.new_block_name(block_names.PYTHON_BYTECODE),
             begin=0,
-            end=8,
-            _jump_targets=(),
-            backedges=(),
+            end=8
         )
         expected = [
             Instruction(
@@ -228,19 +224,14 @@ class TestFlowInfo(unittest.TestCase):
         self.assertEqual(expected, received)
 
     def test_build_basic_blocks(self):
-        name_gen = NameGenerator()
-        new_name = name_gen.new_block_name(block_names.PYTHON_BYTECODE)
-        expected = SCFG(
-            graph={
-                new_name: PythonBytecodeBlock(
+        expected = SCFG()
+        new_name = expected.name_gen.new_block_name(block_names.PYTHON_BYTECODE)
+        block = PythonBytecodeBlock(
                     name=new_name,
                     begin=0,
-                    end=10,
-                    _jump_targets=(),
-                    backedges=(),
+                    end=10
                 )
-            }
-        )
+        expected.add_block(block, [], [])
         received = FlowInfo.from_bytecode(bytecode).build_basicblocks()
         self.assertEqual(expected, received)
 
@@ -252,19 +243,14 @@ class TestByteFlow(unittest.TestCase):
         self.assertEqual(len(byteflow.scfg), 0)
 
     def test_from_bytecode(self):
-        name_gen = NameGenerator()
-        new_name = name_gen.new_block_name(block_names.PYTHON_BYTECODE)
-        scfg = SCFG(
-            graph={
-                new_name: PythonBytecodeBlock(
+        scfg = SCFG()
+        new_name = scfg.name_gen.new_block_name(block_names.PYTHON_BYTECODE)
+        block = PythonBytecodeBlock(
                     name=new_name,
                     begin=0,
-                    end=10,
-                    _jump_targets=(),
-                    backedges=(),
+                    end=10
                 )
-            }
-        )
+        scfg.add_block(block, [], [])
         expected = ByteFlow(bc=bytecode, scfg=scfg)
         received = ByteFlow.from_bytecode(fun)
         self.assertEqual(expected.scfg, received.scfg)

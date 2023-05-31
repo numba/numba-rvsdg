@@ -60,16 +60,20 @@ class NameGenerator:
 class SCFG:
     """Map of Names to Blocks."""
 
-    graph: Dict[str, BasicBlock] = field(default_factory=dict)
+    blocks: dict[str, BasicBlock] = field(default_factory=dict, init=False)
+
+    _jump_targets: dict[str, list[str]] = field(default_factory=dict, init=False)
+    back_edges: dict[str, list[str]] = field(default_factory=dict, init=False)
+
     name_gen: NameGenerator = field(
         default_factory=NameGenerator, compare=False
     )
 
     def __getitem__(self, index):
-        return self.graph[index]
+        return self.blocks[index]
 
     def __contains__(self, index):
-        return index in self.graph
+        return index in self.blocks
 
     def __iter__(self):
         """Graph Iterator"""
@@ -92,15 +96,25 @@ class SCFG:
                 for i in block.subregion:
                     yield i
             # finally add any jump_targets to the list of names to visit
-            to_visit.extend(block.jump_targets)
+            to_visit.extend(self.jump_targets[name])
 
     @property
     def concealed_region_view(self):
         return ConcealedRegionView(self)
+    
+    @property
+    def jump_targets(self):
+        jump_targets = {}
+        for name in self._jump_targets.keys():
+            jump_targets[name] = []
+            for jt in self._jump_targets[name]:
+                if jt not in self.back_edges[name]:
+                    jump_targets[name].append(jt)
+        return jump_targets
 
     def exclude_blocks(self, exclude_blocks: Set[str]) -> Iterator[str]:
         """Iterator over all nodes not in exclude_blocks."""
-        for block in self.graph:
+        for block in self.blocks:
             if block not in exclude_blocks:
                 yield block
 
@@ -111,10 +125,9 @@ class SCFG:
         that no other blocks are pointing to.
 
         """
-        heads = set(self.graph.keys())
-        for name in self.graph.keys():
-            block = self.graph[name]
-            for jt in block.jump_targets:
+        heads = set(self.blocks.keys())
+        for name in self.blocks.keys():
+            for jt in self.jump_targets[name]:
                 heads.discard(jt)
         assert len(heads) == 1
         return next(iter(heads))
@@ -125,40 +138,43 @@ class SCFG:
         """
         from numba_rvsdg.networkx_vendored.scc import scc
 
+        scfg = self
+
         class GraphWrap:
             def __init__(self, graph):
-                self.graph = graph
+                self.blocks = graph
 
             def __getitem__(self, vertex):
-                out = self.graph[vertex].jump_targets
+                out = scfg.jump_targets[vertex]
                 # Exclude node outside of the subgraph
-                return [k for k in out if k in self.graph]
+                return [k for k in out if k in self.blocks]
 
             def __iter__(self):
-                return iter(self.graph.keys())
+                return iter(self.blocks.keys())
 
-        return list(scc(GraphWrap(self.graph)))
+        return list(scc(GraphWrap(self.blocks)))
 
     def compute_scc_subgraph(self, subgraph) -> List[Set[str]]:
         """
         Strongly-connected component for detecting loops inside a subgraph.
         """
         from numba_rvsdg.networkx_vendored.scc import scc
+        scfg = self
 
         class GraphWrap:
             def __init__(self, graph, subgraph):
-                self.graph = graph
+                self.blocks = graph
                 self.subgraph = subgraph
 
             def __getitem__(self, vertex):
-                out = self.graph[vertex].jump_targets
+                out = scfg.jump_targets[vertex]
                 # Exclude node outside of the subgraph
                 return [k for k in out if k in subgraph]
 
             def __iter__(self):
-                return iter(self.graph.keys())
+                return iter(self.blocks.keys())
 
-        return list(scc(GraphWrap(self.graph, subgraph)))
+        return list(scc(GraphWrap(self.blocks, subgraph)))
 
     def find_headers_and_entries(
         self, subgraph: Set[str]
@@ -177,7 +193,7 @@ class SCFG:
         headers: Set[str] = set()
 
         for outside in self.exclude_blocks(subgraph):
-            nodes_jump_in_loop = subgraph.intersection(self.graph[outside].jump_targets)
+            nodes_jump_in_loop = subgraph.intersection(self.jump_targets[outside])
             headers.update(nodes_jump_in_loop)
             if nodes_jump_in_loop:
                 entries.add(outside)
@@ -203,19 +219,19 @@ class SCFG:
         exits: Set[str] = set()
         for inside in subgraph:
             # any node inside that points outside the loop
-            for jt in self.graph[inside].jump_targets:
+            for jt in self.jump_targets[inside]:
                 if jt not in subgraph:
                     exiting.add(inside)
                     exits.add(jt)
             # any returns
-            if self.graph[inside].is_exiting:
+            if self.is_exiting(inside):
                 exiting.add(inside)
         return sorted(exiting), sorted(exits)
 
     def is_reachable_dfs(self, begin: str, end: str):  # -> TypeGuard:
         """Is end reachable from begin."""
         seen = set()
-        to_vist = list(self.graph[begin].jump_targets)
+        to_vist = list(self.jump_targets[begin])
         while True:
             if to_vist:
                 block = to_vist.pop()
@@ -228,15 +244,25 @@ class SCFG:
                 return True
             elif block not in seen:
                 seen.add(block)
-                if block in self.graph:
-                    to_vist.extend(self.graph[block].jump_targets)
+                if block in self.blocks:
+                    to_vist.extend(self.jump_targets[block])
 
-    def add_block(self, basicblock: BasicBlock):
-        self.graph[basicblock.name] = basicblock
+    def add_block(self, basicblock: BasicBlock, jump_targets: List[str], back_edges: List[str]):
+        self.blocks[basicblock.name] = basicblock
+        self._jump_targets[basicblock.name] = jump_targets
+        self.back_edges[basicblock.name] = back_edges
 
     def remove_blocks(self, names: Set[str]):
         for name in names:
-            del self.graph[name]
+            del self.blocks[name]
+            del self._jump_targets[name]
+            del self.back_edges[name]
+
+    def is_exiting(self, block_name: str) -> bool:
+        return not self.jump_targets[block_name]
+
+    def is_fallthrough(self, block_name: str) -> bool:
+        return len(self.jump_targets[block_name]) == 1
 
     def _insert_block(
         self, new_name: str, predecessors: Set[str], successors: Set[str],
@@ -245,15 +271,18 @@ class SCFG:
         # TODO: needs a diagram and documentaion
         # initialize new block
         new_block = block_type(
-            name=new_name, _jump_targets=successors, backedges=set()
+            name=new_name
         )
         # add block to self
-        self.add_block(new_block)
+        self.add_block(new_block, successors, [])
         # Replace any arcs from any of predecessors to any of successors with
         # an arc through the inserted block instead.
         for name in predecessors:
-            block = self.graph.pop(name)
-            jt = list(block.jump_targets)
+            if hasattr(self.blocks[name], 'branch_value_table'):
+                for key, value in self.blocks[name].branch_value_table.items():
+                    if value in successors:
+                        self.blocks[name].branch_value_table[key] = new_name
+            jt = list(self.jump_targets[name])
             if successors:
                 for s in successors:
                     if s in jt:
@@ -263,7 +292,7 @@ class SCFG:
                             jt.pop(jt.index(s))
             else:
                 jt.append(new_name)
-            self.add_block(block.replace_jump_targets(jump_targets=tuple(jt)))
+            self._jump_targets[name] = jt
 
     def insert_SyntheticExit(
         self, new_name: str, predecessors: Set[str], successors: Set[str],
@@ -298,8 +327,7 @@ class SCFG:
         # Replace any arcs from any of predecessors to any of successors with
         # an arc through the to be inserted block instead.
         for name in predecessors:
-            block = self.graph[name]
-            jt = list(block.jump_targets)
+            jt = list(self.jump_targets[name])
             # Need to create synthetic assignments for each arc from a
             # predecessors to a successor and insert it between the predecessor
             # and the newly created block
@@ -309,12 +337,10 @@ class SCFG:
                 variable_assignment[branch_variable] = branch_variable_value
                 synth_assign_block = SyntheticAssignment(
                     name=synth_assign,
-                    _jump_targets=(new_name,),
-                    backedges=(),
                     variable_assignment=variable_assignment,
                 )
                 # add block
-                self.add_block(synth_assign_block)
+                self.add_block(synth_assign_block, [new_name], [])
                 # update branching table
                 branch_value_table[branch_variable_value] = s
                 # update branching variable
@@ -322,19 +348,15 @@ class SCFG:
                 # replace previous successor with synth_assign
                 jt[jt.index(s)] = synth_assign
             # finally, replace the jump_targets
-            self.add_block(
-                self.graph.pop(name).replace_jump_targets(jump_targets=tuple(jt))
-            )
+            self._jump_targets[name] = jt
         # initialize new block, which will hold the branching table
         new_block = SyntheticHead(
             name=new_name,
-            _jump_targets=tuple(successors),
-            backedges=set(),
             variable=branch_variable,
             branch_value_table=branch_value_table,
         )
         # add block to self
-        self.add_block(new_block)
+        self.add_block(new_block, successors, [])
 
     def join_returns(self):
         """Close the CFG.
@@ -343,7 +365,7 @@ class SCFG:
         predescessors and no successors respectively.
         """
         # for all nodes that contain a return
-        return_nodes = [node for node in self.graph if self.graph[node].is_exiting]
+        return_nodes = [node for node in self.blocks if self.is_exiting(node)]
         # close if more than one is found
         if len(return_nodes) > 1:
             return_solo_name = self.name_gen.new_block_name(block_names.SYNTH_RETURN)
@@ -390,8 +412,8 @@ class SCFG:
 
     @staticmethod
     def from_dict(graph_dict: dict):
-        scfg_graph = {}
-        name_gen = NameGenerator()
+        scfg = SCFG()
+        name_gen = scfg.name_gen
         block_dict = {}
         for index in graph_dict.keys():
             block_dict[index] = name_gen.new_block_name(block_names.BASIC)
@@ -399,24 +421,21 @@ class SCFG:
             jump_targets = attributes["jt"]
             backedges = attributes.get("be", ())
             name = block_dict[index]
-            block = BasicBlock(
-                name=name,
-                backedges=tuple(block_dict[idx] for idx in backedges),
-                _jump_targets=tuple(block_dict[idx] for idx in jump_targets),
-            )
-            scfg_graph[name] = block
-        scfg = SCFG(scfg_graph, name_gen=name_gen)
+            block = BasicBlock(name=name)
+            backedges=tuple(block_dict[idx] for idx in backedges)
+            jump_targets=tuple(block_dict[idx] for idx in jump_targets)
+            scfg.add_block(block, jump_targets, backedges)
         return scfg, block_dict
 
     def to_yaml(self):
         # Convert to yaml
-        scfg_graph = self.graph
+        scfg_graph = self.blocks
         yaml_string = """"""
 
         for key, value in scfg_graph.items():
-            jump_targets = [i for i in value._jump_targets]
+            jump_targets = [i for i in self._jump_targets[key]]
             jump_targets = str(jump_targets).replace("\'", "\"")
-            back_edges = [i for i in value.backedges]
+            back_edges = [i for i in self.back_edges[key]]
             jump_target_str = f"""
                 "{key}":
                     jt: {jump_targets}"""
@@ -430,13 +449,13 @@ class SCFG:
         return yaml_string
 
     def to_dict(self):
-        scfg_graph = self.graph
+        scfg_graph = self.blocks
         graph_dict = {}
         for key, value in scfg_graph.items():
             curr_dict = {}
-            curr_dict["jt"] = [i for i in value._jump_targets]
-            if value.backedges:
-                curr_dict["be"] = [i for i in value.backedges]
+            curr_dict["jt"] = [i for i in self._jump_targets[key]]
+            if self.back_edges[key]:
+                curr_dict["be"] = [i for i in self.back_edges[key]]
             graph_dict[key] = curr_dict
         return graph_dict
 
@@ -455,7 +474,7 @@ class AbstractGraphView(Mapping):
 
 class ConcealedRegionView(AbstractGraphView):
 
-    def __init__(self, scfg):
+    def __init__(self, scfg: SCFG):
         self.scfg = scfg
 
     def __getitem__(self, item):
@@ -508,10 +527,10 @@ class ConcealedRegionView(AbstractGraphView):
                 # If this is a region, continue on to the exiting block, i.e.
                 # the region is presented a single fall-through block to the
                 # consumer of this iterator.
-                to_visit.extend(block.subregion[block.exiting].jump_targets)
+                to_visit.extend(self.scfg.jump_targets[name])
             else:
-                # otherwise add any jump_targets to the list of names to visit
-                to_visit.extend(block.jump_targets)
+                # otherwise add any outgoing edges to the list of names to visit
+                to_visit.extend(self.scfg.jump_targets[name])
 
             # finally, yield the name
             yield name
