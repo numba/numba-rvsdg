@@ -54,7 +54,5 @@ API stability
    faqs
    contributing
    release_notes
-   glossary
-
 
 .. |reg| unicode:: U+000AE .. REGISTERED SIGN
