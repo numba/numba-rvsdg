@@ -353,8 +353,8 @@ def extract_region(scfg: SCFG, region_blocks, region_kind, parent_region: Region
 
     region = RegionBlock(
         name=region_name,
-        _jump_targets=scfg[region_exiting]._jump_targets,
-        backedges=scfg[region_exiting].backedges,
+        _jump_targets=scfg[region_exiting].jump_targets,
+        backedges=(),
         kind=region_kind,
         header=region_header,
         subregion=head_subgraph,

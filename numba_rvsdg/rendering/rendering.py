@@ -111,6 +111,7 @@ class ByteFlowRenderer(object):
                 else:
                     raise Exception("unreachable " + str(src_block))
             for dst_name in src_block.backedges:
+                dst_name = find_base_header(blocks[dst_name]).name
                 if dst_name in blocks.keys():
                     self.g.edge(
                         str(src_block.name), str(dst_name), style="dashed", color="grey", constraint="0"
@@ -235,6 +236,7 @@ class SCFGRenderer:
                 else:
                     raise Exception("unreachable " + str(src_block))
             for dst_name in src_block.backedges:
+                dst_name = find_base_header(blocks[dst_name]).name
                 if dst_name in blocks.keys():
                     self.g.edge(
                         str(src_block.name), str(dst_name), style="dashed", color="grey", constraint="0"
