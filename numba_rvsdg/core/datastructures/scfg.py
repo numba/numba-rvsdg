@@ -1,3 +1,4 @@
+from copy import deepcopy
 import dis
 import yaml
 from textwrap import dedent
@@ -303,7 +304,7 @@ class SCFG:
             # Need to create synthetic assignments for each arc from a
             # predecessors to a successor and insert it between the predecessor
             # and the newly created block
-            for s in set(jt).intersection(successors):
+            for s in sorted(set(jt).intersection(successors)):
                 synth_assign = self.name_gen.new_block_name(block_names.SYNTH_ASSIGN)
                 variable_assignment = {}
                 variable_assignment[branch_variable] = branch_variable_value
@@ -440,6 +441,26 @@ class SCFG:
             graph_dict[key] = curr_dict
         return graph_dict
 
+    def restructure(self) -> "SCFG":
+        from numba_rvsdg.core.transformations import restructure_loop, restructure_branch
+        def _iter_subregions(scfg: "SCFG"):
+            for node in scfg.graph.values():
+                if isinstance(node, RegionBlock):
+                    yield node
+                    yield from _iter_subregions(node.subregion)
+
+        scfg = deepcopy(self)
+        # close
+        scfg.join_returns()
+        # handle loop
+        restructure_loop(scfg)
+        for region in _iter_subregions(scfg):
+            restructure_loop(region.subregion)
+        # handle branch
+        restructure_branch(scfg)
+        for region in _iter_subregions(scfg):
+            restructure_branch(region.subregion)
+        return scfg
 
 class AbstractGraphView(Mapping):
 

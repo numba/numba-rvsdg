@@ -37,7 +37,7 @@ class ByteFlowRenderer(object):
             if regionblock.kind == "head":
                 color = "red"
             subg.attr(color=color, label=regionblock.kind)
-            for name, block in graph.items():
+            for name, block in sorted(graph.items()):
                 self.render_block(subg, name, block)
         # render edges within this region
         self.render_edges(graph)
@@ -96,7 +96,7 @@ class ByteFlowRenderer(object):
             raise Exception("unreachable")
 
     def render_edges(self, blocks: Dict[str, BasicBlock]):
-        for name, block in blocks.items():
+        for name, block in sorted(blocks.items()):
             for dst in block.jump_targets:
                 if dst in blocks:
                     if type(block) in (
@@ -135,7 +135,7 @@ class ByteFlowRenderer(object):
 
     def render_scfg(self, scfg):
         # render nodes
-        for name, block in scfg.graph.items():
+        for name, block in sorted(scfg.graph.items()):
             self.render_block(self.g, name, block)
         self.render_edges(scfg.graph)
         return self.g

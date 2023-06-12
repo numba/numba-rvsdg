@@ -102,7 +102,7 @@ def loop_restructure_helper(scfg: SCFG, loop: Set[str]):
     new_blocks = set()
     doms = _doms(scfg)
     # For every block in the loop:
-    for name in loop:
+    for name in sorted(loop):
         # If the block is an exiting block or a backedge block
         if name in exiting_blocks or name in backedge_blocks:
             # Copy the jump targets, these will be modified
@@ -217,7 +217,7 @@ def restructure_loop(scfg: SCFG):
         "restructure_loop found %d loops in %s", len(loops), scfg.graph.keys()
     )
     # rotate and extract loop
-    for loop in loops:
+    for loop in sorted(loops):
         loop_restructure_helper(scfg, loop)
         extract_region(scfg, loop, "loop")
 
