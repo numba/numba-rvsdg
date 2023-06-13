@@ -2,7 +2,7 @@
 from unittest import main
 
 from numba_rvsdg.core.datastructures.scfg import SCFG
-from numba_rvsdg.core.datastructures.basic_block import BasicBlock
+from numba_rvsdg.core.datastructures.basic_block import BasicBlock, RegionBlock
 from numba_rvsdg.core.transformations import loop_restructure_helper
 from numba_rvsdg.tests.test_utils import SCFGComparator
 from numba_rvsdg.core.datastructures import block_names
