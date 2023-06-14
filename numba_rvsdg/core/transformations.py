@@ -291,6 +291,28 @@ def find_tail_blocks(
     return tail_subregion
 
 
+def update_exiting(region_block: RegionBlock, new_region_header: str, new_region_name: str):
+    # Recursively updates the exiting blocks of a regionblock
+    region_exiting = region_block.exiting
+    region_exiting_block: BasicBlock = region_block.subregion.graph.pop(region_exiting)
+    jt = list(region_exiting_block._jump_targets)
+    for idx, s in enumerate(jt):
+        if s is new_region_header:
+            jt[idx] = new_region_name
+    region_exiting_block = region_exiting_block.replace_jump_targets(jump_targets=tuple(jt))
+    be = list(region_exiting_block.backedges)
+    for idx, s in enumerate(be):
+        if s is new_region_header:
+            be[idx] = new_region_name
+    region_exiting_block = region_exiting_block.replace_backedges(backedges=tuple(be))
+    if isinstance(region_exiting_block, RegionBlock):
+        region_exiting_block = update_exiting(region_exiting_block,
+                                              new_region_header,
+                                              new_region_name)
+    region_block.subregion.add_block(region_exiting_block)
+    return region_block
+
+
 def extract_region(scfg: SCFG, region_blocks, region_kind, parent_region: RegionBlock):
     headers, entries = scfg.find_headers_and_entries(region_blocks)
     exiting_blocks, exit_blocks = scfg.find_exiting_and_exits(region_blocks)
@@ -304,25 +326,6 @@ def extract_region(scfg: SCFG, region_blocks, region_kind, parent_region: Region
     head_subgraph = SCFG(
         {name: scfg.graph[name] for name in region_blocks}, name_gen=scfg.name_gen
     )
-
-    def update_exiting(region_block: RegionBlock):
-        # Recursively updates the exiting blocks of a regionblock
-        region_exiting = region_block.exiting
-        region_exiting_block: BasicBlock = region_block.subregion.graph.pop(region_exiting)
-        jt = list(region_exiting_block._jump_targets)
-        for idx, s in enumerate(jt):
-            if s is region_header:
-                jt[idx] = region_name
-        region_exiting_block = region_exiting_block.replace_jump_targets(jump_targets=tuple(jt))
-        be = list(region_exiting_block.backedges)
-        for idx, s in enumerate(be):
-            if s is region_header:
-                be[idx] = region_name
-        region_exiting_block = region_exiting_block.replace_backedges(backedges=tuple(be))
-        if isinstance(region_exiting_block, RegionBlock):
-            region_exiting_block = update_exiting(region_exiting_block)
-        region_block.subregion.add_block(region_exiting_block)
-        return region_block
 
     # For all entries, replace the header as a jump target
     # with the newly created region as a jump target.
@@ -348,7 +351,7 @@ def extract_region(scfg: SCFG, region_blocks, region_kind, parent_region: Region
         # If the entry itself is a region, update it's
         # exiting blocks too, recursively
         if isinstance(entry, RegionBlock):
-            entry = update_exiting(entry)
+            entry = update_exiting(entry, region_header, region_name)
         scfg.add_block(entry)
 
     region = RegionBlock(
