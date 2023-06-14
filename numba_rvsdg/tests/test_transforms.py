@@ -447,7 +447,7 @@ class TestLoopRestructure(SCFGComparator):
 
     def test_no_op(self):
         """Loop consists of two blocks, but it's in form."""
-        original ="""
+        original = """
         "0":
             jt: ["1"]
         "1":
@@ -457,7 +457,7 @@ class TestLoopRestructure(SCFGComparator):
         "3":
             jt: []
         """
-        expected ="""
+        expected = """
         "0":
             jt: ["1"]
         "1":

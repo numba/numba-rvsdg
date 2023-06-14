@@ -201,7 +201,7 @@ class Simulator:
         # Pop the region from the region stack again and return the final
         # action for this region
         popped = self.region_stack.pop()
-        assert(popped == region)
+        assert (popped == region)
         return action
 
     def run_PythonBytecodeBlock(self, name: str):

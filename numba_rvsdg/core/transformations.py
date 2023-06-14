@@ -119,8 +119,8 @@ def loop_restructure_helper(scfg: SCFG, loop: Set[str]):
                     # Setup the variables in the assignment table to point to
                     # the correct blocks
                     if needs_synth_exit:
-                        variable_assignment[exit_variable]  = reverse_lookup(exit_value_table, jt)
-                    variable_assignment[backedge_variable]  = reverse_lookup(backedge_value_table,
+                        variable_assignment[exit_variable] = reverse_lookup(exit_value_table, jt)
+                    variable_assignment[backedge_variable] = reverse_lookup(backedge_value_table,
                         synth_exit if needs_synth_exit else next(iter(exit_blocks)))
                     # Create the actual control variable block
                     synth_assign_block = SyntheticAssignment(

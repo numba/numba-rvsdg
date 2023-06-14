@@ -154,10 +154,10 @@ class SCFGRenderer(BaseRenderer):
                 color = "purple"
             if regionblock.kind == "head":
                 color = "red"
-            label = regionblock.name  + \
+            label = regionblock.name + \
                 "\njump targets: " + str(regionblock.jump_targets) + \
-                "\nback edges: "  + str(regionblock.backedges)
-                
+                "\nback edges: " + str(regionblock.backedges)
+
             subg.attr(color=color, label=label)
             for name, block in regionblock.subregion.graph.items():
                 self.render_block(subg, name, block)
@@ -165,7 +165,7 @@ class SCFGRenderer(BaseRenderer):
     def render_basic_block(self, digraph: "Digraph", name: str, block: BasicBlock):
         body = name + "\l"+ \
                 "\njump targets: " + str(block.jump_targets) + \
-                "\nback edges: "  + str(block.backedges)
+                "\nback edges: " + str(block.backedges)
 
         digraph.node(str(name), shape="rect", label=body)
 
@@ -196,7 +196,7 @@ class SCFGRenderer(BaseRenderer):
             )
             body += \
                 "\njump targets: " + str(block.jump_targets) + \
-                "\nback edges: "  + str(block.backedges)
+                "\nback edges: " + str(block.backedges)
 
         else:
             raise Exception("Unknown name type: " + name)

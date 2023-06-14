@@ -45,7 +45,7 @@ class BasicBlock:
         """Replaces jump targets of this block by the given tuple.
         The provided jump targets must be in the same order as their
         intended original replacements.
-        
+
         Note that replacing jump targets will not replace the backedge
         tuple, so replacement for any jump targets that is declared as
         a backedge needs to be updated separately using replace_backedges"""
@@ -122,7 +122,7 @@ class SyntheticBranch(SyntheticBlock):
         The provided jump targets must be in the same order as their
         intended original replacements. Additionally also updates the
         branch value table of the branch block.
-        
+
         Note that replacing jump targets will not replace the backedge
         tuple, so replacement for any jump targets that is declared as
         a backedge needs to be updated separately using replace_backedges"""
@@ -169,7 +169,7 @@ class SyntheticExitBranch(SyntheticBranch):
 @dataclass(frozen=True)
 class RegionBlock(BasicBlock):
     kind: str = None
-    """The kind of region. Can be 'head', 'tail', 'branch', 
+    """The kind of region. Can be 'head', 'tail', 'branch',
     'loop' or 'meta' strings"""
     parent_region: "RegionBlock" = None
     """The parent region of this region as per the SCFG."""
