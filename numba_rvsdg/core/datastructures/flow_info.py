@@ -17,22 +17,24 @@ from numba_rvsdg.core.utils import (
 
 @dataclass()
 class FlowInfo:
-    """FlowInfo converts Bytecode into a ByteFlow object (CFG)."""
+    """The FlowInfo class is responsible for converting bytecode into a 
+    ByteFlow object, which represents the control flow graph (CFG)."""
 
     block_offsets: Set[int] = field(default_factory=set)
-    """Marks starting offset of basic-block
-    """
+    """A set that marks the starting offsets of basic blocks in the bytecode."""
 
     jump_insts: Dict[int, Tuple[int, ...]] = field(default_factory=dict)
-    """Contains jump instructions and their target offsets.
-    """
+    """A dictionary that contains jump instructions and their target offsets."""
 
     last_offset: int = field(default=0)
-    """Offset of the last bytecode instruction.
-    """
+    """The offset of the last bytecode instruction."""
 
     def _add_jump_inst(self, offset: int, targets: Sequence[int]):
-        """Add jump instruction to FlowInfo."""
+        """
+            Internal method to add a jump instruction to the FlowInfo. It adds the 
+            target offsets of the jump instruction to the block_offsets set and 
+            updates the jump_insts dictionary.
+        """
         for off in targets:
             assert isinstance(off, int)
             self.block_offsets.add(off)
@@ -41,8 +43,10 @@ class FlowInfo:
     @staticmethod
     def from_bytecode(bc: dis.Bytecode) -> "FlowInfo":
         """
-        Build control-flow information that marks start of basic-blocks and
-        jump instructions.
+            Static method that builds the control-flow information from the given 
+            dis.Bytecode object bc. It analyzes the bytecode instructions, marks 
+            the start of basic blocks, and records jump instructions and their 
+            target offsets. It returns a FlowInfo object.
         """
         flowinfo = FlowInfo()
 
@@ -65,7 +69,11 @@ class FlowInfo:
 
     def build_basicblocks(self: "FlowInfo", end_offset=None) -> "SCFG":
         """
-        Build a graph of basic-blocks
+            Builds a graph of basic blocks (SCFG) based on the flow information. 
+            It creates a structured control flow graph (SCFG) object, assigns 
+            names to the blocks, and defines the block boundaries, jump targets, 
+            and backedges. It returns an SCFG object representing the control 
+            flow graph.
         """
         scfg = SCFG()
         offsets = sorted(self.block_offsets)

@@ -12,11 +12,24 @@ from numba_rvsdg.core.transformations import restructure_loop, restructure_branc
 
 @dataclass(frozen=True)
 class ByteFlow:
+    """
+        The ByteFlow class represents the flow of bytes in a bytecode and its 
+        corresponding structured control flow graph (SCFG).
+   """
     bc: dis.Bytecode
+    """The dis.Bytecode object representing the bytecode."""
     scfg: "SCFG"
+    """The structured control flow graph (SCFG) representing the control flow of 
+    the bytecode."""
 
     @staticmethod
     def from_bytecode(code) -> "ByteFlow":
+        """
+            Creates a ByteFlow object from the given code, which is the bytecode. 
+            This method uses dis.Bytecode to parse the bytecode, builds the basic blocks 
+            and flow information from it, and returns a ByteFlow object with the 
+            bytecode and the SCFG.
+        """
         bc = dis.Bytecode(code)
         _logger.debug("Bytecode\n%s", _LogWrap(lambda: bc.dis()))
 
@@ -25,11 +38,23 @@ class ByteFlow:
         return ByteFlow(bc=bc, scfg=scfg)
 
     def _join_returns(self):
+        """
+            Creates a deep copy of the SCFG and performs the operation to join
+            return points within the control flow. It returns a new ByteFlow 
+            object with the updated SCFG.
+        """
         scfg = deepcopy(self.scfg)
         scfg.join_returns()
         return ByteFlow(bc=self.bc, scfg=scfg)
 
     def _restructure_loop(self):
+        """
+            Creates a deep copy of the SCFG and performs the operation to 
+            restructure loop constructs within the control flow. It applies 
+            the restructuring operation to both the main SCFG and any 
+            subregions within it. It returns a new ByteFlow object with 
+            the updated SCFG.
+        """
         scfg = deepcopy(self.scfg)
         restructure_loop(scfg.region)
         for region in _iter_subregions(scfg):
@@ -37,6 +62,13 @@ class ByteFlow:
         return ByteFlow(bc=self.bc, scfg=scfg)
 
     def _restructure_branch(self):
+        """
+            Creates a deep copy of the SCFG and performs the operation to 
+            restructure branch constructs within the control flow. It applies 
+            the restructuring operation to both the main SCFG and any 
+            subregions within it. It returns a new ByteFlow object with 
+            the updated SCFG.
+        """
         scfg = deepcopy(self.scfg)
         restructure_branch(scfg.region)
         for region in _iter_subregions(scfg):
@@ -44,6 +76,13 @@ class ByteFlow:
         return ByteFlow(bc=self.bc, scfg=scfg)
 
     def restructure(self):
+        """
+            Creates a deep copy of the SCFG and applies a series of 
+            restructuring operations to it. The operations include 
+            joining return points, restructuring loop constructs, and 
+            restructuring branch constructs. It returns a new ByteFlow 
+            object with the updated SCFG.
+        """
         scfg = deepcopy(self.scfg)
         # close
         scfg.join_returns()
