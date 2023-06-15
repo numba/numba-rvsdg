@@ -169,10 +169,10 @@ class SCFG:
     def compute_scc(self) -> List[Set[str]]:
         """
             Computes the strongly connected components (SCC) of the control 
-            flow graph using the scc function from the 
-            numba_rvsdg.networkx_vendored.scc module. It returns a list of 
-            sets, where each set represents an SCC in the graph. SCCs are 
-            useful for detecting loops in the graph.
+            flow graph using Tarjan's algorithm. The implementation is at the 
+            scc function from the numba_rvsdg.networkx_vendored.scc module. 
+            It returns a list of sets, where each set represents an SCC in 
+            the graph. SCCs are useful for detecting loops in the graph.
         """
         from numba_rvsdg.networkx_vendored.scc import scc
 
