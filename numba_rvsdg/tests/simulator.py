@@ -272,6 +272,9 @@ class Simulator:
     def synth_SyntheticReturn(self, control_name, block):
         pass
 
+    def synth_SyntheticFill(self, control_name, block):
+        pass
+
     def synth_SyntheticBlock(self, control_name, block):
         raise NotImplementedError("SyntheticBlock should not be instantiated")
 

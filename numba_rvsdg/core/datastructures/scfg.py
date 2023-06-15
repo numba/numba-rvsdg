@@ -14,6 +14,7 @@ from numba_rvsdg.core.datastructures.basic_block import (
     SyntheticExit,
     SyntheticTail,
     SyntheticReturn,
+    SyntheticFill,
     RegionBlock,
 )
 from numba_rvsdg.core.datastructures import block_names
@@ -283,7 +284,7 @@ class SCFG:
     def insert_SyntheticFill(
         self, new_name: str, predecessors: Set[str], successors: Set[str],
     ):
-        self._insert_block(new_name, predecessors, successors, SyntheticReturn)
+        self._insert_block(new_name, predecessors, successors, SyntheticFill)
 
     def insert_block_and_control_blocks(
         self, new_name: str, predecessors: Set[str], successors: Set[str]
