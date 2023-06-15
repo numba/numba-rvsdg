@@ -9,7 +9,7 @@ from numba_rvsdg.core.utils import _next_inst_offset
 @dataclass(frozen=True)
 class BasicBlock:
     """
-        The BasicBlock class represents an atomic basic block in a data flow graph.
+        The BasicBlock class represents an atomic basic block in a control flow graph.
         Note that the BasicBlock class is defined with the `frozen=True`` parameter,
         making instances of this class immutable.
     """
@@ -73,7 +73,7 @@ class BasicBlock:
 class PythonBytecodeBlock(BasicBlock):
     """
         The PythonBytecodeBlock class is a subclass of the BasicBlock class
-        and represents a basic block in Python bytecode. It inherits all
+        and represents a basic block of Python bytecode. It inherits all
         attributes and methods from the BasicBlock class as well as it's
         immutability properties.
    """
@@ -115,7 +115,7 @@ class PythonBytecodeBlock(BasicBlock):
 class SyntheticBlock(BasicBlock):
     """
         The SyntheticBlock class is a subclass of the BasicBlock class and
-        represents a artificially added block in a data flow graph. It serves as
+        represents a artificially added block in a control flow graph. It serves as
         a base class for other artificially added block types. This class inherits
         all attributes and methods from the BasicBlock class.
     """
@@ -125,7 +125,7 @@ class SyntheticBlock(BasicBlock):
 class SyntheticExit(SyntheticBlock):
     """
         The SyntheticExit class is a subclass of the SyntheticBlock class
-        and represents a artificially added exit block in a data flow graph. 
+        and represents a artificially added exit block in a control flow graph. 
         It is used to denote an exit point in the data flow. This class
         inherits all attributes and methods from the SyntheticBlock and 
         BasicBlock classes.
@@ -147,7 +147,7 @@ class SyntheticReturn(SyntheticBlock):
 class SyntheticTail(SyntheticBlock):
     """
         The SyntheticTail class is a subclass of the SyntheticBlock class and 
-        represents a artificially added tail block in a data flow graph. It is used 
+        represents a artificially added tail block in a control flow graph. It is used 
         to denote a tail call point in the data flow. This class inherits 
         all attributes and methods from the SyntheticBlock and BasicBlock 
         classes.
@@ -158,7 +158,7 @@ class SyntheticTail(SyntheticBlock):
 class SyntheticFill(SyntheticBlock):
     """
         The SyntheticFill class is a subclass of the SyntheticBlock class 
-        and represents a artificially added fill block in a data flow graph. It is 
+        and represents a artificially added fill block in a control flow graph. It is 
         used to denote a fill point in the data flow. This class inherits 
         all attributes and methods from the SyntheticBlock and BasicBlock 
         classes.
@@ -169,7 +169,7 @@ class SyntheticFill(SyntheticBlock):
 class SyntheticAssignment(SyntheticBlock):
     """
         The SyntheticAssignment class is a subclass of the SyntheticBlock
-        class and represents a artificially added assignment block in a data
+        class and represents a artificially added assignment block in a control
         flow graph. It is used to denote a block where variable assignments
         occur. This class inherits all attributes and methods from the
         SyntheticBlock and BasicBlock classes.
@@ -226,7 +226,7 @@ class SyntheticBranch(SyntheticBlock):
 class SyntheticHead(SyntheticBranch):
     """
         The SyntheticHead class is a subclass of the SyntheticBranch 
-        class and represents a artificially added head block in a data flow 
+        class and represents a artificially added head block in a control flow 
         graph. It is used to denote the head of a artificially added branch. 
         This class inherits all attributes and methods from the 
         SyntheticBranch and BasicBlock classes.
@@ -238,7 +238,7 @@ class SyntheticHead(SyntheticBranch):
 class SyntheticExitingLatch(SyntheticBranch):
     """
         The SyntheticExitingLatch class is a subclass of the SyntheticBranch 
-        class and represents a artificially added exiting latch block in a data 
+        class and represents a artificially added exiting latch block in a control 
         flow graph. It is used to denote a artificially added latch block that is 
         also an exit point in the data flow. This class inherits all 
         attributes and methods from the SyntheticBranch and BasicBlock 

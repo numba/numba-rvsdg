@@ -13,7 +13,7 @@ from numba_rvsdg.core.transformations import restructure_loop, restructure_branc
 @dataclass(frozen=True)
 class ByteFlow:
     """
-        The ByteFlow class represents the flow of bytes in a bytecode and its 
+        The ByteFlow class represents the flow of  bytecode and its 
         corresponding structured control flow graph (SCFG).
    """
     bc: dis.Bytecode
@@ -40,7 +40,7 @@ class ByteFlow:
     def _join_returns(self):
         """
             Creates a deep copy of the SCFG and performs the operation to join
-            return points within the control flow. It returns a new ByteFlow 
+            return blocks within the control flow. It returns a new ByteFlow 
             object with the updated SCFG.
         """
         scfg = deepcopy(self.scfg)

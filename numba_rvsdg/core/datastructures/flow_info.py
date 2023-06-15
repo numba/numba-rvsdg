@@ -18,7 +18,7 @@ from numba_rvsdg.core.utils import (
 @dataclass()
 class FlowInfo:
     """The FlowInfo class is responsible for converting bytecode into a 
-    ByteFlow object, which represents the control flow graph (CFG)."""
+    ByteFlow object."""
 
     block_offsets: Set[int] = field(default_factory=set)
     """A set that marks the starting offsets of basic blocks in the bytecode."""
@@ -43,7 +43,7 @@ class FlowInfo:
     @staticmethod
     def from_bytecode(bc: dis.Bytecode) -> "FlowInfo":
         """
-            Static method that builds the control-flow information from the given 
+            Static method that builds the structured control flow graph (SCFG) from the given 
             dis.Bytecode object bc. It analyzes the bytecode instructions, marks 
             the start of basic blocks, and records jump instructions and their 
             target offsets. It returns a FlowInfo object.
@@ -69,7 +69,7 @@ class FlowInfo:
 
     def build_basicblocks(self: "FlowInfo", end_offset=None) -> "SCFG":
         """
-            Builds a graph of basic blocks (SCFG) based on the flow information. 
+            Builds a graph of basic blocks based on the flow information. 
             It creates a structured control flow graph (SCFG) object, assigns 
             names to the blocks, and defines the block boundaries, jump targets, 
             and backedges. It returns an SCFG object representing the control 
