@@ -33,14 +33,29 @@ class BasicBlock:
                 acc.append(j)
         return tuple(acc)
 
-    def replace_backedge(self, target: str) -> "BasicBlock":
+    def declare_backedge(self, target: str) -> "BasicBlock":
+        """Declare one of the jump targets as a backedge of this block.
+        """
         if target in self.jump_targets:
             assert not self.backedges
             return replace(self, backedges=(target,))
         return self
 
     def replace_jump_targets(self, jump_targets: Tuple) -> "BasicBlock":
+        """Replaces jump targets of this block by the given tuple.
+        The provided jump targets must be in the same order as their
+        intended original replacements.
+
+        Note that replacing jump targets will not replace the backedge
+        tuple, so replacement for any jump targets that is declared as
+        a backedge needs to be updated separately using replace_backedges"""
         return replace(self, _jump_targets=jump_targets)
+
+    def replace_backedges(self, backedges: Tuple) -> "BasicBlock":
+        """Replace back edges of this block by the given tuple.
+        The provided back edges must be in the same order as their
+        intended original replacements."""
+        return replace(self, backedges=backedges)
 
 
 @dataclass(frozen=True)
@@ -103,13 +118,21 @@ class SyntheticBranch(SyntheticBlock):
     branch_value_table: dict = None
 
     def replace_jump_targets(self, jump_targets: Tuple) -> "BasicBlock":
-        fallthrough = len(jump_targets) == 1
+        """Replaces jump targets of this block by the given tuple.
+        The provided jump targets must be in the same order as their
+        intended original replacements. Additionally also updates the
+        branch value table of the branch block.
+
+        Note that replacing jump targets will not replace the backedge
+        tuple, so replacement for any jump targets that is declared as
+        a backedge needs to be updated separately using replace_backedges"""
+
         old_branch_value_table = self.branch_value_table
         new_branch_value_table = {}
-        for target in self.jump_targets:
+        for target in self._jump_targets:
             if target not in jump_targets:
                 # ASSUMPTION: only one jump_target is being updated
-                diff = set(jump_targets).difference(self.jump_targets)
+                diff = set(jump_targets).difference(self._jump_targets)
                 assert len(diff) == 1
                 new_target = next(iter(diff))
                 for k, v in old_branch_value_table.items():
@@ -146,15 +169,23 @@ class SyntheticExitBranch(SyntheticBranch):
 @dataclass(frozen=True)
 class RegionBlock(BasicBlock):
     kind: str = None
-    headers: Dict[str, BasicBlock] = None
-    """The header of the region"""
+    """The kind of region. Can be 'head', 'tail', 'branch',
+    'loop' or 'meta' strings"""
+    parent_region: "RegionBlock" = None
+    """The parent region of this region as per the SCFG."""
+    header: str = None
+    """The header node of the region"""
     subregion: "SCFG" = None
-    """The subgraph excluding the headers
-    """
+    """The subgraph as an independent SCFG. Note that in case
+    of subregions the exiting node may point to blocks outside
+    of the current SCFG object."""
     exiting: str = None
-    """The exiting node.
-    """
+    """The exiting node of the region."""
 
-    def get_full_graph(self):
-        graph = ChainMap(self.subregion.graph, self.headers)
-        return graph
+    def replace_header(self, new_header):
+        """Does inplace replacement of the header block."""
+        object.__setattr__(self, "header", new_header)
+
+    def replace_exiting(self, new_exiting):
+        """Does, inplace replacement of the exiting block."""
+        object.__setattr__(self, "exiting", new_exiting)

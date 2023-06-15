@@ -2,7 +2,7 @@
 from unittest import main
 
 from numba_rvsdg.core.datastructures.scfg import SCFG
-from numba_rvsdg.core.datastructures.basic_block import BasicBlock
+from numba_rvsdg.core.datastructures.basic_block import BasicBlock, RegionBlock
 from numba_rvsdg.core.transformations import loop_restructure_helper
 from numba_rvsdg.tests.test_utils import SCFGComparator
 from numba_rvsdg.core.datastructures import block_names
@@ -447,7 +447,7 @@ class TestLoopRestructure(SCFGComparator):
 
     def test_no_op(self):
         """Loop consists of two blocks, but it's in form."""
-        original ="""
+        original = """
         "0":
             jt: ["1"]
         "1":
@@ -457,7 +457,7 @@ class TestLoopRestructure(SCFGComparator):
         "3":
             jt: []
         """
-        expected ="""
+        expected = """
         "0":
             jt: ["1"]
         "1":
