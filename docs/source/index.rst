@@ -16,7 +16,7 @@ Representation (IR) suitable for regularizing Python bytecode within Numba_.
 The code in this repository is an implementation of the CFG restructuring 
 algorithms in Bahmann2015, specifically those from section 4.1 and 4.2: namely 
 "loop restructuring" and "branch restructuring". These are interesting for Numba_
-because they serve to clearly identify regions withing the Python bytecode.
+because they serve to clearly identify regions within the Python bytecode.
 
 
 .. _Numba: http://numba.pydata.org/

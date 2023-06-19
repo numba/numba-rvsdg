@@ -18,7 +18,7 @@ class BasicBlock:
         The corresponding name for this block.
 
     _jump_targets: Tuple[str]
-        Jump targets (branch destinations) for this block
+        Jump targets (branch destinations) for this block.
 
     backedges: Tuple[str]
         Backedges for this block.
@@ -39,7 +39,7 @@ class BasicBlock:
         -------
         is_exiting: bool
             True if the current block is an exiting block, False if it
-            isn't
+            isn't.
 
         """
         return not self.jump_targets
@@ -50,7 +50,7 @@ class BasicBlock:
 
         Returns
         -------
-        is_exiting: bool
+        fallthrough: bool
             True if the current block is a fallthorough block, False if it
             isn't
 
@@ -97,7 +97,7 @@ class BasicBlock:
     def replace_jump_targets(self, jump_targets: Tuple) -> "BasicBlock":
         """Replaces jump targets of this block by the given tuple.
 
-        This method replaces the jump targets of  the current BasicBlock.
+        This method replaces the jump targets of the current BasicBlock.
         The provided jump targets must be in the same order as their
         intended original replacements.
 
@@ -112,7 +112,7 @@ class BasicBlock:
 
         Returns
         -------
-        result: BasicBlock
+        basic_block: BasicBlock
             The resulting BasicBlock
 
         """
@@ -121,7 +121,7 @@ class BasicBlock:
     def replace_backedges(self, backedges: Tuple) -> "BasicBlock":
         """Replaces back edges of this block by the given tuple.
 
-        This method replaces the back edges of  the current BasicBlock.
+        This method replaces the back edges of the current BasicBlock.
         The provided back edges must be in the same order as their
         intended original replacements.
 
@@ -132,8 +132,8 @@ class BasicBlock:
 
         Returns
         -------
-        result: BasicBlock
-            The resulting BasicBlock
+        basic_block: BasicBlock
+            The resulting BasicBlock.
 
         """
         return replace(self, backedges=backedges)
@@ -150,7 +150,7 @@ class PythonBytecodeBlock(BasicBlock):
         The starting bytecode offset.
 
     end: int
-        The bytecode offset immediate after the last bytecode of the block.
+        The bytecode offset immediately after the last bytecode of the block.
     """
 
     begin: int = None
@@ -160,25 +160,25 @@ class PythonBytecodeBlock(BasicBlock):
     def get_instructions(
         self, bcmap: Dict[int, dis.Instruction]
     ) -> List[dis.Instruction]:
-        """Retrieves a list of dis.Instruction objects corresponding to
+        """Retrieves a list of `dis.Instruction` objects corresponding to
         the instructions within the bytecode block.
 
         In this method, The bcmap parameter is a dictionary mapping bytecode
-        offsets to dis.Instruction objects. This method iterates over the
+        offsets to `dis.Instruction` objects. This method iterates over the
         bytecode offsets within the begin and end range, retrieves the
-        corresponding dis.Instruction objects from bcmap, and returns a list
+        corresponding `dis.Instruction` objects from bcmap, and returns a list
         of these instructions.
 
         Parameters
         ----------
         bcmap: Dict[int, dis.Instruction]
-            Dictionary mapping bytecode offsets to dis.Instruction objects
+            Dictionary mapping bytecode offsets to dis.Instruction objects.
 
         Return
         ------
         out: List[dis.Instruction]
             The requested instructions according to bcmap between begin and
-            end offsets
+            end offsets.
 
         """
         begin = self.begin
@@ -286,8 +286,8 @@ class SyntheticBranch(SyntheticBlock):
 
         Returns
         -------
-        result: BasicBlock
-            The resulting BasicBlock
+        basic_block: BasicBlock
+            The resulting BasicBlock.
 
         """
 
@@ -348,11 +348,11 @@ class RegionBlock(BasicBlock):
     ----------
     kind: str
         The kind of region. Can be 'head', 'tail', 'branch',
-        'loop' or 'meta' strings
+        'loop' or 'meta' strings.
     parent_region: "RegionBlock"
         The parent region of this region as per the SCFG.
     header: str
-        The header node of the region
+        The header node of the region.
     subregion: "SCFG"
         The subgraph as an independent SCFG. Note that in case
         of subregions the exiting node may point to blocks outside
@@ -383,5 +383,6 @@ class RegionBlock(BasicBlock):
         Parameters
         ----------
         new_exiting: str
-            The new exiting block of the region represented by the RegionBlock."""
+            The new exiting block of the region represented by the RegionBlock.
+     """
         object.__setattr__(self, "exiting", new_exiting)

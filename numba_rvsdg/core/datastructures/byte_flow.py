@@ -33,15 +33,15 @@ class ByteFlow:
     def from_bytecode(code) -> "ByteFlow":
         """Creates a ByteFlow object from the given bytecode.
 
-        This method uses dis.Bytecode to parse the bytecode,
+        This method uses `dis.Bytecode` to parse the bytecode,
         builds the basic blocks and flow information from it,
-        and returns a ByteFlow object with thenbytecode and
+        and returns a ByteFlow object with the bytecode and
         the SCFG.
 
         Parameters
         ----------
         args: Dict[Any, Any]
-            Arguments for function execution
+            Arguments for function execution.
 
         Returns
         -------
@@ -118,7 +118,7 @@ class ByteFlow:
 
         Creates a deep copy of the SCFG and applies a series of
         restructuring operations to it. The operations include
-        joining return points, restructuring loop constructs, and
+        joining return blocks, restructuring loop constructs, and
         restructuring branch constructs. It returns a new ByteFlow
         object with the updated SCFG.
 

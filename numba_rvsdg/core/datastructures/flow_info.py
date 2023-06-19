@@ -57,12 +57,12 @@ class FlowInfo:
     @staticmethod
     def from_bytecode(bc: dis.Bytecode) -> "FlowInfo":
         """Static method that builds the structured control flow graph (SCFG)
-        from the given dis.Bytecode object bc.
+        from the given `dis.Bytecode` object bc.
 
         This method analyzes the bytecode instructions, marks the start of
         basic blocks, and records jump instructions and their target offsets.
         It builds the structured control flow graph (SCFG) from the given
-        dis.Bytecode object and returns a FlowInfo object.
+        `dis.Bytecode` object and returns a FlowInfo object.
 
         Parameters
         ----------
