@@ -17,23 +17,37 @@ from numba_rvsdg.core.utils import (
 
 @dataclass()
 class FlowInfo:
-    """The FlowInfo class is responsible for converting bytecode into a 
-    ByteFlow object."""
+    """The FlowInfo class is responsible for converting bytecode into a
+    ByteFlow object.
+
+    Attributes
+    ----------
+    block_offsets: Set[int]
+        A set that marks the starting offsets of basic blocks in the bytecode.
+    jump_insts: Dict[int, Tuple[int, ...]]
+        A dictionary that contains jump instructions and their target offsets.
+    last_offset: int
+        The offset of the last bytecode instruction.
+    """
 
     block_offsets: Set[int] = field(default_factory=set)
-    """A set that marks the starting offsets of basic blocks in the bytecode."""
 
     jump_insts: Dict[int, Tuple[int, ...]] = field(default_factory=dict)
-    """A dictionary that contains jump instructions and their target offsets."""
 
     last_offset: int = field(default=0)
-    """The offset of the last bytecode instruction."""
 
     def _add_jump_inst(self, offset: int, targets: Sequence[int]):
-        """
-            Internal method to add a jump instruction to the FlowInfo. It adds the 
-            target offsets of the jump instruction to the block_offsets set and 
-            updates the jump_insts dictionary.
+        """Internal method to add a jump instruction to the FlowInfo.
+
+        This method adds the target offsets of the jump instruction
+        to the block_offsets set and updates the jump_insts dictionary.
+
+        Parameters
+        ----------
+        offset: int
+            The given target offset.
+        targets: Sequence[int]
+            target jump instrcutions.
         """
         for off in targets:
             assert isinstance(off, int)
@@ -42,11 +56,23 @@ class FlowInfo:
 
     @staticmethod
     def from_bytecode(bc: dis.Bytecode) -> "FlowInfo":
-        """
-            Static method that builds the structured control flow graph (SCFG) from the given 
-            dis.Bytecode object bc. It analyzes the bytecode instructions, marks 
-            the start of basic blocks, and records jump instructions and their 
-            target offsets. It returns a FlowInfo object.
+        """Static method that builds the structured control flow graph (SCFG)
+        from the given dis.Bytecode object bc.
+
+        This method analyzes the bytecode instructions, marks the start of
+        basic blocks, and records jump instructions and their target offsets.
+        It builds the structured control flow graph (SCFG) from the given
+        dis.Bytecode object and returns a FlowInfo object.
+
+        Parameters
+        ----------
+        bc: dis.Bytecode
+            Bytecode from which flowinfo is to be constructed.
+
+        Returns
+        -------
+        flowinfo: FlowInfo
+            FlowInfo object representing the given bytecode.
         """
         flowinfo = FlowInfo()
 
@@ -68,12 +94,23 @@ class FlowInfo:
         return flowinfo
 
     def build_basicblocks(self: "FlowInfo", end_offset=None) -> "SCFG":
-        """
-            Builds a graph of basic blocks based on the flow information. 
-            It creates a structured control flow graph (SCFG) object, assigns 
-            names to the blocks, and defines the block boundaries, jump targets, 
-            and backedges. It returns an SCFG object representing the control 
-            flow graph.
+        """Builds a graph of basic blocks based on the flow information.
+
+        It creates a structured control flow graph (SCFG) object, assigns
+        names to the blocks, and defines the block boundaries, jump targets,
+        and backedges. It returns an SCFG object representing the control
+        flow graph.
+
+        Parameters
+        ----------
+        end_offset: int
+            The byte offset of the last instruction.
+
+        Returns
+        -------
+        scfg: SCFG
+            SCFG object corresponding to the bytecode contained within the
+            current FlowInfo object.
         """
         scfg = SCFG()
         offsets = sorted(self.block_offsets)
