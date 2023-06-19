@@ -21,18 +21,38 @@ from numba_rvsdg.core.datastructures import block_names
 
 @dataclass(frozen=True)
 class NameGenerator:
+    """Unique Name Generator.
+
+    The NameGenerator class is responsible for generating unique names 
+    for blocks, regions, and variables within the control flow graph.
+
+    Attributes
+    ----------
+    kinds: dict[str, int]
+        A dictionary that keeps track of the current index for each kind of name.
     """
-        The NameGenerator class is responsible for generating unique names 
-        for blocks, regions, and variables within the control flow graph. 
-    """
+
     kinds: dict[str, int] = field(default_factory=dict)
-    """A dictionary that keeps track of the current index for each kind of name."""
 
     def new_block_name(self, kind: str) -> str:
-        """
-            Generates a new unique name for a block of the specified kind. It checks 
-            if the kind already exists in the kinds dictionary and increments the 
-            index if it does. It returns the generated name.
+        """Generate a new unique name for a block of the specified kind. 
+
+        This method checks if the given string 'kind' already exists
+        in the kinds dictionary attribute. If it exists, the respective 
+        index is incremented, if it doesn't then a new index (starting 
+        from zero) is asigned to the given kind. This ensures that 
+        the given name is unique by a combination of it's kind and it's index.
+        It returns the generated name.
+
+        Parameters
+        ----------
+        kind: str
+            The kind of block for which name is being generated.
+
+        Return
+        ------
+        name: str
+            Unique name for the given kind of block.
         """
         if kind in self.kinds.keys():
             idx = self.kinds[kind]
@@ -45,10 +65,24 @@ class NameGenerator:
         return name
 
     def new_region_name(self, kind: str) -> str:
-        """
-            Generates a new unique name for a region of the specified kind. It 
-            follows the same logic as new_block_name() but uses the suffix 
-            "region" in the generated name.
+        """Generate a new unique name for a region of the specified kind. 
+
+        This method checks if the given string 'kind' already exists
+        in the kinds dictionary attribute. If it exists, the respective 
+        index is incremented, if it doesn't then a new index (starting 
+        from zero) is asigned to the given kind. This ensures that 
+        the given name is unique by a combination of it's kind and it's index.
+        It returns the generated name.
+
+        Parameters
+        ----------
+        kind: str
+            The kind of region for which name is being generated.
+
+        Return
+        ------
+        name: str
+            Unique name for the given kind of region.
         """
         if kind in self.kinds.keys():
             idx = self.kinds[kind]
@@ -61,10 +95,24 @@ class NameGenerator:
         return name
 
     def new_var_name(self, kind: str) -> str:
-        """
-            Generates a new unique name for a variable of the specified kind. 
-            It follows the same logic as new_block_name() but uses the suffix 
-            "var" in the generated name.
+        """Generate a new unique name for a variable of the specified kind. 
+
+        This method checks if the given string 'kind' already exists
+        in the kinds dictionary attribute. If it exists, the respective 
+        index is incremented, if it doesn't then a new index (starting 
+        from zero) is asigned to the given kind. This ensures that 
+        the given name is unique by a combination of it's kind and it's index.
+        It returns the generated name.
+
+        Parameters
+        ----------
+        kind: str
+            The kind of variable for which name is being generated.
+
+        Return
+        ------
+        name: str
+            Unique name for the given kind of variable.
         """
         if kind in self.kinds.keys():
             idx = self.kinds[kind]
@@ -79,15 +127,24 @@ class NameGenerator:
 
 @dataclass(frozen=True)
 class SCFG:
-    """The SCFG class represents a map of names to blocks within the control flow graph."""
+    """SCFG (Structured Control Flow Graph) class.
+
+    The SCFG class represents a map of names to blocks within the control flow graph.
+
+    Attributes
+    ----------
+    graph: Dict[str, BasicBlock]
+        A dictionary that maps names to corresponding BasicBlock objects within the control flow graph.
+
+    name_gen: NameGenerator
+        A NameGenerator object that provides unique names for blocks, regions, and variables.
+    """
 
     graph: Dict[str, BasicBlock] = field(default_factory=dict)
-    """A dictionary that maps names to corresponding BasicBlock objects within the control flow graph."""
 
     name_gen: NameGenerator = field(
         default_factory=NameGenerator, compare=False
     )
-    """A NameGenerator object that provides unique names for blocks, regions, and variables."""
 
     # This is the top-level region that this SCFG represents.
     region: RegionBlock = field(init=False, compare=False)
@@ -100,17 +157,49 @@ class SCFG:
         object.__setattr__(self, "region", new_region)
 
     def __getitem__(self, index):
-        """Allows accessing a block from the graph dictionary using the index notation."""
+        """Access a block from the graph dictionary using the block name.
+
+        Parameters
+        ----------
+        index: str
+            The name of the block to be accessed.
+
+        Returns
+        -------
+        block: BasicBlock
+            The requested block
+        """
         return self.graph[index]
 
     def __contains__(self, index):
-        """Checks if the given index exists in the graph dictionary."""
+        """Checks if the given index exists in the graph dictionary.
+
+        Parameters
+        ----------
+        index: str
+            The name of the block to be checked.
+
+        Returns
+        -------
+        result: bool
+            Returns True if a block with given name is present in the SCFG,
+            and returns False if it isn't.
+        """
         return index in self.graph
 
     def __iter__(self):
-        """Returns an iterator that yields the names and corresponding blocks in the 
-        control flow graph. It follows a breadth-first search traversal starting from 
-        the head block."""
+        """Returns an iterator over the blocks in the SCFG.
+
+        Returns an iterator that yields the names and corresponding blocks
+        in the control flow graph. It follows a breadth-first search 
+        traversal starting from the head block.
+
+        Returns
+        -------
+        (name, block): iter of type tuple(str, BasicBlock)
+            An iterator over a tuple of name and blocks (or regions)
+            over the given view.
+        """
         # initialise housekeeping datastructures
         to_visit, seen = [self.find_head()], []
         while to_visit:
@@ -141,22 +230,47 @@ class SCFG:
     @property
     def concealed_region_view(self):
         """A property that returns a ConcealedRegionView object, representing 
-        a concealed view of the control flow graph."""
+        a concealed view of the control flow graph.
+
+        Returns
+        -------
+        region_view: ConcealedRegionView
+            A concealed view of the current SCFG.
+        """
         return ConcealedRegionView(self)
 
     def exclude_blocks(self, exclude_blocks: Set[str]) -> Iterator[str]:
-        """Returns an iterator over all nodes (blocks) in the control flow graph 
+        """Returns an iterator over the blocks in the SCFG with exclusions.
+
+        Returns an iterator over all nodes (blocks) in the control flow graph 
         that are not present in the exclude_blocks set. It filters out the 
-        excluded blocks and yields the remaining blocks."""
+        excluded blocks and yields the remaining blocks.
+
+        Parameters
+        ----------
+        exclude_blocks: Set[str]
+            Set of blocks to be excluded.
+
+        Returns
+        -------
+        blocks: Iterator[str]
+            An iterator over blocks (or regions) over the given SCFG with
+            the specified blocks excluded.
+        """
         for block in self.graph:
             if block not in exclude_blocks:
                 yield block
 
     def find_head(self) -> str:
-        """
-            Finds the head block of the CFG.
-            Assuming the CFG is closed, this will find the block
-            that no other blocks are pointing to.
+        """Finds the head block of the CFG.
+
+        Assuming the CFG is closed, this will find the block
+        that no other blocks are pointing to.
+
+        Returns
+        -------
+        head: str
+            Name of the head block of the graph.
         """
         heads = set(self.graph.keys())
         for name in self.graph.keys():
@@ -167,12 +281,18 @@ class SCFG:
         return next(iter(heads))
 
     def compute_scc(self) -> List[Set[str]]:
-        """
-            Computes the strongly connected components (SCC) of the control 
-            flow graph using Tarjan's algorithm. The implementation is at the 
-            scc function from the numba_rvsdg.networkx_vendored.scc module. 
-            It returns a list of sets, where each set represents an SCC in 
-            the graph. SCCs are useful for detecting loops in the graph.
+        """Computes the strongly connected components (SCC) of the current SCFG.
+
+        This method of SCFG computes the stringly connected components of the
+        graph using Tarjan's algorithm. The implementation is at the
+        scc function from the numba_rvsdg.networkx_vendored.scc module.
+        It returns a list of sets, where each set represents an SCC in
+        the graph. SCCs are useful for detecting loops in the graph.
+
+        Returns
+        -------
+        components: List[Set[str]]
+            A list of sets of strongly connected components/BasicBlocks.
         """
         from numba_rvsdg.networkx_vendored.scc import scc
 
@@ -193,7 +313,7 @@ class SCFG:
     def find_headers_and_entries(
         self, subgraph: Set[str]
     ) -> Tuple[Set[str], Set[str]]:
-        """Find entries and headers in a given subgraph.
+        """Finds entries and headers in a given subgraph.
 
         Entries are blocks outside the subgraph that have an edge pointing to
         the subgraph headers. Headers are blocks that are part of the strongly
@@ -201,6 +321,16 @@ class SCFG:
         subgraph. Entries point to headers and headers are pointed to by
         entries.
 
+        Parameters
+        ----------
+        subgraph: Set[str]
+            The subgraph for which headers and entries are to be computed.
+
+        Returns
+        -------
+        (headers, entries): Tuple[Set[str], Set[str]]
+            A tuple consisting of two entries the set of header blocks
+            and set of entry blocks respectively.
         """
         outside: str
         entries: Set[str] = set()
@@ -226,13 +356,23 @@ class SCFG:
     def find_exiting_and_exits(
         self, subgraph: Set[str]
     ) -> Tuple[Set[str], Set[str]]:
-        """Find exiting and exit blocks in a given subgraph.
+        """Finds exiting and exit blocks in a given subgraph.
 
         Existing blocks are blocks inside the subgraph that have edges to
         blocks outside of the subgraph. Exit blocks are blocks outside the
         subgraph that have incoming edges from within the subgraph. Exiting
         blocks point to exits and exits and pointed to by exiting blocks.
 
+        Parameters
+        ----------
+        subgraph: Set[str]
+            The subgraph for which exit and exiting blocks are to be computed.
+
+        Returns
+        -------
+        (exiting, exits): Tuple[Set[str], Set[str]]
+            A tuple consisting of two entries the set of exiting blocks
+            and set of exit blocks respectively.
         """
         inside: str
         exiting: Set[str] = set()
@@ -249,12 +389,26 @@ class SCFG:
         return sorted(exiting), sorted(exits)
 
     def is_reachable_dfs(self, begin: str, end: str):  # -> TypeGuard:
-        """
-            Checks if the end block is reachable from the begin block in the 
-            control flow graph. It performs a depth-first search (DFS) 
-            traversal from the begin block, following the edges of the 
-            graph. Returns True if the end block is reachable, and False 
-            otherwise.
+        """Checks if the end block is reachable from the begin block in the
+        control flow graph.
+
+        This method performs a depth-first search (DFS)
+        traversal from the begin block, following the edges of the
+        graph. Returns True if the end block is reachable, and False
+        otherwise.
+
+        Parameters
+        ----------
+        begin: str
+            The name of starting block for traversal.
+        end: str
+            The name of end block for the traversal.
+
+        Returns
+        -------
+        result: bool
+            True if the end block is reachable from begin block
+            and False otherwise.
         """
         seen = set()
         to_vist = list(self.graph[begin].jump_targets)
@@ -274,17 +428,22 @@ class SCFG:
                     to_vist.extend(self.graph[block].jump_targets)
 
     def add_block(self, basicblock: BasicBlock):
-        """
-            Adds a BasicBlock object to the control flow graph.
+        """Adds a BasicBlock object to the control flow graph.
+
+        Parameters
+        ----------
+        basicblock: BasicBlock
             The basicblock parameter represents the block to be added.
         """
         self.graph[basicblock.name] = basicblock
 
     def remove_blocks(self, names: Set[str]):
-        """
-            Removes blocks from the control flow graph based on the 
-            given set of block names (names). It deletes the corresponding 
-            entries from the graph attribute.
+        """Removes a BasicBlock object from the control flow graph.
+
+        Parameters
+        ----------
+        names: Set[str]
+            The set of names of BasicBlocks to be removed from the graph.
         """
         for name in names:
             del self.graph[name]
@@ -293,10 +452,21 @@ class SCFG:
         self, new_name: str, predecessors: Set[str], successors: Set[str],
         block_type: SyntheticBlock
     ):
-        """
-            Inserts a new synthetic block into the control flow graph. 
-            This method is used internally by other methods to perform 
-            block insertion operations.
+        """Inserts a new synthetic block into the control flow graph
+        between the given successors and predecessors.
+
+        Parameters
+        ----------
+        new_name: str
+            The name of the newly created block.
+        predecessors: Set[str]
+            The set of names of BasicBlock that act as predecessors
+            for the block to be inserted.
+        successors: Set[str]
+            The set of names of BasicBlock that act as successors
+            for the block to be inserted.
+        block_type: SyntheticBlock
+            The type/class of the newly created block.
         """
         # TODO: needs a diagram and documentaion
         # initialize new block
@@ -324,57 +494,91 @@ class SCFG:
     def insert_SyntheticExit(
         self, new_name: str, predecessors: Set[str], successors: Set[str],
     ):
-        """
-            Inserts a synthetic exit block into the control flow graph. 
-            The new_name parameter specifies the name of the new block, 
-            predecessors is a set of block names representing the 
-            predecessors of the new block, and successors is a set of 
-            block names representing the successors of the new block.
+        """Inserts a synthetic exit block into the control flow graph.
+
+        Parameters
+        ----------
+        new_name: str
+            The name of the newly created block.
+        predecessors: Set[str]
+            The set of names of BasicBlock that act as predecessors
+            for the block to be inserted.
+        successors: Set[str]
+            The set of names of BasicBlock that act as successors
+            for the block to be inserted.
         """
         self._insert_block(new_name, predecessors, successors, SyntheticExit)
 
     def insert_SyntheticTail(
         self, new_name: str, predecessors: Set[str], successors: Set[str],
     ):
-        """
-            Inserts a synthetic tail block into the control flow graph. 
-            The new_name parameter specifies the name of the new block, 
-            predecessors is a set of block names representing the 
-            predecessors of the new block, and successors is a set of 
-            block names representing the successors of the new block.
+        """Inserts a synthetic tail block into the control flow graph.
+
+        Parameters
+        ----------
+        new_name: str
+            The name of the newly created block.
+        predecessors: Set[str]
+            The set of names of BasicBlock that act as predecessors
+            for the block to be inserted.
+        successors: Set[str]
+            The set of names of BasicBlock that act as successors
+            for the block to be inserted.
         """
         self._insert_block(new_name, predecessors, successors, SyntheticTail)
 
     def insert_SyntheticReturn(
         self, new_name: str, predecessors: Set[str], successors: Set[str],
     ):
-        """
-            Inserts a synthetic return block into the control flow graph. 
-            The new_name parameter specifies the name of the new block, 
-            predecessors is a set of block names representing the predecessors 
-            of the new block, and successors is a set of block names 
-            representing the successors of the new block.
+        """Inserts a synthetic return block into the control flow graph.
+
+        Parameters
+        ----------
+        new_name: str
+            The name of the newly created block.
+        predecessors: Set[str]
+            The set of names of BasicBlock that act as predecessors
+            for the block to be inserted.
+        successors: Set[str]
+            The set of names of BasicBlock that act as successors
+            for the block to be inserted.
         """
         self._insert_block(new_name, predecessors, successors, SyntheticReturn)
 
     def insert_SyntheticFill(
         self, new_name: str, predecessors: Set[str], successors: Set[str],
     ):
-        """
-            Inserts a synthetic fill block into the control flow graph. 
-            The new_name parameter specifies the name of the new block, 
-            predecessors is a set of block names representing the predecessors 
-            of the new block, and successors is a set of block names 
-            representing the successors of the new block.
+        """Inserts a synthetic fill block into the control flow graph.
+
+        Parameters
+        ----------
+        new_name: str
+            The name of the newly created block.
+        predecessors: Set[str]
+            The set of names of BasicBlock that act as predecessors
+            for the block to be inserted.
+        successors: Set[str]
+            The set of names of BasicBlock that act as successors
+            for the block to be inserted.
         """
         self._insert_block(new_name, predecessors, successors, SyntheticFill)
 
     def insert_block_and_control_blocks(
         self, new_name: str, predecessors: Set[str], successors: Set[str]
     ):
-        """
-            Inserts a new block along with control blocks into the control 
-            flow graph. This method is used for branching assignments.
+        """Inserts a new block along with control blocks into the control
+        flow graph. This method is used for branching assignments.
+
+        Parameters
+        ----------
+        new_name: str
+            The name of the newly created block.
+        predecessors: Set[str]
+            The set of names of BasicBlock that act as predecessors
+            for the block to be inserted.
+        successors: Set[str]
+            The set of names of BasicBlock that act as successors
+            for the block to be inserted.
         """
         # TODO: needs a diagram and documentaion
         # name of the variable for this branching assignment
@@ -438,11 +642,21 @@ class SCFG:
             self.insert_SyntheticReturn(return_solo_name, return_nodes, tuple())
 
     def join_tails_and_exits(self, tails: Set[str], exits: Set[str]):
-        """
-            Joins the tails and exits of the CFG. The method takes a set of 
-            tail node names (tails) and a set of exit node names (exits) as 
-            parameters. It handles different cases based on the number of 
-            tails and exits.
+        """Joins the tails and exits of the CFG.
+
+        Parameters
+        ----------
+        tails: Set[str]
+            The set of names of BasicBlock that act as tails in the SCFG.
+        exits: Set[str]
+            The set of names of BasicBlock that act as exits in the SCFG.
+
+        Return
+        ------
+        solo_tail_name: str
+            The name of the unique tail block in the modified SCFG.
+        solo_exit_name: str
+            the name of the unique exit block in the modified SCFG.
         """
         if len(tails) == 1 and len(exits) == 1:
             # no-op
@@ -474,20 +688,43 @@ class SCFG:
 
     @staticmethod
     def bcmap_from_bytecode(bc: dis.Bytecode):
-        """
-            Static method that creates a bytecode map from a dis.Bytecode 
-            object. The method takes a dis.Bytecode object as a parameter 
-            and returns a dictionary that maps bytecode offsets to 
+        """Static method that creates a bytecode map from a dis.Bytecode object.
+
+        Parameters
+        ----------
+        bc: dis.Bytecode
+            The ByteCode object to be converted.
+
+        Return
+        ------
+        bcmap: Dict
+            The corresponding dictionary that maps bytecode offsets to
             instruction objects.
         """
         return {inst.offset: inst for inst in bc}
 
     @staticmethod
     def from_yaml(yaml_string):
-        """
-            Static method that creates an SCFG object from a YAML string 
-            representation. The method takes a YAML string as a parameter 
-            and returns an SCFG object and a dictionary of block names.
+        """Static method that creates an SCFG object from a YAML
+        representation.
+
+        This method takes a YAML string
+        representing the control flow graph and returns an SCFG
+        object and a dictionary of block names in YAML string
+        corresponding to thier representation/unique name IDs in the SCFG.
+
+        Parameters
+        ----------
+        yaml: str
+            The input YAML string from which the SCFG is to be constructed.
+
+        Return
+        ------
+        scfg: SCFG
+            The corresponding SCFG created using the YAML representation.
+        block_dict: Dict[str, str]
+            Dictionary of block names in YAML string corresponding to their
+            representation/unique name IDs in the SCFG.
         """
         data = yaml.safe_load(yaml_string)
         scfg, block_dict = SCFG.from_dict(data)
@@ -495,13 +732,27 @@ class SCFG:
 
     @staticmethod
     def from_dict(graph_dict: dict):
-        """
-            Static method that creates an SCFG object from a dictionary 
-            representation. The method takes a dictionary (graph_dict) 
-            representing the control flow graph and returns an SCFG 
-            object and a dictionary of block names. The input dictionary 
-            should have block indices as keys and dictionaries of block 
-            attributes as values.
+        """Static method that creates an SCFG object from a dictionary
+        representation.
+
+        This method takes a dictionary (graph_dict)
+        representing the control flow graph and returns an SCFG
+        object and a dictionary of block names. The input dictionary
+        should have block indices as keys and dictionaries of block
+        attributes as values.
+
+        Parameters
+        ----------
+        graph_dict: dict
+            The input dictionary from which the SCFG is to be constructed.
+
+        Return
+        ------
+        scfg: SCFG
+            The corresponding SCFG created using the dictionary representation.
+        block_dict: Dict[str, str]
+            Dictionary of block names in YAML string corresponding to their
+            representation/unique name IDs in the SCFG.
         """
         scfg_graph = {}
         name_gen = NameGenerator()
@@ -522,12 +773,17 @@ class SCFG:
         return scfg, block_dict
 
     def to_yaml(self):
-        """
-            Converts the SCFG object to a YAML string representation. 
-            The method returns a YAML string representing the control 
-            flow graph. It iterates over the graph dictionary and 
-            generates YAML entries for each block, including jump 
-            targets and backedges.
+        """Converts the SCFG object to a YAML string representation.
+
+        The method returns a YAML string representing the control
+        flow graph. It iterates over the graph dictionary and
+        generates YAML entries for each block, including jump
+        targets and backedges.
+
+        Returns
+        -------
+        yaml: str
+            A YAML string representing the SCFG.
         """
         # Convert to yaml
         scfg_graph = self.graph
@@ -550,12 +806,17 @@ class SCFG:
         return yaml_string
 
     def to_dict(self):
-        """
-            Converts the SCFG object to a dictionary representation. 
-            The method returns a dictionary representing the control flow 
-            graph. It iterates over the graph dictionary and generates a 
-            dictionary entry for each block, including jump targets and 
-            backedges if present.
+        """Converts the SCFG object to a dictionary representation. 
+
+        This method returns a dictionary representing the control flow 
+        graph. It iterates over the graph dictionary and generates a 
+        dictionary entry for each block, including jump targets and 
+        backedges if present.
+
+        Returns
+        -------
+        graph_dict: Dict[Dict[...]]
+            A dictionary representing the SCFG.
         """
         scfg_graph = self.graph
         graph_dict = {}
@@ -568,62 +829,118 @@ class SCFG:
         return graph_dict
 
     def view(self, name: str=None):
+        """View the current SCFG as a external PDF file.
+
+        This method internally creates a SCFGRenderer corresponding to 
+        the current state of SCFG and calls it's view method to view the 
+        graph as a graphviz generated external PDF file."""
         from numba_rvsdg.rendering.rendering import SCFGRenderer
         SCFGRenderer(self).view(name)
 
 class AbstractGraphView(Mapping):
-    """   
-        The AbstractGraphView class is a subclass of Mapping and serves 
-        as an abstract base class for graph views. It defines the basic 
-        interface for accessing and iterating over elements in a graph 
-        view. This class cannot be instantiated directly and requires 
-        subclasses to implement the abstract methods.
+    """Abstract Graph View class.
+
+    The AbstractGraphView class serves as a template for graph views.
     """
 
     def __getitem__(self, item):
-        """Abstract method that should be implemented in subclasses. 
-        It retrieves the value associated with the given key in 
-        the graph view."""
+        """Retrieves the value associated with the given key or name
+        in the respective graph view.
+
+        Parameters
+        ----------
+        item: str
+            The name for which to fetch the BasicBlock
+
+        Return
+        ------
+        block: BasicBlock
+            The requested block
+        """
         raise NotImplementedError
 
     def __iter__(self):
-        """Abstract method that should be implemented in subclasses. 
-        It returns an iterator over the keys in the graph view."""
+        """Returns an iterator over the name of blocks in the graph view.
+
+        Returns
+        -------
+        blocks: iter of str
+            An iterator over blocks (or regions) over the given view
+        """
         raise NotImplementedError
 
     def __len__(self):
-        """Abstract method that should be implemented in subclasses. 
-        It returns the number of elements in the graph view."""
+        """Returns the number of elements in the given region view.
+
+        Return
+        ------
+        len: int
+            Length/ of given SCFG view (number of blocks in the given
+            SCFG view)
+        """
         raise NotImplementedError
 
 
 class ConcealedRegionView(AbstractGraphView):
-    """
-        The ConcealedRegionView class is a subclass of AbstractGraphView 
-        and represents a view of a control flow graph where regions are 
-        "concealed" and treated as a single block. It provides methods 
-        to access and iterate over blocks or regions in the concealed view.
+    """Concealed Region View class
+
+    The ConcealedRegionView represents a view of a control flow
+    graph where regions are "concealed" and treated as a single block.
+
+    Parameters
+    ----------
+    scfg: SCFG
+        The SCFG for which to instantiate the view.
+
+    Attributes
+    ----------
+    scfg: SCFG
+        The control flow graph (SCFG) that the concealed region view
+        is based on.
     """
 
     scfg: SCFG = None
-    """The control flow graph (SCFG) that the concealed region view is based on."""
 
     def __init__(self, scfg):
-        """Initializes the ConcealedRegionView with the given control flow graph (SCFG)."""
+        """Initializes the ConcealedRegionView with the given control
+        flow graph (SCFG).
+
+        Parameters
+        ----------
+        scfg: SCFG
+            The SCFG for which to instantiate the view.
+        """
         self.scfg = scfg
 
     def __getitem__(self, item):
-        """Retrieves the value associated with the given key in the concealed region view.
-        It delegates the operation to the underlying control flow graph (SCFG)."""
+        """Retrieves the value associated with the given key or name
+        in the respective graph view.
+
+        Parameters
+        ----------
+        item: str
+            The name for which to fetch the BasicBlock
+
+        Return
+        ------
+        block: BasicBlock
+            The requested block
+        """
         return self.scfg[item]
 
     def __iter__(self):
-        """Returns an iterator over blocks or regions in the concealed view. 
-        It calls the region_view_iterator() method to perform the iteration"""
+        """Returns an iterator over the name of blocks in the concealed
+        graph view.
+
+        Returns
+        -------
+        blocks: iter of str
+            An iterator over blocks (or regions) over the given view
+        """
         return self.region_view_iterator()
 
     def region_view_iterator(self, head: str = None) -> Iterator[str]:
-        """ Region View Iterator.
+        """Region View Iterator.
 
         This iterator is region aware, which means that regions are "concealed"
         and act as though they were a single block.
@@ -638,7 +955,6 @@ class ConcealedRegionView(AbstractGraphView):
         -------
         blocks: iter of str
             An iterator over blocks (or regions)
-
         """
         # Initialise housekeeping datastructures:
         # A set because we only need lookup and have unique items and a deque
@@ -675,6 +991,12 @@ class ConcealedRegionView(AbstractGraphView):
             yield name
 
     def __len__(self):
-        """Returns the number of elements in the concealed region view. 
-        It delegates the operation to the underlying control flow graph (SCFG)"""
+        """Returns the number of elements in the concealed region view.
+
+        Return
+        ------
+        len: int
+            Length/ of given SCFG view (number of blocks in the concealed
+            SCFG view)
+        """
         return len(self.scfg)
