@@ -24,7 +24,7 @@ class NameGenerator:
     """Unique Name Generator.
 
     The NameGenerator class is responsible for generating unique names 
-    for blocks, regions, and variables within the control flow graph.
+    for blocks, regions, and variables within the SCFG.
 
     Attributes
     ----------
@@ -390,7 +390,7 @@ class SCFG:
 
     def is_reachable_dfs(self, begin: str, end: str):  # -> TypeGuard:
         """Checks if the end block is reachable from the begin block in the
-        control flow graph.
+        SCFG.
 
         This method performs a depth-first search (DFS)
         traversal from the begin block, following the edges of the
@@ -494,7 +494,7 @@ class SCFG:
     def insert_SyntheticExit(
         self, new_name: str, predecessors: Set[str], successors: Set[str],
     ):
-        """Inserts a synthetic exit block into the control flow graph.
+        """Inserts a synthetic exit block into the SCFG.
 
         Parameters
         ----------
@@ -512,7 +512,7 @@ class SCFG:
     def insert_SyntheticTail(
         self, new_name: str, predecessors: Set[str], successors: Set[str],
     ):
-        """Inserts a synthetic tail block into the control flow graph.
+        """Inserts a synthetic tail block into the SCFG.
 
         Parameters
         ----------
@@ -530,7 +530,7 @@ class SCFG:
     def insert_SyntheticReturn(
         self, new_name: str, predecessors: Set[str], successors: Set[str],
     ):
-        """Inserts a synthetic return block into the control flow graph.
+        """Inserts a synthetic return block into the SCFG.
 
         Parameters
         ----------
@@ -548,7 +548,7 @@ class SCFG:
     def insert_SyntheticFill(
         self, new_name: str, predecessors: Set[str], successors: Set[str],
     ):
-        """Inserts a synthetic fill block into the control flow graph.
+        """Inserts a synthetic fill block into the SCFG.
 
         Parameters
         ----------
@@ -566,8 +566,8 @@ class SCFG:
     def insert_block_and_control_blocks(
         self, new_name: str, predecessors: Set[str], successors: Set[str]
     ):
-        """Inserts a new block along with control blocks into the control
-        flow graph. This method is used for branching assignments.
+        """Inserts a new block along with control blocks into the SCFG.
+        This method is used for branching assignments.
 
         Parameters
         ----------
@@ -642,7 +642,7 @@ class SCFG:
             self.insert_SyntheticReturn(return_solo_name, return_nodes, tuple())
 
     def join_tails_and_exits(self, tails: Set[str], exits: Set[str]):
-        """Joins the tails and exits of the CFG.
+        """Joins the tails and exits of the SCFG.
 
         Parameters
         ----------
@@ -688,7 +688,7 @@ class SCFG:
 
     @staticmethod
     def bcmap_from_bytecode(bc: dis.Bytecode):
-        """Static method that creates a bytecode map from a dis.Bytecode object.
+        """Static method that creates a bytecode map from a `dis.Bytecode` object.
 
         Parameters
         ----------
@@ -850,12 +850,12 @@ class AbstractGraphView(Mapping):
         Parameters
         ----------
         item: str
-            The name for which to fetch the BasicBlock
+            The name for which to fetch the BasicBlock.
 
         Return
         ------
         block: BasicBlock
-            The requested block
+            The requested block.
         """
         raise NotImplementedError
 
@@ -865,7 +865,7 @@ class AbstractGraphView(Mapping):
         Returns
         -------
         blocks: iter of str
-            An iterator over blocks (or regions) over the given view
+            An iterator over blocks (or regions) over the given view.
         """
         raise NotImplementedError
 
@@ -876,16 +876,16 @@ class AbstractGraphView(Mapping):
         ------
         len: int
             Length/ of given SCFG view (number of blocks in the given
-            SCFG view)
+            SCFG view).
         """
         raise NotImplementedError
 
 
 class ConcealedRegionView(AbstractGraphView):
-    """Concealed Region View class
+    """Concealed Region View class.
 
-    The ConcealedRegionView represents a view of a control flow
-    graph where regions are "concealed" and treated as a single block.
+    The ConcealedRegionView represents a view of a SCFG
+    where regions are "concealed" and treated as a single block.
 
     Parameters
     ----------
@@ -895,15 +895,14 @@ class ConcealedRegionView(AbstractGraphView):
     Attributes
     ----------
     scfg: SCFG
-        The control flow graph (SCFG) that the concealed region view
+        The SCFG that the concealed region view
         is based on.
     """
 
     scfg: SCFG = None
 
     def __init__(self, scfg):
-        """Initializes the ConcealedRegionView with the given control
-        flow graph (SCFG).
+        """Initializes the ConcealedRegionView with the given SCFG.
 
         Parameters
         ----------
@@ -919,12 +918,12 @@ class ConcealedRegionView(AbstractGraphView):
         Parameters
         ----------
         item: str
-            The name for which to fetch the BasicBlock
+            The name for which to fetch the BasicBlock.
 
         Return
         ------
         block: BasicBlock
-            The requested block
+            The requested block.
         """
         return self.scfg[item]
 
@@ -935,7 +934,7 @@ class ConcealedRegionView(AbstractGraphView):
         Returns
         -------
         blocks: iter of str
-            An iterator over blocks (or regions) over the given view
+            An iterator over blocks (or regions) over the given view.
         """
         return self.region_view_iterator()
 
@@ -997,6 +996,6 @@ class ConcealedRegionView(AbstractGraphView):
         ------
         len: int
             Length/ of given SCFG view (number of blocks in the concealed
-            SCFG view)
+            SCFG view).
         """
         return len(self.scfg)

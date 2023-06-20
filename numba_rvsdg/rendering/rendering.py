@@ -20,7 +20,7 @@ class BaseRenderer(object):
     """Base Renderer class.
 
     This is the base class for all types of graph renderers. It defines two
-    methods render_block and render_edges that define how the blocks and edges
+    methods `render_block` and `render_edges` that define how the blocks and edges
     of the graph are rendered respectively.
     """
 
@@ -177,8 +177,8 @@ class ByteFlowRenderer(BaseRenderer):
 
 
 class SCFGRenderer(BaseRenderer):
-    """The `SCFGRenderer`` class is used to render the visual
-    representation of a `SCFG`` object.
+    """The `SCFGRenderer` class is used to render the visual
+    representation of a `SCFG` object.
 
     Attributes
     ----------
