@@ -31,22 +31,24 @@ class ByteFlow:
 
     @staticmethod
     def from_bytecode(code) -> "ByteFlow":
-        """Creates a ByteFlow object from the given bytecode.
+        """Creates a ByteFlow object from the given python
+        function.
 
-        This method uses `dis.Bytecode` to parse the bytecode,
-        builds the basic blocks and flow information from it,
-        and returns a ByteFlow object with the bytecode and
-        the SCFG.
+        This method uses dis.Bytecode to parse the bytecode
+        generated from the given Python function.
+        It returns a ByteFlow object with the corresponding
+        bytecode and SCFG.
 
         Parameters
         ----------
-        args: Dict[Any, Any]
-            Arguments for function execution.
+        code: Python Function
+            The Python Function from which ByteFlow is to
+            be generated.
 
         Returns
         -------
-        result: Any
-            The result of the simulation.
+        byteflow: ByteFlow
+            The resulting ByteFlow object
         """
         bc = dis.Bytecode(code)
         _logger.debug("Bytecode\n%s", _LogWrap(lambda: bc.dis()))
