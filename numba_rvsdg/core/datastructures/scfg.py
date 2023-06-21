@@ -448,7 +448,7 @@ class SCFG:
         for name in names:
             del self.graph[name]
 
-    def _insert_block(
+    def insert_block(
         self, new_name: str, predecessors: Set[str], successors: Set[str],
         block_type: SyntheticBlock
     ):
@@ -507,7 +507,7 @@ class SCFG:
             The set of names of BasicBlock that act as successors
             for the block to be inserted.
         """
-        self._insert_block(new_name, predecessors, successors, SyntheticExit)
+        self.insert_block(new_name, predecessors, successors, SyntheticExit)
 
     def insert_SyntheticTail(
         self, new_name: str, predecessors: Set[str], successors: Set[str],
@@ -525,7 +525,7 @@ class SCFG:
             The set of names of BasicBlock that act as successors
             for the block to be inserted.
         """
-        self._insert_block(new_name, predecessors, successors, SyntheticTail)
+        self.insert_block(new_name, predecessors, successors, SyntheticTail)
 
     def insert_SyntheticReturn(
         self, new_name: str, predecessors: Set[str], successors: Set[str],
@@ -543,7 +543,7 @@ class SCFG:
             The set of names of BasicBlock that act as successors
             for the block to be inserted.
         """
-        self._insert_block(new_name, predecessors, successors, SyntheticReturn)
+        self.insert_block(new_name, predecessors, successors, SyntheticReturn)
 
     def insert_SyntheticFill(
         self, new_name: str, predecessors: Set[str], successors: Set[str],
@@ -561,7 +561,7 @@ class SCFG:
             The set of names of BasicBlock that act as successors
             for the block to be inserted.
         """
-        self._insert_block(new_name, predecessors, successors, SyntheticFill)
+        self.insert_block(new_name, predecessors, successors, SyntheticFill)
 
     def insert_block_and_control_blocks(
         self, new_name: str, predecessors: Set[str], successors: Set[str]

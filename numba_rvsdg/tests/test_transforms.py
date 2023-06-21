@@ -26,7 +26,7 @@ class TestInsertBlock(SCFGComparator):
         """
         expected_scfg, _ = SCFG.from_yaml(expected)
         new_name = original_scfg.name_gen.new_block_name(block_names.BASIC)
-        original_scfg._insert_block(
+        original_scfg.insert_block(
             new_name, (block_dict["0"],), (block_dict["1"],),
             BasicBlock
         )
@@ -54,7 +54,7 @@ class TestInsertBlock(SCFGComparator):
         """
         expected_scfg, expected_block_dict = SCFG.from_yaml(expected)
         new_name = original_scfg.name_gen.new_block_name(block_names.BASIC)
-        original_scfg._insert_block(
+        original_scfg.insert_block(
             new_name, (block_dict["0"], block_dict["1"]), (block_dict["2"],),
             BasicBlock
         )
@@ -82,7 +82,7 @@ class TestInsertBlock(SCFGComparator):
             jt: ["1", "2"]
         """
         expected_scfg, _ = SCFG.from_yaml(expected)
-        original_scfg._insert_block(
+        original_scfg.insert_block(
             original_scfg.name_gen.new_block_name(block_names.BASIC),
             (block_dict["0"],),
             (block_dict["1"], block_dict["2"]),
@@ -119,7 +119,7 @@ class TestInsertBlock(SCFGComparator):
             jt: ["3", "4"]
         """
         expected_scfg, _ = SCFG.from_yaml(expected)
-        original_scfg._insert_block(
+        original_scfg.insert_block(
             original_scfg.name_gen.new_block_name(block_names.BASIC),
             (block_dict["1"], block_dict["2"]),
             (block_dict["3"], block_dict["4"]),
@@ -156,7 +156,7 @@ class TestInsertBlock(SCFGComparator):
             jt: ["3", "4"]
         """
         expected_scfg, expected_block_dict = SCFG.from_yaml(expected)
-        original_scfg._insert_block(
+        original_scfg.insert_block(
             original_scfg.name_gen.new_block_name(block_names.BASIC),
             (block_dict["1"], block_dict["2"]),
             (block_dict["3"], block_dict["4"]),
