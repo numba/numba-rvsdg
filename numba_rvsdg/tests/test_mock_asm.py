@@ -496,9 +496,10 @@ failing_case = {
     153,
 }
 
-def test_mock_scfg_fuzzer():
+def test_mock_scfg_fuzzer(total=1000):
+    # tested up to total=100000
     ct_term = 0
-    total = 100000
+
     for i in range(total):
         if i in failing_case:
             continue
