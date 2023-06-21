@@ -191,6 +191,29 @@ def to_scfg(instlist: list[Inst]) -> SCFG:
         MockAsmRenderer(scfg).view('branch')
     return scfg
 
+
+from numba_rvsdg.rendering.rendering import SCFGRenderer
+class MockAsmRenderer(SCFGRenderer):
+    def render_block(self, digraph, name: str, block: BasicBlock):
+        if isinstance(block, MockAsmBasicBlock):
+            # Extend base renderer
+
+            # format bbinstlist
+            instbody = []
+            for inst in block.bbinstlist:
+                instbody.append(f"\l    {inst}")
+
+            body = name + "\l"+ \
+                    "\n" + "".join(instbody) + \
+                    "\n" + \
+                    "\njump targets: " + str(block.jump_targets) + \
+                    "\nback edges: " + str(block.backedges)
+
+            digraph.node(str(name), shape="rect", label=body)
+        else:
+            super().render_block(digraph, name, block)
+
+
 class Simulator:
     def __init__(self, scfg: SCFG, buf: StringIO, max_step):
         self.vm = VM(buf)
