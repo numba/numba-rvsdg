@@ -115,9 +115,9 @@ class FlowInfo:
         scfg = SCFG()
         offsets = sorted(self.block_offsets)
         # enumerate names
-        names = dict(
-            (offset, scfg.name_gen.new_block_name(block_names.PYTHON_BYTECODE)) for offset in offsets
-        )
+        names = {
+            offset: scfg.name_gen.new_block_name(block_names.PYTHON_BYTECODE) for offset in offsets
+        }
         if end_offset is None:
             end_offset = _next_inst_offset(self.last_offset)
 

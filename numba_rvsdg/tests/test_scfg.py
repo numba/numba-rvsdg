@@ -1,4 +1,3 @@
-
 from unittest import main, TestCase
 from textwrap import dedent
 from numba_rvsdg.core.datastructures.scfg import SCFG, NameGenerator

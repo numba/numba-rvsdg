@@ -77,11 +77,11 @@ def loop_restructure_helper(scfg: SCFG, loop: Set[str]):
     backedge_variable = scfg.name_gen.new_var_name("backedge")
     # Now we setup the lookup tables for the various control variables,
     # depending on the state of the CFG and what is needed
-    exit_value_table = dict(((i, j) for i, j in enumerate(exit_blocks)))
+    exit_value_table = {i: j for i, j in enumerate(exit_blocks)}
     if needs_synth_exit:
-        backedge_value_table = dict((i, j) for i, j in enumerate((loop_head, synth_exit)))
+        backedge_value_table = {i: j for i, j in enumerate((loop_head, synth_exit))}
     else:
-        backedge_value_table = dict((i, j) for i, j in enumerate((loop_head, next(iter(exit_blocks)))))
+        backedge_value_table = {i: j for i, j in enumerate((loop_head, next(iter(exit_blocks))))}
     if headers_were_unified:
         header_value_table = scfg[solo_head_name].branch_value_table
     else:
@@ -277,7 +277,7 @@ def _find_branch_regions(scfg: SCFG, begin: str, end: str) -> Set[str]:
 def find_tail_blocks(
     scfg: SCFG, begin: Set[str], head_region_blocks, branch_regions
 ):
-    tail_subregion = set((b for b in scfg.graph.keys()))
+    tail_subregion = {b for b in scfg.graph.keys()}
     tail_subregion.difference_update(head_region_blocks)
     for reg in branch_regions:
         if not reg:
@@ -555,7 +555,7 @@ def _find_dominators_internal(entries, nodes, preds_table, succs_table):
 
     doms = {}
     for e in entries:
-        doms[e] = set([e])
+        doms[e] = {e}
 
     todo = []
     for n in nodes:
@@ -567,7 +567,7 @@ def _find_dominators_internal(entries, nodes, preds_table, succs_table):
         n = todo.pop()
         if n in entries:
             continue
-        new_doms = set([n])
+        new_doms = {n}
         preds = preds_table[n]
         if preds:
             new_doms |= functools.reduce(set.intersection, [doms[p] for p in preds])

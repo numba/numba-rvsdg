@@ -222,8 +222,7 @@ class SCFG:
             yield (name, block)
             # if this is a region, recursively yield everything from that region
             if type(block) == RegionBlock:
-                for i in block.subregion:
-                    yield i
+                yield from block.subregion
             # finally add any jump_targets to the list of names to visit
             to_visit.extend(block.jump_targets)
 
@@ -661,7 +660,7 @@ class SCFG:
             solo_tail_name = self.name_gen.new_block_name(block_names.SYNTH_TAIL)
             solo_exit_name = self.name_gen.new_block_name(block_names.SYNTH_EXIT)
             self.insert_SyntheticTail(solo_tail_name, tails, exits)
-            self.insert_SyntheticExit(solo_exit_name, set((solo_tail_name,)), exits)
+            self.insert_SyntheticExit(solo_exit_name, {solo_tail_name}, exits)
             return solo_tail_name, solo_exit_name
 
     @staticmethod

@@ -16,7 +16,7 @@ from numba_rvsdg.core.datastructures.byte_flow import ByteFlow
 import dis
 from typing import Dict
 
-class BaseRenderer(object):
+class BaseRenderer:
     """Base Renderer class.
 
     This is the base class for all types of graph renderers. It defines two
@@ -127,12 +127,12 @@ class ByteFlowRenderer(BaseRenderer):
     def render_basic_block(self, digraph: "Digraph", name: str, block: BasicBlock):
         if name.startswith('python_bytecode'):
             instlist = block.get_instructions(self.bcmap)
-            body = name + "\l"
-            body += "\l".join(
+            body = name + r"\l"
+            body += r"\l".join(
                 [f"{inst.offset:3}: {inst.opname}" for inst in instlist] + [""]
             )
         else:
-            body = name + "\l"
+            body = name + r"\l"
 
         digraph.node(str(name), shape="rect", label=body)
 
@@ -140,8 +140,8 @@ class ByteFlowRenderer(BaseRenderer):
         self, digraph: "Digraph", name: str, block: BasicBlock
     ):
         if isinstance(name, str):
-            body = name + "\l"
-            body += "\l".join(
+            body = name + r"\l"
+            body += r"\l".join(
                 (f"{k} = {v}" for k, v in block.variable_assignment.items())
             )
         else:
@@ -152,9 +152,9 @@ class ByteFlowRenderer(BaseRenderer):
         self, digraph: "Digraph", name: str, block: BasicBlock
     ):
         if isinstance(name, str):
-            body = name + "\l"
-            body += f"variable: {block.variable}\l"
-            body += "\l".join(
+            body = name + r"\l"
+            body += fr"variable: {block.variable}\l"
+            body += r"\l".join(
                 (f"{k}=>{v}" for k, v in block.branch_value_table.items())
             )
         else:
@@ -217,7 +217,7 @@ class SCFGRenderer(BaseRenderer):
                 self.render_block(subg, name, block)
 
     def render_basic_block(self, digraph: "Digraph", name: str, block: BasicBlock):
-        body = name + "\l"+ \
+        body = name + r"\l"+ \
                 "\njump targets: " + str(block.jump_targets) + \
                 "\nback edges: " + str(block.backedges)
 
@@ -227,8 +227,8 @@ class SCFGRenderer(BaseRenderer):
         self, digraph: "Digraph", name: str, block: BasicBlock
     ):
         if isinstance(name, str):
-            body = name + "\l"
-            body += "\l".join(
+            body = name + r"\l"
+            body += r"\l".join(
                 (f"{k} = {v}" for k, v in block.variable_assignment.items())
             )
             body +=  \
@@ -243,9 +243,9 @@ class SCFGRenderer(BaseRenderer):
         self, digraph: "Digraph", name: str, block: BasicBlock
     ):
         if isinstance(name, str):
-            body = name + "\l"
-            body += f"variable: {block.variable}\l"
-            body += "\l".join(
+            body = name + r"\l"
+            body += fr"variable: {block.variable}\l"
+            body += r"\l".join(
                 (f"{k}=>{v}" for k, v in block.branch_value_table.items())
             )
             body += \
