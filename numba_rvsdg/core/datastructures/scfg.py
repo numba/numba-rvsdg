@@ -455,6 +455,14 @@ class SCFG:
         """Inserts a new synthetic block into the control flow graph
         between the given successors and predecessors.
 
+        This method inserts a new block between the specified successor
+        and predecessor blocks. Edges between all the pairs of sucessor
+        and predecessor blocks are replaced by edges going through the
+        newly added block. (i.e. all outgoing edges from predecessors
+        pointing to successor blocks, point towards the newly aded block
+        and all incoming edges towards the successors originating from a
+        predecessor, now originate from the newly added block instead).
+
         Parameters
         ----------
         new_name: str
@@ -495,17 +503,11 @@ class SCFG:
         self, new_name: str, predecessors: Set[str], successors: Set[str],
     ):
         """Inserts a synthetic exit block into the SCFG.
+        Parameters same as insert_block method.
 
-        Parameters
-        ----------
-        new_name: str
-            The name of the newly created block.
-        predecessors: Set[str]
-            The set of names of BasicBlock that act as predecessors
-            for the block to be inserted.
-        successors: Set[str]
-            The set of names of BasicBlock that act as successors
-            for the block to be inserted.
+        See also
+        --------
+        numba_rvsdg.core.datastructures.scfg.SCFG.insert_block
         """
         self.insert_block(new_name, predecessors, successors, SyntheticExit)
 
@@ -513,17 +515,11 @@ class SCFG:
         self, new_name: str, predecessors: Set[str], successors: Set[str],
     ):
         """Inserts a synthetic tail block into the SCFG.
+        Parameters same as insert_block method.
 
-        Parameters
-        ----------
-        new_name: str
-            The name of the newly created block.
-        predecessors: Set[str]
-            The set of names of BasicBlock that act as predecessors
-            for the block to be inserted.
-        successors: Set[str]
-            The set of names of BasicBlock that act as successors
-            for the block to be inserted.
+        See also
+        --------
+        numba_rvsdg.core.datastructures.scfg.SCFG.insert_block
         """
         self.insert_block(new_name, predecessors, successors, SyntheticTail)
 
@@ -531,17 +527,11 @@ class SCFG:
         self, new_name: str, predecessors: Set[str], successors: Set[str],
     ):
         """Inserts a synthetic return block into the SCFG.
+        Parameters same as insert_block method.
 
-        Parameters
-        ----------
-        new_name: str
-            The name of the newly created block.
-        predecessors: Set[str]
-            The set of names of BasicBlock that act as predecessors
-            for the block to be inserted.
-        successors: Set[str]
-            The set of names of BasicBlock that act as successors
-            for the block to be inserted.
+        See also
+        --------
+        numba_rvsdg.core.datastructures.scfg.SCFG.insert_block
         """
         self.insert_block(new_name, predecessors, successors, SyntheticReturn)
 
@@ -549,17 +539,11 @@ class SCFG:
         self, new_name: str, predecessors: Set[str], successors: Set[str],
     ):
         """Inserts a synthetic fill block into the SCFG.
+        Parameters same as insert_block method.
 
-        Parameters
-        ----------
-        new_name: str
-            The name of the newly created block.
-        predecessors: Set[str]
-            The set of names of BasicBlock that act as predecessors
-            for the block to be inserted.
-        successors: Set[str]
-            The set of names of BasicBlock that act as successors
-            for the block to be inserted.
+        See also
+        --------
+        numba_rvsdg.core.datastructures.scfg.SCFG.insert_block
         """
         self.insert_block(new_name, predecessors, successors, SyntheticFill)
 
@@ -568,17 +552,11 @@ class SCFG:
     ):
         """Inserts a new block along with control blocks into the SCFG.
         This method is used for branching assignments.
+        Parameters same as insert_block method.
 
-        Parameters
-        ----------
-        new_name: str
-            The name of the newly created block.
-        predecessors: Set[str]
-            The set of names of BasicBlock that act as predecessors
-            for the block to be inserted.
-        successors: Set[str]
-            The set of names of BasicBlock that act as successors
-            for the block to be inserted.
+        See also
+        --------
+        numba_rvsdg.core.datastructures.scfg.SCFG.insert_block
         """
         # TODO: needs a diagram and documentaion
         # name of the variable for this branching assignment
@@ -833,7 +811,13 @@ class SCFG:
 
         This method internally creates a SCFGRenderer corresponding to 
         the current state of SCFG and calls it's view method to view the 
-        graph as a graphviz generated external PDF file."""
+        graph as a graphviz generated external PDF file.
+
+        Parameters
+        ----------
+        name: str
+            Name to be given to the external graphviz generated PDF file.
+        """
         from numba_rvsdg.rendering.rendering import SCFGRenderer
         SCFGRenderer(self).view(name)
 

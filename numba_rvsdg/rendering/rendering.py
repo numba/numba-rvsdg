@@ -260,6 +260,11 @@ class SCFGRenderer(BaseRenderer):
     def view(self, name: str):
         """Method used to view the current SCFG as an external graphviz generated
         PDF file.
+
+        Parameters
+        ----------
+        name: str
+            Name to be given to the external graphviz generated PDF file.
         """
         self.g.view(name)
 
