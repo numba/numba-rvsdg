@@ -180,11 +180,6 @@ def to_scfg(instlist: list[Inst]) -> SCFG:
                 reachable.add(k)
     scfg.remove_blocks(set(scfg.graph.keys()) - reachable)
 
-    # for name, bb in bbmap.items():
-    #     if targets:
-    #         scfg.add_connections(name, [edgemap[tgt] for tgt in targets])
-    # scfg.check_graph()
-
     scfg.join_returns()
     if DEBUGGRAPH:
         MockAsmRenderer(scfg).view("jointed")
@@ -509,24 +504,29 @@ def run_fuzzer(seed):
 
 
 failing_case = {
-    0,
-    7,
-    9,
-    36,
-    44,
-    52,
-    60,
-    88,
-    122,
-    146,
-    153,
+    # 0,
+    # 7,
+    # 9,
+    # 36,
+    # 44,
+    # 52,
+    # 60,
+    # 88,
+    # 122,
+    # 146,
+    # 153,
 }
+# before
+# [155, 194, 237, 241, 253, 258, 273, 295, 352, 360, 365, 378, 379, 382, 401, 406, 437, 461, 473, 539, 546, 554, 577, 588, 595, 602, 606, 608, 627, 629, 630, 635, 638, 655, 659, 670, 693, 695, 714, 715, 773, 812, 819, 829, 831, 832, 850, 852, 857, 866, 868, 882, 930, 955, 961, 997]
+# after
+# [0, 2, 7, 9, 12, 42, 44, 48, 52, 55, 60, 82, 88, 102, 105, 106, 108, 109, 111, 114, 117, 119, 122, 125, 126, 132, 136, 146, 152, 153, 155, 177, 182, 189, 194, 199, 205, 223, 233, 237, 238, 241, 253, 258, 262, 268, 273, 275, 288, 293, 295, 312, 320, 321, 328, 340, 350, 352, 353, 360, 365, 371, 376, 378, 379, 382, 393, 394, 399, 401, 406, 432, 433, 435, 437, 461, 473, 477, 481, 496, 501, 511, 515, 534, 539, 541, 546, 550, 554, 571, 577, 586, 595, 601, 602, 606, 608, 621, 629, 630, 631, 635, 638, 640, 647, 655, 657, 659, 670, 673, 679, 683, 690, 693, 695, 703, 711, 712, 714, 715, 724, 734, 759, 763, 773, 785, 803, 806, 807, 809, 819, 822, 823, 824, 829, 831, 832, 835, 845, 850, 852, 857, 866, 868, 882, 883, 886, 890, 895, 903, 914, 915, 923, 925, 928, 930, 934, 939, 944, 945, 955, 956, 959, 961, 967, 971, 984, 991, 997]
 
 
 def test_mock_scfg_fuzzer(total=1000):
     # tested up to total=100000
     ct_term = 0
 
+    failed_cases = set()
     for i in range(total):
         if i in failing_case:
             continue
@@ -535,30 +535,37 @@ def test_mock_scfg_fuzzer(total=1000):
                 ct_term += 1
         except Exception:
             print("Failed case:", i)
+            failed_cases.add(i)
         else:
             print("ok", i)
     print("terminated", ct_term, "total", total)
-
+    print("failed: ", sorted(failed_cases))
+    assert not failed_cases
 
 # Interesting cases
 
-# def test_mock_scfg_fuzzer_case0():
-#     run_fuzzer(seed=0)
-
-# def test_mock_scfg_fuzzer_case7():
-#     run_fuzzer(seed=7)
-
-# def test_mock_scfg_fuzzer_case9():
-#     # invalid control variable causes infinite loop
-#     run_fuzzer(seed=9)
 
 
 def test_mock_scfg_fuzzer_case36():
     run_fuzzer(seed=36)
 
 
-# def test_mock_scfg_fuzzer_case146():
-#     run_fuzzer(seed=146)
+# Still failing
 
-# def test_mock_scfg_fuzzer_case153():
-#     run_fuzzer(seed=153)
+def test_mock_scfg_fuzzer_case0():
+    run_fuzzer(seed=0)
+
+def test_mock_scfg_fuzzer_case7():
+    run_fuzzer(seed=7)
+
+def test_mock_scfg_fuzzer_case9():
+    # invalid control variable causes infinite loop
+    run_fuzzer(seed=9)
+
+
+
+def test_mock_scfg_fuzzer_case146():
+    run_fuzzer(seed=146)
+
+def test_mock_scfg_fuzzer_case153():
+    run_fuzzer(seed=153)
