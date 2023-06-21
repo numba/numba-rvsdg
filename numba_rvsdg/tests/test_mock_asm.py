@@ -501,8 +501,8 @@ def test_mock_scfg_fuzzer():
 #     # invalid control variable causes infinite loop
 #     run_fuzzer(seed=9)
 
-# def test_mock_scfg_fuzzer_case36():
-#     run_fuzzer(seed=36)
+def test_mock_scfg_fuzzer_case36():
+    run_fuzzer(seed=36)
 
 # def test_mock_scfg_fuzzer_case146():
 #     run_fuzzer(seed=146)
