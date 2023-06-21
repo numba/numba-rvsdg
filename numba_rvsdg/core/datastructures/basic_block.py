@@ -10,7 +10,7 @@ from numba_rvsdg.core.utils import _next_inst_offset
 class BasicBlock:
     """Basic building block of an SCFG graph.
 
-    The BasicBlock class represents an atomic basic block in a control flow graph.
+    The BasicBlock class represents an atomic basic block in an SCFG.
 
     Attributes
     ----------
@@ -52,7 +52,7 @@ class BasicBlock:
         -------
         fallthrough: bool
             True if the current block is a fallthorough block, False if it
-            isn't
+            isn't.
 
         """
         return len(self._jump_targets) == 1
@@ -86,7 +86,7 @@ class BasicBlock:
         Returns
         -------
         basic_block: BasicBlock
-            The resulting block
+            The resulting block.
 
         """
         if target in self.jump_targets:
@@ -113,7 +113,7 @@ class BasicBlock:
         Returns
         -------
         basic_block: BasicBlock
-            The resulting BasicBlock
+            The resulting BasicBlock.
 
         """
         return replace(self, _jump_targets=jump_targets)
@@ -234,7 +234,7 @@ class SyntheticFill(SyntheticBlock):
 
 @dataclass(frozen=True)
 class SyntheticAssignment(SyntheticBlock):
-    """The SyntheticFill class represents a artificially added assignment block
+    """The SyntheticAssignment class represents a artificially added assignment block
     in a structured control flow graph (SCFG).
 
     This block is responsible for giving variables their values,
@@ -277,7 +277,7 @@ class SyntheticBranch(SyntheticBlock):
 
         Note that replacing jump targets will not replace the backedge
         tuple, so replacement for any jump targets that is declared as
-        a backedge needs to be updated separately using replace_backedges
+        a backedge needs to be updated separately using replace_backedges.
 
         Parameters
         ----------

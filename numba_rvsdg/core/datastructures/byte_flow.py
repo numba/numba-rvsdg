@@ -12,7 +12,7 @@ from numba_rvsdg.core.transformations import restructure_loop, restructure_branc
 
 @dataclass(frozen=True)
 class ByteFlow:
-    """ByteFlow class
+    """ByteFlow class.
 
     The ByteFlow class represents the bytecode and its relation with
     corresponding structured control flow graph (SCFG).
@@ -48,7 +48,7 @@ class ByteFlow:
         Returns
         -------
         byteflow: ByteFlow
-            The resulting ByteFlow object
+            The resulting ByteFlow object.
         """
         bc = dis.Bytecode(code)
         _logger.debug("Bytecode\n%s", _LogWrap(lambda: bc.dis()))

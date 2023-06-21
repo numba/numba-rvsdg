@@ -162,8 +162,7 @@ class ByteFlowRenderer(BaseRenderer):
         digraph.node(str(name), shape="rect", label=body)
 
     def render_byteflow(self, byteflow: ByteFlow):
-        """
-            Renders the provided `ByteFlow` object.
+        """Renders the provided `ByteFlow` object.
         """
         self.bcmap_from_bytecode(byteflow.bc)
         # render nodes
