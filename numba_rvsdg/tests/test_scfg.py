@@ -135,7 +135,10 @@ class TestConcealedRegionView(TestCase):
             ("python_bytecode_block_3", PythonBytecodeBlock),
         ]
         received = list(
-            ((k, type(v)) for k, v in restructured.scfg.concealed_region_view.items())
+            (
+                (k, type(v))
+                for k, v in restructured.scfg.concealed_region_view.items()
+            )
         )
         self.assertEqual(expected, received)
 

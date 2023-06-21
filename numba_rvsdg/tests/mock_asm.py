@@ -128,10 +128,11 @@ class VM:
     - program counter (PC)
     - an output buffer for printing;
     - a LAST_CTR register to store the last accessed counter.
-    - a table that maps PC location of `ctr` instruction to the counter value
+    - a table that maps PC location of `ctr` instruction to the counter
+      value
 
-    The VM do not have another other input source beside the instruction stream.
-    Therefore, a program behavior is known statically.
+    The VM do not have another other input source beside the instruction
+    stream. Therefore, a program behavior is known statically.
 
     """
 

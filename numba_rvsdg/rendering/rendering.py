@@ -4,12 +4,8 @@ from numba_rvsdg.core.datastructures.basic_block import (
     RegionBlock,
     PythonBytecodeBlock,
     SyntheticAssignment,
-    SyntheticExitingLatch,
-    SyntheticExitBranch,
     SyntheticBranch,
     SyntheticBlock,
-    SyntheticHead,
-    SyntheticExit,
 )
 from numba_rvsdg.core.datastructures.scfg import SCFG
 from numba_rvsdg.core.datastructures.byte_flow import ByteFlow
@@ -21,12 +17,15 @@ class BaseRenderer:
     """Base Renderer class.
 
     This is the base class for all types of graph renderers. It defines two
-    methods `render_block` and `render_edges` that define how the blocks and edges
-    of the graph are rendered respectively.
+    methods `render_block` and `render_edges` that define how the blocks and
+    edges of the graph are rendered respectively.
     """
 
-    def render_block(self, digraph: "Digraph", name: str, block: BasicBlock):
-        """Function that defines how the BasicBlcoks in a graph should be rendered.
+    def render_block(
+        self, digraph: "Digraph", name: str, block: BasicBlock  # noqa
+    ):
+        """Function that defines how the BasicBlcoks in a graph should be
+        rendered.
 
         Parameters
         ----------
@@ -115,7 +114,7 @@ class ByteFlowRenderer(BaseRenderer):
         self.g = Digraph()
 
     def render_region_block(
-        self, digraph: "Digraph", name: str, regionblock: RegionBlock
+        self, digraph: "Digraph", name: str, regionblock: RegionBlock  # noqa
     ):
         # render subgraph
         with digraph.subgraph(name=f"cluster_{name}") as subg:
@@ -130,7 +129,9 @@ class ByteFlowRenderer(BaseRenderer):
             for name, block in regionblock.subregion.graph.items():
                 self.render_block(subg, name, block)
 
-    def render_basic_block(self, digraph: "Digraph", name: str, block: BasicBlock):
+    def render_basic_block(
+        self, digraph: "Digraph", name: str, block: BasicBlock  # noqa
+    ):
         if name.startswith("python_bytecode"):
             instlist = block.get_instructions(self.bcmap)
             body = name + r"\l"
@@ -143,7 +144,7 @@ class ByteFlowRenderer(BaseRenderer):
         digraph.node(str(name), shape="rect", label=body)
 
     def render_control_variable_block(
-        self, digraph: "Digraph", name: str, block: BasicBlock
+        self, digraph: "Digraph", name: str, block: BasicBlock  # noqa
     ):
         if isinstance(name, str):
             body = name + r"\l"
@@ -154,7 +155,9 @@ class ByteFlowRenderer(BaseRenderer):
             raise Exception("Unknown name type: " + name)
         digraph.node(str(name), shape="rect", label=body)
 
-    def render_branching_block(self, digraph: "Digraph", name: str, block: BasicBlock):
+    def render_branching_block(
+        self, digraph: "Digraph", name: str, block: BasicBlock  # noqa
+    ):
         if isinstance(name, str):
             body = name + r"\l"
             body += rf"variable: {block.variable}\l"
@@ -201,7 +204,7 @@ class SCFGRenderer(BaseRenderer):
         self.render_edges(scfg)
 
     def render_region_block(
-        self, digraph: "Digraph", name: str, regionblock: RegionBlock
+        self, digraph: "Digraph", name: str, regionblock: RegionBlock  # noqa
     ):
         # render subgraph
         with digraph.subgraph(name=f"cluster_{name}") as subg:
@@ -224,7 +227,9 @@ class SCFGRenderer(BaseRenderer):
             for name, block in regionblock.subregion.graph.items():
                 self.render_block(subg, name, block)
 
-    def render_basic_block(self, digraph: "Digraph", name: str, block: BasicBlock):
+    def render_basic_block(
+        self, digraph: "Digraph", name: str, block: BasicBlock  # noqa
+    ):
         body = (
             name
             + r"\l"
@@ -237,7 +242,7 @@ class SCFGRenderer(BaseRenderer):
         digraph.node(str(name), shape="rect", label=body)
 
     def render_control_variable_block(
-        self, digraph: "Digraph", name: str, block: BasicBlock
+        self, digraph: "Digraph", name: str, block: BasicBlock  # noqa
     ):
         if isinstance(name, str):
             body = name + r"\l"
@@ -255,7 +260,9 @@ class SCFGRenderer(BaseRenderer):
             raise Exception("Unknown name type: " + name)
         digraph.node(str(name), shape="rect", label=body)
 
-    def render_branching_block(self, digraph: "Digraph", name: str, block: BasicBlock):
+    def render_branching_block(
+        self, digraph: "Digraph", name: str, block: BasicBlock  # noqa
+    ):
         if isinstance(name, str):
             body = name + r"\l"
             body += rf"variable: {block.variable}\l"
@@ -274,8 +281,8 @@ class SCFGRenderer(BaseRenderer):
         digraph.node(str(name), shape="rect", label=body)
 
     def view(self, name: str):
-        """Method used to view the current SCFG as an external graphviz generated
-        PDF file.
+        """Method used to view the current SCFG as an external graphviz
+        generated PDF file.
 
         Parameters
         ----------
@@ -302,13 +309,19 @@ def render_func(func):
 
 
 def render_flow(flow):
-    """Renders multiple ByteFlow representations across various SCFG transformations.
+    """Renders multiple ByteFlow representations across various SCFG
+    transformations.
 
-    The `render_flow`` function takes a `flow` parameter as the `ByteFlow` to be transformed and rendered and performs the following operations:
-        - Renders the pure `ByteFlow` representation of the function using `ByteFlowRenderer` and displays it as a document named "before".
-        - Joins the return blocks in the `ByteFlow` object graph and renders the graph, displaying it as a document named "closed".
-        - Restructures the loops recursively in the `ByteFlow` object graph and renders the graph, displaying it as named "loop restructured".
-        - Restructures the branch recursively in the `ByteFlow` object graph and renders the graph, displaying it as named "branch restructured".
+    The `render_flow`` function takes a `flow` parameter as the `ByteFlow`
+    to be transformed and rendered and performs the following operations:
+        - Renders the pure `ByteFlow` representation of the function using
+          `ByteFlowRenderer` and displays it as a document named "before".
+        - Joins the return blocks in the `ByteFlow` object graph and renders
+          the graph, displaying it as a document named "closed".
+        - Restructures the loops recursively in the `ByteFlow` object graph
+          and renders the graph, displaying it as named "loop restructured".
+        - Restructures the branch recursively in the `ByteFlow` object graph
+          and renders the graph, displaying it as named "branch restructured".
 
     Parameters
     ----------

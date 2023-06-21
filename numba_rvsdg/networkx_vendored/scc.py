@@ -1,5 +1,5 @@
 """
-SCC from https://github.com/networkx/networkx/blob/41a760273eed666e6f966cf14ea524dec56d678b/networkx/algorithms/components/strongly_connected.py#L16
+SCC from https://github.com/networkx/networkx/blob/41a760273eed666e6f966cf14ea524dec56d678b/networkx/algorithms/components/strongly_connected.py#L16 # noqa
 
 LICENSE: https://github.com/networkx/networkx/blob/main/LICENSE.txt
 
@@ -37,7 +37,9 @@ def scc(G):
                     queue.pop()
                     if lowlink[v] == preorder[v]:
                         scc = {v}
-                        while scc_queue and preorder[scc_queue[-1]] > preorder[v]:
+                        while (
+                            scc_queue and preorder[scc_queue[-1]] > preorder[v]
+                        ):
                             k = scc_queue.pop()
                             scc.add(k)
                         scc_found.update(scc)

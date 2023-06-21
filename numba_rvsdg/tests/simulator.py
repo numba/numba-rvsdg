@@ -2,7 +2,6 @@ from collections import ChainMap
 from dis import Instruction
 from numba_rvsdg.core.datastructures.byte_flow import ByteFlow
 from numba_rvsdg.core.datastructures.basic_block import (
-    BasicBlock,
     PythonBytecodeBlock,
     RegionBlock,
     SyntheticBlock,
@@ -151,16 +150,17 @@ class Simulator:
         """Run region.
 
         Execute all BasicBlocks in this region. Stay within the region, only
-        return the action when we jump out of the region or when we return from
-        within the region.
+        return the action when we jump out of the region or when we return
+        from within the region.
 
         Special attention is directed at the use of the `region_stack` here.
-        Since the blocks for the subregion are stored in the `region.subregion`
-        graph, we need to use a region aware `get_blocks` in methods such as
-        `run_BasicBlock` so that we get the correct `BasicBlock`. The net effect
-        of placing the `region` onto the `region_stack` is that `run_BasicBlock`
-        will be able to fetch the correct name from the `region.subregion`
-        graph, and thus be able to run the correct sequence of blocks.
+        Since the blocks for the subregion are stored in the
+        `region.subregion` graph, we need to use a region aware
+        `get_blocks` in methods such as `run_BasicBlock` so that we get
+        the correct `BasicBlock`. The net effect of placing the `region`
+        onto the `region_stack` is that `run_BasicBlock` will be able to
+        fetch the correct name from the `region.subregion` graph, and thus
+        be able to run the correct sequence of blocks.
 
         Parameters
         ----------
@@ -248,12 +248,14 @@ class Simulator:
         print(f"variable map after: {self.varmap}")
         print(f"stack after: {self.stack}")
 
-    ### Synthetic Instructions ###
+    ### Synthetic Instructions ### # noqa
     def synth_SyntheticAssignment(self, control_name, block):
         self.ctrl_varmap.update(block.variable_assignment)
 
     def _synth_branch(self, control_name, block):
-        jump_target = block.branch_value_table[self.ctrl_varmap[block.variable]]
+        jump_target = block.branch_value_table[
+            self.ctrl_varmap[block.variable]
+        ]
         self.branch = bool(block._jump_targets.index(jump_target))
 
     def synth_SyntheticExitingLatch(self, control_name, block):
@@ -283,7 +285,7 @@ class Simulator:
     def synth_SyntheticBranch(self, control_name, block):
         raise NotImplementedError("SyntheticBranch should not be instantiated")
 
-    ### Bytecode Instructions ###
+    ### Bytecode Instructions ### # noqa
     def op_LOAD_CONST(self, inst):
         self.stack.append(inst.argval)
 
@@ -374,16 +376,10 @@ class Simulator:
     def op_PRECALL(self, inst):
         pass
 
-    def op_CALL_FUNCTION(self, inst):
-        args = [self.stack.pop() for _ in range(inst.argval)][::-1]
-        fn = self.stack.pop()
-        res = fn(*args)
-        self.stack.append(res)
-
     def op_CALL(self, inst):
         args = [self.stack.pop() for _ in range(inst.argval)][::-1]
         first, second = self.stack.pop(), self.stack.pop()
-        if first == None:
+        if first is None:
             func = second
         else:
             raise NotImplementedError

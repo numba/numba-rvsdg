@@ -325,15 +325,15 @@ class SyntheticHead(SyntheticBranch):
 
 @dataclass(frozen=True)
 class SyntheticExitingLatch(SyntheticBranch):
-    """The SyntheticExitingLatch class represents a artificially added exiting latch
-    block in a structured control flow graph (SCFG).
+    """The SyntheticExitingLatch class represents a artificially added
+    exiting latchc block in a structured control flow graph (SCFG).
     """
 
 
 @dataclass(frozen=True)
 class SyntheticExitBranch(SyntheticBranch):
-    """The SyntheticExitBranch class represents a artificially added exit branch
-    block in a structured control flow graph (SCFG).
+    """The SyntheticExitBranch class represents a artificially added
+    exit branch block in a structured control flow graph (SCFG).
     """
 
 
@@ -362,7 +362,7 @@ class RegionBlock(BasicBlock):
     kind: str = None
     parent_region: "RegionBlock" = None
     header: str = None
-    subregion: "SCFG" = None
+    subregion: "SCFG" = None  # noqa
     exiting: str = None
 
     def replace_header(self, new_header):

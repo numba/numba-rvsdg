@@ -30,7 +30,8 @@ class NameGenerator:
     Attributes
     ----------
     kinds: dict[str, int]
-        A dictionary that keeps track of the current index for each kind of name.
+        A dictionary that keeps track of the current index for each kind
+        of name.
     """
 
     kinds: dict[str, int] = field(default_factory=dict)
@@ -102,8 +103,8 @@ class NameGenerator:
         in the kinds dictionary attribute. If it exists, the respective
         index is incremented, if it doesn't then a new index (starting
         from zero) is asigned to the given kind. This ensures that
-        the given name is unique by a combination of it's kind and it's index.
-        It returns the generated name.
+        the given name is unique by a combination of it's kind and it's
+        index. It returns the generated name.
 
         Parameters
         ----------
@@ -130,20 +131,25 @@ class NameGenerator:
 class SCFG:
     """SCFG (Structured Control Flow Graph) class.
 
-    The SCFG class represents a map of names to blocks within the control flow graph.
+    The SCFG class represents a map of names to blocks within the control
+    flow graph.
 
     Attributes
     ----------
     graph: Dict[str, BasicBlock]
-        A dictionary that maps names to corresponding BasicBlock objects within the control flow graph.
+        A dictionary that maps names to corresponding BasicBlock objects
+        within the control flow graph.
 
     name_gen: NameGenerator
-        A NameGenerator object that provides unique names for blocks, regions, and variables.
+        A NameGenerator object that provides unique names for blocks,
+        regions, and variables.
     """
 
     graph: Dict[str, BasicBlock] = field(default_factory=dict)
 
-    name_gen: NameGenerator = field(default_factory=NameGenerator, compare=False)
+    name_gen: NameGenerator = field(
+        default_factory=NameGenerator, compare=False
+    )
 
     # This is the top-level region that this SCFG represents.
     region: RegionBlock = field(init=False, compare=False)
@@ -224,7 +230,8 @@ class SCFG:
                 continue
             # yield the name, block combo
             yield (name, block)
-            # if this is a region, recursively yield everything from that region
+            # If this is a region, recursively yield everything from that
+            # specific region.
             if type(block) == RegionBlock:
                 yield from block.subregion
             # finally add any jump_targets to the list of names to visit
@@ -284,10 +291,11 @@ class SCFG:
         return next(iter(heads))
 
     def compute_scc(self) -> List[Set[str]]:
-        """Computes the strongly connected components (SCC) of the current SCFG.
+        """Computes the strongly connected components (SCC) of the current
+        SCFG.
 
-        This method of SCFG computes the strongly connected components of the
-        graph using Tarjan's algorithm. The implementation is at the
+        This method of SCFG computes the stringly connected components of
+        the graph using Tarjan's algorithm. The implementation is at the
         scc function from the numba_rvsdg.networkx_vendored.scc module.
         It returns a list of sets, where each set represents an SCC in
         the graph. SCCs are useful for detecting loops in the graph.
@@ -313,7 +321,9 @@ class SCFG:
 
         return list(scc(GraphWrap(self.graph)))
 
-    def find_headers_and_entries(self, subgraph: Set[str]) -> Tuple[Set[str], Set[str]]:
+    def find_headers_and_entries(
+        self, subgraph: Set[str]
+    ) -> Tuple[Set[str], Set[str]]:
         """Finds entries and headers in a given subgraph.
 
         Entries are blocks outside the subgraph that have an edge pointing to
@@ -358,7 +368,9 @@ class SCFG:
                 )
         return sorted(headers), sorted(entries)
 
-    def find_exiting_and_exits(self, subgraph: Set[str]) -> Tuple[Set[str], Set[str]]:
+    def find_exiting_and_exits(
+        self, subgraph: Set[str]
+    ) -> Tuple[Set[str], Set[str]]:
         """Finds exiting and exit blocks in a given subgraph.
 
         Existing blocks are blocks inside the subgraph that have edges to
@@ -484,7 +496,9 @@ class SCFG:
         """
         # TODO: needs a diagram and documentaion
         # initialize new block
-        new_block = block_type(name=new_name, _jump_targets=successors, backedges=set())
+        new_block = block_type(
+            name=new_name, _jump_targets=successors, backedges=set()
+        )
         # add block to self
         self.add_block(new_block)
         # Replace any arcs from any of predecessors to any of successors with
@@ -590,7 +604,9 @@ class SCFG:
             # predecessors to a successor and insert it between the predecessor
             # and the newly created block
             for s in set(jt).intersection(successors):
-                synth_assign = self.name_gen.new_block_name(block_names.SYNTH_ASSIGN)
+                synth_assign = self.name_gen.new_block_name(
+                    block_names.SYNTH_ASSIGN
+                )
                 variable_assignment = {}
                 variable_assignment[branch_variable] = branch_variable_value
                 synth_assign_block = SyntheticAssignment(
@@ -609,7 +625,9 @@ class SCFG:
                 jt[jt.index(s)] = synth_assign
             # finally, replace the jump_targets
             self.add_block(
-                self.graph.pop(name).replace_jump_targets(jump_targets=tuple(jt))
+                self.graph.pop(name).replace_jump_targets(
+                    jump_targets=tuple(jt)
+                )
             )
         # initialize new block, which will hold the branching table
         new_block = SyntheticHead(
@@ -629,11 +647,17 @@ class SCFG:
         predescessors and no successors respectively.
         """
         # for all nodes that contain a return
-        return_nodes = [node for node in self.graph if self.graph[node].is_exiting]
+        return_nodes = [
+            node for node in self.graph if self.graph[node].is_exiting
+        ]
         # close if more than one is found
         if len(return_nodes) > 1:
-            return_solo_name = self.name_gen.new_block_name(block_names.SYNTH_RETURN)
-            self.insert_SyntheticReturn(return_solo_name, return_nodes, tuple())
+            return_solo_name = self.name_gen.new_block_name(
+                block_names.SYNTH_RETURN
+            )
+            self.insert_SyntheticReturn(
+                return_solo_name, return_nodes, tuple()
+            )
 
     def join_tails_and_exits(self, tails: Set[str], exits: Set[str]):
         """Joins the tails and exits of the SCFG.
@@ -661,28 +685,37 @@ class SCFG:
         if len(tails) == 1 and len(exits) == 2:
             # join only exits
             solo_tail_name = next(iter(tails))
-            solo_exit_name = self.name_gen.new_block_name(block_names.SYNTH_EXIT)
+            solo_exit_name = self.name_gen.new_block_name(
+                block_names.SYNTH_EXIT
+            )
             self.insert_SyntheticExit(solo_exit_name, tails, exits)
             return solo_tail_name, solo_exit_name
 
         if len(tails) >= 2 and len(exits) == 1:
             # join only tails
-            solo_tail_name = self.name_gen.new_block_name(block_names.SYNTH_TAIL)
+            solo_tail_name = self.name_gen.new_block_name(
+                block_names.SYNTH_TAIL
+            )
             solo_exit_name = next(iter(exits))
             self.insert_SyntheticTail(solo_tail_name, tails, exits)
             return solo_tail_name, solo_exit_name
 
         if len(tails) >= 2 and len(exits) >= 2:
             # join both tails and exits
-            solo_tail_name = self.name_gen.new_block_name(block_names.SYNTH_TAIL)
-            solo_exit_name = self.name_gen.new_block_name(block_names.SYNTH_EXIT)
+            solo_tail_name = self.name_gen.new_block_name(
+                block_names.SYNTH_TAIL
+            )
+            solo_exit_name = self.name_gen.new_block_name(
+                block_names.SYNTH_EXIT
+            )
             self.insert_SyntheticTail(solo_tail_name, tails, exits)
             self.insert_SyntheticExit(solo_exit_name, {solo_tail_name}, exits)
             return solo_tail_name, solo_exit_name
 
     @staticmethod
     def bcmap_from_bytecode(bc: dis.Bytecode):
-        """Static method that creates a bytecode map from a `dis.Bytecode` object.
+        """Static method that creates a bytecode map from a `dis.Bytecode`
+        object.
 
         Parameters
         ----------
@@ -960,7 +993,10 @@ class ConcealedRegionView(AbstractGraphView):
         # Initialise housekeeping datastructures:
         # A set because we only need lookup and have unique items and a deque
         # because we need a first in, first out (FIFO) structure.
-        to_visit, seen = deque([head if head else self.scfg.find_head()]), set()
+        to_visit, seen = (
+            deque([head if head else self.scfg.find_head()]),
+            set(),
+        )
         while to_visit:
             # get the next name on the list
             name = to_visit.popleft()

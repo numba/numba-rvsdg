@@ -21,7 +21,8 @@ repos:
     hooks:
       - id: black
         language_version: python3
-  # Autoflake
+        args: ["--line-length=79"]
+  # Autoflake: removes unused imports and variables
   - repo: https://github.com/humitos/mirrors-autoflake.git
     rev: v1.1
     hooks:

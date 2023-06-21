@@ -54,7 +54,10 @@ class TestInsertBlock(SCFGComparator):
         expected_scfg, expected_block_dict = SCFG.from_yaml(expected)
         new_name = original_scfg.name_gen.new_block_name(block_names.BASIC)
         original_scfg.insert_block(
-            new_name, (block_dict["0"], block_dict["1"]), (block_dict["2"],), BasicBlock
+            new_name,
+            (block_dict["0"], block_dict["1"]),
+            (block_dict["2"],),
+            BasicBlock,
         )
         self.assertSCFGEqual(
             expected_scfg,
@@ -498,7 +501,9 @@ class TestLoopRestructure(SCFGComparator):
         """
         original_scfg, block_dict = SCFG.from_yaml(original)
         expected_scfg, _ = SCFG.from_yaml(expected)
-        loop_restructure_helper(original_scfg, set({block_dict["1"], block_dict["2"]}))
+        loop_restructure_helper(
+            original_scfg, set({block_dict["1"], block_dict["2"]})
+        )
         self.assertSCFGEqual(expected_scfg, original_scfg)
 
     def test_backedge_not_exiting(self):
@@ -535,7 +540,9 @@ class TestLoopRestructure(SCFGComparator):
         """
         original_scfg, block_dict = SCFG.from_yaml(original)
         expected_scfg, _ = SCFG.from_yaml(expected)
-        loop_restructure_helper(original_scfg, set({block_dict["1"], block_dict["2"]}))
+        loop_restructure_helper(
+            original_scfg, set({block_dict["1"], block_dict["2"]})
+        )
         self.assertSCFGEqual(expected_scfg, original_scfg)
 
     def test_multi_back_edge_with_backedge_from_header(self):
@@ -570,7 +577,9 @@ class TestLoopRestructure(SCFGComparator):
         """
         original_scfg, block_dict = SCFG.from_yaml(original)
         expected_scfg, _ = SCFG.from_yaml(expected)
-        loop_restructure_helper(original_scfg, set({block_dict["1"], block_dict["2"]}))
+        loop_restructure_helper(
+            original_scfg, set({block_dict["1"], block_dict["2"]})
+        )
         self.assertSCFGEqual(expected_scfg, original_scfg)
 
     def test_double_exit(self):
@@ -615,7 +624,8 @@ class TestLoopRestructure(SCFGComparator):
         original_scfg, block_dict = SCFG.from_yaml(original)
         expected_scfg, _ = SCFG.from_yaml(expected)
         loop_restructure_helper(
-            original_scfg, set({block_dict["1"], block_dict["2"], block_dict["3"]})
+            original_scfg,
+            set({block_dict["1"], block_dict["2"], block_dict["3"]}),
         )
         self.assertSCFGEqual(expected_scfg, original_scfg)
 
@@ -669,7 +679,14 @@ class TestLoopRestructure(SCFGComparator):
         expected_scfg, _ = SCFG.from_yaml(expected)
         loop_restructure_helper(
             original_scfg,
-            set({block_dict["1"], block_dict["2"], block_dict["3"], block_dict["4"]}),
+            set(
+                {
+                    block_dict["1"],
+                    block_dict["2"],
+                    block_dict["3"],
+                    block_dict["4"],
+                }
+            ),
         )
         self.assertSCFGEqual(expected_scfg, original_scfg)
 
@@ -739,7 +756,14 @@ class TestLoopRestructure(SCFGComparator):
         expected_scfg, _ = SCFG.from_yaml(expected)
         loop_restructure_helper(
             original_scfg,
-            set({block_dict["1"], block_dict["2"], block_dict["3"], block_dict["4"]}),
+            set(
+                {
+                    block_dict["1"],
+                    block_dict["2"],
+                    block_dict["3"],
+                    block_dict["4"],
+                }
+            ),
         )
         self.assertSCFGEqual(expected_scfg, original_scfg)
 

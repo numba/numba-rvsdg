@@ -7,7 +7,10 @@ from numba_rvsdg.core.datastructures.basic_block import RegionBlock
 from numba_rvsdg.core.datastructures.flow_info import FlowInfo
 from numba_rvsdg.core.utils import _logger, _LogWrap
 
-from numba_rvsdg.core.transformations import restructure_loop, restructure_branch
+from numba_rvsdg.core.transformations import (
+    restructure_loop,
+    restructure_branch,
+)
 
 
 @dataclass(frozen=True)

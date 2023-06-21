@@ -34,7 +34,9 @@ def scc(G):
                     queue.pop()
                     if lowlink[v] == preorder[v]:
                         scc = {v}
-                        while scc_queue and preorder[scc_queue[-1]] > preorder[v]:
+                        while (
+                            scc_queue and preorder[scc_queue[-1]] > preorder[v]
+                        ):
                             k = scc_queue.pop()
                             scc.add(k)
                         scc_found.update(scc)

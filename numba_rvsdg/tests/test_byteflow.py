@@ -14,7 +14,8 @@ def fun():
 
 
 bytecode = Bytecode(fun)
-# If the function definition line changes, just change the variable below, rest of it will adjust as long as function remains the same
+# If the function definition line changes, just change the variable below,
+# rest of it will adjust as long as function remains the same
 func_def_line = 10
 
 
@@ -130,7 +131,9 @@ class TestPythonBytecodeBlock(unittest.TestCase):
             name=name_gen.new_block_name(block_names.PYTHON_BYTECODE),
             begin=0,
             end=8,
-            _jump_targets=(name_gen.new_block_name(block_names.PYTHON_BYTECODE),),
+            _jump_targets=(
+                name_gen.new_block_name(block_names.PYTHON_BYTECODE),
+            ),
             backedges=(),
         )
         self.assertEqual(block.jump_targets, ("python_bytecode_block_1",))
@@ -223,7 +226,9 @@ class TestFlowInfo(unittest.TestCase):
         self.assertEqual(len(flowinfo.jump_insts), 0)
 
     def test_from_bytecode(self):
-        expected = FlowInfo(block_offsets={0}, jump_insts={8: ()}, last_offset=8)
+        expected = FlowInfo(
+            block_offsets={0}, jump_insts={8: ()}, last_offset=8
+        )
 
         received = FlowInfo.from_bytecode(bytecode)
         self.assertEqual(expected, received)
