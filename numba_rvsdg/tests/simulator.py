@@ -1,7 +1,6 @@
 from collections import ChainMap
 from dis import Instruction
 from numba_rvsdg.core.datastructures.byte_flow import ByteFlow
-from numba_rvsdg.core.datastructures.scfg import SCFG
 from numba_rvsdg.core.datastructures.basic_block import (
     BasicBlock,
     PythonBytecodeBlock,
@@ -299,7 +298,6 @@ class Simulator:
     def op_LOAD_GLOBAL(self, inst):
         v = self.globals[inst.argval]
         if inst.argrepr.startswith("NULL"):
-            append_null = True
             self.stack.append(v)
             self.stack.append(None)
         else:

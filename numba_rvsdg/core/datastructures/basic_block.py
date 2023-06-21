@@ -1,7 +1,6 @@
 import dis
-from collections import ChainMap
 from typing import Tuple, Dict, List
-from dataclasses import dataclass, field, replace
+from dataclasses import dataclass, replace
 
 from numba_rvsdg.core.utils import _next_inst_offset
 
@@ -203,16 +202,12 @@ class SyntheticBlock(BasicBlock):
     structured control flow graph (SCFG).
     """
 
-    pass
-
 
 @dataclass(frozen=True)
 class SyntheticExit(SyntheticBlock):
     """The SyntheticExit class represents a artificially added exit block
     in a structured control flow graph (SCFG).
     """
-
-    pass
 
 
 @dataclass(frozen=True)
@@ -221,8 +216,6 @@ class SyntheticReturn(SyntheticBlock):
     in a structured control flow graph (SCFG).
     """
 
-    pass
-
 
 @dataclass(frozen=True)
 class SyntheticTail(SyntheticBlock):
@@ -230,16 +223,12 @@ class SyntheticTail(SyntheticBlock):
     in a structured control flow graph (SCFG).
     """
 
-    pass
-
 
 @dataclass(frozen=True)
 class SyntheticFill(SyntheticBlock):
     """The SyntheticFill class represents a artificially added fill block
     in a structured control flow graph (SCFG).
     """
-
-    pass
 
 
 @dataclass(frozen=True)
@@ -333,8 +322,6 @@ class SyntheticHead(SyntheticBranch):
     in a structured control flow graph (SCFG).
     """
 
-    pass
-
 
 @dataclass(frozen=True)
 class SyntheticExitingLatch(SyntheticBranch):
@@ -342,16 +329,12 @@ class SyntheticExitingLatch(SyntheticBranch):
     block in a structured control flow graph (SCFG).
     """
 
-    pass
-
 
 @dataclass(frozen=True)
 class SyntheticExitBranch(SyntheticBranch):
     """The SyntheticExitBranch class represents a artificially added exit branch
     block in a structured control flow graph (SCFG).
     """
-
-    pass
 
 
 @dataclass(frozen=True)
