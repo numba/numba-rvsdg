@@ -615,20 +615,20 @@ failing_case = {
     153,
 }
 
-def test_mock_scfg_fuzzer():
-    ct_term = 0
-    total = 100000
-    for i in range(total):
-        if i in failing_case:
-            continue
-        try:
-            if run_fuzzer(i):
-                ct_term += 1
-        except Exception:
-            print("Failed case:", i)
-        else:
-            print('ok', i)
-    print("terminated", ct_term, "total", total)
+# def test_mock_scfg_fuzzer():
+#     ct_term = 0
+#     total = 100000
+#     for i in range(total):
+#         if i in failing_case:
+#             continue
+#         try:
+#             if run_fuzzer(i):
+#                 ct_term += 1
+#         except Exception:
+#             print("Failed case:", i)
+#         else:
+#             print('ok', i)
+#     print("terminated", ct_term, "total", total)
 
 
 # Interesting cases

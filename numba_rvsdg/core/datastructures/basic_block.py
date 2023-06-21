@@ -3,19 +3,18 @@ from collections import ChainMap
 from typing import Tuple, Dict, List, Set
 from dataclasses import dataclass, field, replace
 
-from numba_rvsdg.core.datastructures.labels import Label
 from numba_rvsdg.core.utils import _next_inst_offset
 
 
 @dataclass(frozen=True)
 class BasicBlock:
-    label: Label
-    """The corresponding Label for this block.  """
+    name: str
+    """The corresponding name for this block.  """
 
-    _jump_targets: Tuple[Label] = tuple()
+    _jump_targets: Tuple[str] = tuple()
     """Jump targets (branch destinations) for this block"""
 
-    backedges: Tuple[Label] = tuple()
+    backedges: Tuple[str] = tuple()
     """Backedges for this block."""
 
     @property
@@ -27,21 +26,36 @@ class BasicBlock:
         return len(self._jump_targets) == 1
 
     @property
-    def jump_targets(self) -> Tuple[Label]:
+    def jump_targets(self) -> Tuple[str]:
         acc = []
         for j in self._jump_targets:
             if j not in self.backedges:
                 acc.append(j)
         return tuple(acc)
 
-    def replace_backedge(self, target: Label) -> "BasicBlock":
+    def declare_backedge(self, target: str) -> "BasicBlock":
+        """Declare one of the jump targets as a backedge of this block.
+        """
         if target in self.jump_targets:
             assert not self.backedges
             return replace(self, backedges=(target,))
         return self
 
     def replace_jump_targets(self, jump_targets: Tuple) -> "BasicBlock":
+        """Replaces jump targets of this block by the given tuple.
+        The provided jump targets must be in the same order as their
+        intended original replacements.
+
+        Note that replacing jump targets will not replace the backedge
+        tuple, so replacement for any jump targets that is declared as
+        a backedge needs to be updated separately using replace_backedges"""
         return replace(self, _jump_targets=jump_targets)
+
+    def replace_backedges(self, backedges: Tuple) -> "BasicBlock":
+        """Replace back edges of this block by the given tuple.
+        The provided back edges must be in the same order as their
+        intended original replacements."""
+        return replace(self, backedges=backedges)
 
 
 @dataclass(frozen=True)
@@ -74,23 +88,51 @@ class PythonBytecodeBlock(BasicBlock):
 
 
 @dataclass(frozen=True)
-class ControlVariableBlock(BasicBlock):
+class SyntheticBlock(BasicBlock):
+    pass
+
+@dataclass(frozen=True)
+class SyntheticExit(SyntheticBlock):
+    pass
+
+@dataclass(frozen=True)
+class SyntheticReturn(SyntheticBlock):
+    pass
+
+@dataclass(frozen=True)
+class SyntheticTail(SyntheticBlock):
+    pass
+
+@dataclass(frozen=True)
+class SyntheticFill(SyntheticBlock):
+    pass
+
+@dataclass(frozen=True)
+class SyntheticAssignment(SyntheticBlock):
     variable_assignment: dict = None
 
 
 @dataclass(frozen=True)
-class BranchBlock(BasicBlock):
+class SyntheticBranch(SyntheticBlock):
     variable: str = None
     branch_value_table: dict = None
 
     def replace_jump_targets(self, jump_targets: Tuple) -> "BasicBlock":
-        fallthrough = len(jump_targets) == 1
+        """Replaces jump targets of this block by the given tuple.
+        The provided jump targets must be in the same order as their
+        intended original replacements. Additionally also updates the
+        branch value table of the branch block.
+
+        Note that replacing jump targets will not replace the backedge
+        tuple, so replacement for any jump targets that is declared as
+        a backedge needs to be updated separately using replace_backedges"""
+
         old_branch_value_table = self.branch_value_table
         new_branch_value_table = {}
-        for target in self.jump_targets:
+        for target in self._jump_targets:
             if target not in jump_targets:
                 # ASSUMPTION: only one jump_target is being updated
-                diff = set(jump_targets).difference(self.jump_targets)
+                diff = set(jump_targets).difference(self._jump_targets)
                 assert len(diff) == 1
                 new_target = next(iter(diff))
                 for k, v in old_branch_value_table.items():
@@ -110,21 +152,40 @@ class BranchBlock(BasicBlock):
 
 
 @dataclass(frozen=True)
+class SyntheticHead(SyntheticBranch):
+    pass
+
+
+@dataclass(frozen=True)
+class SyntheticExitingLatch(SyntheticBranch):
+    pass
+
+
+@dataclass(frozen=True)
+class SyntheticExitBranch(SyntheticBranch):
+    pass
+
+
+@dataclass(frozen=True)
 class RegionBlock(BasicBlock):
     kind: str = None
-    headers: Set[Label] = None
-    """The header of the region"""
+    """The kind of region. Can be 'head', 'tail', 'branch',
+    'loop' or 'meta' strings"""
+    parent_region: "RegionBlock" = None
+    """The parent region of this region as per the SCFG."""
+    header: str = None
+    """The header node of the region"""
     subregion: "SCFG" = None
-    """The subgraph excluding the headers
-    """
-    exit: Label = None
-    """The exit node.
-    """
-    def __post_init__(self):
-        assert isinstance(self.subregion.graph, dict)
-        assert isinstance(self.headers, set)
+    """The subgraph as an independent SCFG. Note that in case
+    of subregions the exiting node may point to blocks outside
+    of the current SCFG object."""
+    exiting: str = None
+    """The exiting node of the region."""
 
-    def get_full_graph(self):
-        # assert not (self.headers - set(self.subregion.graph))
-        graph = self.subregion.graph.copy()
-        return graph
+    def replace_header(self, new_header):
+        """Does inplace replacement of the header block."""
+        object.__setattr__(self, "header", new_header)
+
+    def replace_exiting(self, new_exiting):
+        """Does, inplace replacement of the exiting block."""
+        object.__setattr__(self, "exiting", new_exiting)
