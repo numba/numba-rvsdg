@@ -52,7 +52,6 @@ class Simulator:
     """
 
     def __init__(self, flow: ByteFlow, globals: dict):
-
         self.flow = flow
         self.scfg = flow.scfg
         self.globals = ChainMap(globals, builtins.__dict__)
@@ -197,11 +196,11 @@ class Simulator:
                 else:
                     break  # break and return action
             else:
-                assert False, "unreachable" # in case of coding errors
+                assert False, "unreachable"  # in case of coding errors
         # Pop the region from the region stack again and return the final
         # action for this region
         popped = self.region_stack.pop()
-        assert (popped == region)
+        assert popped == region
         return action
 
     def run_PythonBytecodeBlock(self, name: str):
@@ -230,7 +229,7 @@ class Simulator:
         print("----", name)
         print(f"control variable map: {self.ctrl_varmap}")
         block = self.get_block(name)
-        handler = getattr(self, 'synth_' + block.__class__.__name__)
+        handler = getattr(self, "synth_" + block.__class__.__name__)
         handler(name, block)
 
     def run_inst(self, inst: Instruction):

@@ -16,6 +16,7 @@ from numba_rvsdg.core.datastructures.byte_flow import ByteFlow
 import dis
 from typing import Dict
 
+
 class BaseRenderer:
     """Base Renderer class.
 
@@ -63,6 +64,7 @@ class BaseRenderer:
 
         """
         blocks = dict(scfg)
+
         def find_base_header(block: BasicBlock):
             if isinstance(block, RegionBlock):
                 block = blocks[block.header]
@@ -83,7 +85,11 @@ class BaseRenderer:
                 dst_name = find_base_header(blocks[dst_name]).name
                 if dst_name in blocks.keys():
                     self.g.edge(
-                        str(src_block.name), str(dst_name), style="dashed", color="grey", constraint="0"
+                        str(src_block.name),
+                        str(dst_name),
+                        style="dashed",
+                        color="grey",
+                        constraint="0",
                     )
                 else:
                     raise Exception("unreachable " + str(src_block))
@@ -125,7 +131,7 @@ class ByteFlowRenderer(BaseRenderer):
                 self.render_block(subg, name, block)
 
     def render_basic_block(self, digraph: "Digraph", name: str, block: BasicBlock):
-        if name.startswith('python_bytecode'):
+        if name.startswith("python_bytecode"):
             instlist = block.get_instructions(self.bcmap)
             body = name + r"\l"
             body += r"\l".join(
@@ -148,12 +154,10 @@ class ByteFlowRenderer(BaseRenderer):
             raise Exception("Unknown name type: " + name)
         digraph.node(str(name), shape="rect", label=body)
 
-    def render_branching_block(
-        self, digraph: "Digraph", name: str, block: BasicBlock
-    ):
+    def render_branching_block(self, digraph: "Digraph", name: str, block: BasicBlock):
         if isinstance(name, str):
             body = name + r"\l"
-            body += fr"variable: {block.variable}\l"
+            body += rf"variable: {block.variable}\l"
             body += r"\l".join(
                 (f"{k}=>{v}" for k, v in block.branch_value_table.items())
             )
@@ -208,18 +212,27 @@ class SCFGRenderer(BaseRenderer):
                 color = "purple"
             if regionblock.kind == "head":
                 color = "red"
-            label = regionblock.name + \
-                "\njump targets: " + str(regionblock.jump_targets) + \
-                "\nback edges: " + str(regionblock.backedges)
+            label = (
+                regionblock.name
+                + "\njump targets: "
+                + str(regionblock.jump_targets)
+                + "\nback edges: "
+                + str(regionblock.backedges)
+            )
 
             subg.attr(color=color, label=label)
             for name, block in regionblock.subregion.graph.items():
                 self.render_block(subg, name, block)
 
     def render_basic_block(self, digraph: "Digraph", name: str, block: BasicBlock):
-        body = name + r"\l"+ \
-                "\njump targets: " + str(block.jump_targets) + \
-                "\nback edges: " + str(block.backedges)
+        body = (
+            name
+            + r"\l"
+            + "\njump targets: "
+            + str(block.jump_targets)
+            + "\nback edges: "
+            + str(block.backedges)
+        )
 
         digraph.node(str(name), shape="rect", label=body)
 
@@ -231,26 +244,30 @@ class SCFGRenderer(BaseRenderer):
             body += r"\l".join(
                 (f"{k} = {v}" for k, v in block.variable_assignment.items())
             )
-            body +=  \
-                "\njump targets: " + str(block.jump_targets) + \
-                "\nback edges: "  + str(block.backedges)
+            body += (
+                "\njump targets: "
+                + str(block.jump_targets)
+                + "\nback edges: "
+                + str(block.backedges)
+            )
 
         else:
             raise Exception("Unknown name type: " + name)
         digraph.node(str(name), shape="rect", label=body)
 
-    def render_branching_block(
-        self, digraph: "Digraph", name: str, block: BasicBlock
-    ):
+    def render_branching_block(self, digraph: "Digraph", name: str, block: BasicBlock):
         if isinstance(name, str):
             body = name + r"\l"
-            body += fr"variable: {block.variable}\l"
+            body += rf"variable: {block.variable}\l"
             body += r"\l".join(
                 (f"{k}=>{v}" for k, v in block.branch_value_table.items())
             )
-            body += \
-                "\njump targets: " + str(block.jump_targets) + \
-                "\nback edges: " + str(block.backedges)
+            body += (
+                "\njump targets: "
+                + str(block.jump_targets)
+                + "\nback edges: "
+                + str(block.backedges)
+            )
 
         else:
             raise Exception("Unknown name type: " + name)

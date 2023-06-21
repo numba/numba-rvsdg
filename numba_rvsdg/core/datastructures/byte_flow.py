@@ -97,10 +97,10 @@ class ByteFlow:
     def _restructure_branch(self):
         """Restructures the branches within the corresponding SCFG.
 
-        Creates a deep copy of the SCFG and performs the operation to 
-        restructure branch constructs within the control flow. It applies 
-        the restructuring operation to both the main SCFG and any 
-        subregions within it. It returns a new ByteFlow object with 
+        Creates a deep copy of the SCFG and performs the operation to
+        restructure branch constructs within the control flow. It applies
+        the restructuring operation to both the main SCFG and any
+        subregions within it. It returns a new ByteFlow object with
         the updated SCFG.
 
         Returns

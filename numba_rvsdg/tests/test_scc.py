@@ -1,6 +1,7 @@
 from numba_rvsdg.core.datastructures.byte_flow import ByteFlow
 from numba_rvsdg.rendering.rendering import render_flow
 
+
 def scc(G):
     preorder = {}
     lowlink = {}
@@ -46,9 +47,11 @@ def scc(G):
 def make_flow(func):
     return ByteFlow.from_bytecode(func)
 
+
 def test_scc():
     f = make_flow(scc)
     f.restructure()
+
 
 if __name__ == "__main__":
     render_flow(make_flow(scc))

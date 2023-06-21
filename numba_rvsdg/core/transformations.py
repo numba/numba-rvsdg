@@ -32,7 +32,7 @@ def loop_restructure_helper(scfg: SCFG, loop: Set[str]):
 
     headers, entries = scfg.find_headers_and_entries(loop)
     exiting_blocks, exit_blocks = scfg.find_exiting_and_exits(loop)
-    #assert len(entries) == 1
+    # assert len(entries) == 1
     headers_were_unified = False
 
     # If there are multiple headers, insert assignment and control blocks,
@@ -51,8 +51,11 @@ def loop_restructure_helper(scfg: SCFG, loop: Set[str]):
     backedge_blocks = [
         block for block in loop if set(headers).intersection(scfg[block].jump_targets)
     ]
-    if (len(backedge_blocks) == 1 and len(exiting_blocks) == 1
-        and backedge_blocks[0] == next(iter(exiting_blocks))):
+    if (
+        len(backedge_blocks) == 1
+        and len(exiting_blocks) == 1
+        and backedge_blocks[0] == next(iter(exiting_blocks))
+    ):
         scfg.add_block(scfg.graph.pop(backedge_blocks[0]).declare_backedge(loop_head))
         return
 
@@ -81,7 +84,9 @@ def loop_restructure_helper(scfg: SCFG, loop: Set[str]):
     if needs_synth_exit:
         backedge_value_table = {i: j for i, j in enumerate((loop_head, synth_exit))}
     else:
-        backedge_value_table = {i: j for i, j in enumerate((loop_head, next(iter(exit_blocks))))}
+        backedge_value_table = {
+            i: j for i, j in enumerate((loop_head, next(iter(exit_blocks))))
+        }
     if headers_were_unified:
         header_value_table = scfg[solo_head_name].branch_value_table
     else:
@@ -112,16 +117,22 @@ def loop_restructure_helper(scfg: SCFG, loop: Set[str]):
                 # If the target is an exit block
                 if jt in exit_blocks:
                     # Create a new assignment name and record it
-                    synth_assign = scfg.name_gen.new_block_name(block_names.SYNTH_ASSIGN)
+                    synth_assign = scfg.name_gen.new_block_name(
+                        block_names.SYNTH_ASSIGN
+                    )
                     new_blocks.add(synth_assign)
                     # Setup the table for the variable assignment
                     variable_assignment = {}
                     # Setup the variables in the assignment table to point to
                     # the correct blocks
                     if needs_synth_exit:
-                        variable_assignment[exit_variable] = reverse_lookup(exit_value_table, jt)
-                    variable_assignment[backedge_variable] = reverse_lookup(backedge_value_table,
-                        synth_exit if needs_synth_exit else next(iter(exit_blocks)))
+                        variable_assignment[exit_variable] = reverse_lookup(
+                            exit_value_table, jt
+                        )
+                    variable_assignment[backedge_variable] = reverse_lookup(
+                        backedge_value_table,
+                        synth_exit if needs_synth_exit else next(iter(exit_blocks)),
+                    )
                     # Create the actual control variable block
                     synth_assign_block = SyntheticAssignment(
                         name=synth_assign,
@@ -138,14 +149,20 @@ def loop_restructure_helper(scfg: SCFG, loop: Set[str]):
                 # If the target is the loop_head
                 elif jt in headers and (name not in doms[jt] or name == jt):
                     # Create the assignment and record it
-                    synth_assign = scfg.name_gen.new_block_name(block_names.SYNTH_ASSIGN)
+                    synth_assign = scfg.name_gen.new_block_name(
+                        block_names.SYNTH_ASSIGN
+                    )
                     new_blocks.add(synth_assign)
                     # Setup the variables in the assignment table to point to
                     # the correct blocks
                     variable_assignment = {}
-                    variable_assignment[backedge_variable] = reverse_lookup(backedge_value_table, loop_head)
+                    variable_assignment[backedge_variable] = reverse_lookup(
+                        backedge_value_table, loop_head
+                    )
                     if needs_synth_exit:
-                        variable_assignment[exit_variable] = reverse_lookup(header_value_table, jt)
+                        variable_assignment[exit_variable] = reverse_lookup(
+                            header_value_table, jt
+                        )
                     # Update the backedge block - remove any existing backedges
                     # that point to the headers, no need to add a backedge,
                     # since it will be contained in the SyntheticExitingLatch
@@ -178,7 +195,10 @@ def loop_restructure_helper(scfg: SCFG, loop: Set[str]):
     # Insert the exiting latch, add it to the loop and to the graph.
     synth_exiting_latch_block = SyntheticExitingLatch(
         name=synth_exiting_latch,
-        _jump_targets=(synth_exit if needs_synth_exit else next(iter(exit_blocks)), loop_head),
+        _jump_targets=(
+            synth_exit if needs_synth_exit else next(iter(exit_blocks)),
+            loop_head,
+        ),
         backedges=(loop_head,),
         variable=backedge_variable,
         branch_value_table=backedge_value_table,
@@ -274,9 +294,7 @@ def _find_branch_regions(scfg: SCFG, begin: str, end: str) -> Set[str]:
     return branch_regions
 
 
-def find_tail_blocks(
-    scfg: SCFG, begin: Set[str], head_region_blocks, branch_regions
-):
+def find_tail_blocks(scfg: SCFG, begin: Set[str], head_region_blocks, branch_regions):
     tail_subregion = {b for b in scfg.graph.keys()}
     tail_subregion.difference_update(head_region_blocks)
     for reg in branch_regions:
@@ -291,7 +309,9 @@ def find_tail_blocks(
     return tail_subregion
 
 
-def update_exiting(region_block: RegionBlock, new_region_header: str, new_region_name: str):
+def update_exiting(
+    region_block: RegionBlock, new_region_header: str, new_region_name: str
+):
     # Recursively updates the exiting blocks of a regionblock
     region_exiting = region_block.exiting
     region_exiting_block: BasicBlock = region_block.subregion.graph.pop(region_exiting)
@@ -299,16 +319,18 @@ def update_exiting(region_block: RegionBlock, new_region_header: str, new_region
     for idx, s in enumerate(jt):
         if s is new_region_header:
             jt[idx] = new_region_name
-    region_exiting_block = region_exiting_block.replace_jump_targets(jump_targets=tuple(jt))
+    region_exiting_block = region_exiting_block.replace_jump_targets(
+        jump_targets=tuple(jt)
+    )
     be = list(region_exiting_block.backedges)
     for idx, s in enumerate(be):
         if s is new_region_header:
             be[idx] = new_region_name
     region_exiting_block = region_exiting_block.replace_backedges(backedges=tuple(be))
     if isinstance(region_exiting_block, RegionBlock):
-        region_exiting_block = update_exiting(region_exiting_block,
-                                              new_region_header,
-                                              new_region_name)
+        region_exiting_block = update_exiting(
+            region_exiting_block, new_region_header, new_region_name
+        )
     region_block.subregion.add_block(region_exiting_block)
     return region_block
 
@@ -362,7 +384,7 @@ def extract_region(scfg: SCFG, region_blocks, region_kind, parent_region: Region
         header=region_header,
         subregion=head_subgraph,
         exiting=region_exiting,
-        parent_region=parent_region
+        parent_region=parent_region,
     )
     scfg.remove_blocks(region_blocks)
     scfg.graph[region_name] = region
@@ -435,8 +457,12 @@ def restructure_branch(parent_region: RegionBlock):
         else:
             # Insert SyntheticFill, a placeholder for an empty branch region
             tail_headers, _ = scfg.find_headers_and_entries(tail_region_blocks)
-            synthetic_branch_block_name = scfg.name_gen.new_block_name(block_names.SYNTH_FILL)
-            scfg.insert_SyntheticFill(synthetic_branch_block_name, (begin,), tail_headers)
+            synthetic_branch_block_name = scfg.name_gen.new_block_name(
+                block_names.SYNTH_FILL
+            )
+            scfg.insert_SyntheticFill(
+                synthetic_branch_block_name, (begin,), tail_headers
+            )
 
     # Recompute regions.
     head_region_blocks = find_head_blocks(scfg, begin)

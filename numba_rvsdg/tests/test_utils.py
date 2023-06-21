@@ -4,6 +4,7 @@ import yaml
 from numba_rvsdg.core.datastructures.scfg import SCFG
 from numba_rvsdg.core.datastructures.basic_block import BasicBlock
 
+
 class SCFGComparator(TestCase):
     def assertSCFGEqual(self, first_scfg: SCFG, second_scfg: SCFG, head_map=None):
         if head_map:
@@ -17,7 +18,9 @@ class SCFGComparator(TestCase):
             stack = [first_head]
 
         # Assert number of blocks are equal in both SCFGs
-        assert len(first_scfg.graph) == len(second_scfg.graph), "Number of blocks in both graphs are not equal"
+        assert len(first_scfg.graph) == len(
+            second_scfg.graph
+        ), "Number of blocks in both graphs are not equal"
         seen = set()
 
         while stack:
@@ -47,13 +50,17 @@ class SCFGComparator(TestCase):
                 stack.append(be1)
 
     def assertYAMLEqual(self, first_yaml: SCFG, second_yaml: SCFG, head_map: dict):
-        self.assertDictEqual(yaml.safe_load(first_yaml),  yaml.safe_load(second_yaml), head_map)
+        self.assertDictEqual(
+            yaml.safe_load(first_yaml), yaml.safe_load(second_yaml), head_map
+        )
 
     def assertDictEqual(self, first_yaml: str, second_yaml: str, head_map: dict):
         block_mapping = head_map
         stack = list(block_mapping.keys())
         # Assert number of blocks are equal in both SCFGs
-        assert len(first_yaml) == len(second_yaml), "Number of blocks in both graphs are not equal"
+        assert len(first_yaml) == len(
+            second_yaml
+        ), "Number of blocks in both graphs are not equal"
         seen = set()
 
         while stack:
@@ -68,13 +75,13 @@ class SCFGComparator(TestCase):
             second_node_name = block_mapping[node_name]
             second_node: BasicBlock = second_yaml[second_node_name]
             # Both nodes should have equal number of jump targets and backedges
-            assert len(node['jt']) == len(second_node['jt'])
-            if 'be' in node.keys():
-                assert len(node['be']) == len(second_node['be'])
+            assert len(node["jt"]) == len(second_node["jt"])
+            if "be" in node.keys():
+                assert len(node["be"]) == len(second_node["be"])
 
             # Add the jump targets as corresponding nodes in block mapping dictionary
             # Since order must be same we can simply add zip fucntionality as the
             # correspondence function for nodes
-            for jt1, jt2 in zip(node['jt'], second_node['jt']):
+            for jt1, jt2 in zip(node["jt"], second_node["jt"]):
                 block_mapping[jt1] = jt2
                 stack.append(jt1)

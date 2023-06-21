@@ -210,10 +210,7 @@ class ProgramGen:
         # generate BB
         indent = " " * 4
         for i in range(size):
-            bb: list[str] = [
-                f"label BB{i}",
-                f"{indent}print P{i}"
-            ]
+            bb: list[str] = [f"label BB{i}", f"{indent}print P{i}"]
             [kind] = self.rng.choices(["goto", "brctr", ""], [1, 10, 20])
             if kind == "goto":
                 target = self.rng.randrange(size)

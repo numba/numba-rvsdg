@@ -19,11 +19,12 @@ from numba_rvsdg.core.datastructures.basic_block import (
 )
 from numba_rvsdg.core.datastructures import block_names
 
+
 @dataclass(frozen=True)
 class NameGenerator:
     """Unique Name Generator.
 
-    The NameGenerator class is responsible for generating unique names 
+    The NameGenerator class is responsible for generating unique names
     for blocks, regions, and variables within the SCFG.
 
     Attributes
@@ -35,12 +36,12 @@ class NameGenerator:
     kinds: dict[str, int] = field(default_factory=dict)
 
     def new_block_name(self, kind: str) -> str:
-        """Generate a new unique name for a block of the specified kind. 
+        """Generate a new unique name for a block of the specified kind.
 
         This method checks if the given string 'kind' already exists
-        in the kinds dictionary attribute. If it exists, the respective 
-        index is incremented, if it doesn't then a new index (starting 
-        from zero) is asigned to the given kind. This ensures that 
+        in the kinds dictionary attribute. If it exists, the respective
+        index is incremented, if it doesn't then a new index (starting
+        from zero) is asigned to the given kind. This ensures that
         the given name is unique by a combination of it's kind and it's index.
         It returns the generated name.
 
@@ -56,21 +57,21 @@ class NameGenerator:
         """
         if kind in self.kinds.keys():
             idx = self.kinds[kind]
-            name = str(kind) + '_block_' + str(idx)
+            name = str(kind) + "_block_" + str(idx)
             self.kinds[kind] = idx + 1
         else:
             idx = 0
-            name = str(kind) + '_block_' + str(idx)
+            name = str(kind) + "_block_" + str(idx)
             self.kinds[kind] = idx + 1
         return name
 
     def new_region_name(self, kind: str) -> str:
-        """Generate a new unique name for a region of the specified kind. 
+        """Generate a new unique name for a region of the specified kind.
 
         This method checks if the given string 'kind' already exists
-        in the kinds dictionary attribute. If it exists, the respective 
-        index is incremented, if it doesn't then a new index (starting 
-        from zero) is asigned to the given kind. This ensures that 
+        in the kinds dictionary attribute. If it exists, the respective
+        index is incremented, if it doesn't then a new index (starting
+        from zero) is asigned to the given kind. This ensures that
         the given name is unique by a combination of it's kind and it's index.
         It returns the generated name.
 
@@ -86,21 +87,21 @@ class NameGenerator:
         """
         if kind in self.kinds.keys():
             idx = self.kinds[kind]
-            name = str(kind) + '_region_' + str(idx)
+            name = str(kind) + "_region_" + str(idx)
             self.kinds[kind] = idx + 1
         else:
             idx = 0
-            name = str(kind) + '_region_' + str(idx)
+            name = str(kind) + "_region_" + str(idx)
             self.kinds[kind] = idx + 1
         return name
 
     def new_var_name(self, kind: str) -> str:
-        """Generate a new unique name for a variable of the specified kind. 
+        """Generate a new unique name for a variable of the specified kind.
 
         This method checks if the given string 'kind' already exists
-        in the kinds dictionary attribute. If it exists, the respective 
-        index is incremented, if it doesn't then a new index (starting 
-        from zero) is asigned to the given kind. This ensures that 
+        in the kinds dictionary attribute. If it exists, the respective
+        index is incremented, if it doesn't then a new index (starting
+        from zero) is asigned to the given kind. This ensures that
         the given name is unique by a combination of it's kind and it's index.
         It returns the generated name.
 
@@ -116,11 +117,11 @@ class NameGenerator:
         """
         if kind in self.kinds.keys():
             idx = self.kinds[kind]
-            name = str(kind) + '_var_' + str(idx)
+            name = str(kind) + "_var_" + str(idx)
             self.kinds[kind] = idx + 1
         else:
             idx = 0
-            name = str(kind) + '_var_' + str(idx)
+            name = str(kind) + "_var_" + str(idx)
             self.kinds[kind] = idx + 1
         return name
 
@@ -142,18 +143,21 @@ class SCFG:
 
     graph: Dict[str, BasicBlock] = field(default_factory=dict)
 
-    name_gen: NameGenerator = field(
-        default_factory=NameGenerator, compare=False
-    )
+    name_gen: NameGenerator = field(default_factory=NameGenerator, compare=False)
 
     # This is the top-level region that this SCFG represents.
     region: RegionBlock = field(init=False, compare=False)
 
     def __post_init__(self):
         name = self.name_gen.new_region_name("meta")
-        new_region = RegionBlock(name=name, kind="meta", header=None,
-                                 exiting=None, parent_region=None,
-                                 subregion=self)
+        new_region = RegionBlock(
+            name=name,
+            kind="meta",
+            header=None,
+            exiting=None,
+            parent_region=None,
+            subregion=self,
+        )
         object.__setattr__(self, "region", new_region)
 
     def __getitem__(self, index):
@@ -191,7 +195,7 @@ class SCFG:
         """Returns an iterator over the blocks in the SCFG.
 
         Returns an iterator that yields the names and corresponding blocks
-        in the SCFG. It follows a breadth-first search 
+        in the SCFG. It follows a breadth-first search
         traversal starting from the head block.
 
         Returns
@@ -228,7 +232,7 @@ class SCFG:
 
     @property
     def concealed_region_view(self):
-        """A property that returns a ConcealedRegionView object, representing 
+        """A property that returns a ConcealedRegionView object, representing
         a concealed view of the control flow graph.
 
         Returns
@@ -241,8 +245,8 @@ class SCFG:
     def exclude_blocks(self, exclude_blocks: Set[str]) -> Iterator[str]:
         """Returns an iterator over the blocks in the SCFG with exclusions.
 
-        Returns an iterator over all nodes (blocks) in the control flow graph 
-        that are not present in the exclude_blocks set. It filters out the 
+        Returns an iterator over all nodes (blocks) in the control flow graph
+        that are not present in the exclude_blocks set. It filters out the
         excluded blocks and yields the remaining blocks.
 
         Parameters
@@ -309,9 +313,7 @@ class SCFG:
 
         return list(scc(GraphWrap(self.graph)))
 
-    def find_headers_and_entries(
-        self, subgraph: Set[str]
-    ) -> Tuple[Set[str], Set[str]]:
+    def find_headers_and_entries(self, subgraph: Set[str]) -> Tuple[Set[str], Set[str]]:
         """Finds entries and headers in a given subgraph.
 
         Entries are blocks outside the subgraph that have an edge pointing to
@@ -336,7 +338,9 @@ class SCFG:
         headers: Set[str] = set()
 
         for outside in self.exclude_blocks(subgraph):
-            nodes_jump_in_loop = subgraph.intersection(self.graph[outside]._jump_targets)
+            nodes_jump_in_loop = subgraph.intersection(
+                self.graph[outside]._jump_targets
+            )
             headers.update(nodes_jump_in_loop)
             if nodes_jump_in_loop:
                 entries.add(outside)
@@ -349,12 +353,12 @@ class SCFG:
             # to it's parent region block's graph.
             if self.region.kind != "meta":
                 parent_region = self.region.parent_region
-                _, entries = parent_region.subregion.find_headers_and_entries({self.region.name})
+                _, entries = parent_region.subregion.find_headers_and_entries(
+                    {self.region.name}
+                )
         return sorted(headers), sorted(entries)
 
-    def find_exiting_and_exits(
-        self, subgraph: Set[str]
-    ) -> Tuple[Set[str], Set[str]]:
+    def find_exiting_and_exits(self, subgraph: Set[str]) -> Tuple[Set[str], Set[str]]:
         """Finds exiting and exit blocks in a given subgraph.
 
         Existing blocks are blocks inside the subgraph that have edges to
@@ -448,8 +452,11 @@ class SCFG:
             del self.graph[name]
 
     def insert_block(
-        self, new_name: str, predecessors: Set[str], successors: Set[str],
-        block_type: SyntheticBlock
+        self,
+        new_name: str,
+        predecessors: Set[str],
+        successors: Set[str],
+        block_type: SyntheticBlock,
     ):
         """Inserts a new synthetic block into the SCFG
         between the given successors and predecessors.
@@ -477,9 +484,7 @@ class SCFG:
         """
         # TODO: needs a diagram and documentaion
         # initialize new block
-        new_block = block_type(
-            name=new_name, _jump_targets=successors, backedges=set()
-        )
+        new_block = block_type(name=new_name, _jump_targets=successors, backedges=set())
         # add block to self
         self.add_block(new_block)
         # Replace any arcs from any of predecessors to any of successors with
@@ -499,7 +504,10 @@ class SCFG:
             self.add_block(block.replace_jump_targets(jump_targets=tuple(jt)))
 
     def insert_SyntheticExit(
-        self, new_name: str, predecessors: Set[str], successors: Set[str],
+        self,
+        new_name: str,
+        predecessors: Set[str],
+        successors: Set[str],
     ):
         """Inserts a synthetic exit block into the SCFG.
         Parameters same as insert_block method.
@@ -511,7 +519,10 @@ class SCFG:
         self.insert_block(new_name, predecessors, successors, SyntheticExit)
 
     def insert_SyntheticTail(
-        self, new_name: str, predecessors: Set[str], successors: Set[str],
+        self,
+        new_name: str,
+        predecessors: Set[str],
+        successors: Set[str],
     ):
         """Inserts a synthetic tail block into the SCFG.
         Parameters same as insert_block method.
@@ -523,7 +534,10 @@ class SCFG:
         self.insert_block(new_name, predecessors, successors, SyntheticTail)
 
     def insert_SyntheticReturn(
-        self, new_name: str, predecessors: Set[str], successors: Set[str],
+        self,
+        new_name: str,
+        predecessors: Set[str],
+        successors: Set[str],
     ):
         """Inserts a synthetic return block into the SCFG.
         Parameters same as insert_block method.
@@ -535,7 +549,10 @@ class SCFG:
         self.insert_block(new_name, predecessors, successors, SyntheticReturn)
 
     def insert_SyntheticFill(
-        self, new_name: str, predecessors: Set[str], successors: Set[str],
+        self,
+        new_name: str,
+        predecessors: Set[str],
+        successors: Set[str],
     ):
         """Inserts a synthetic fill block into the SCFG.
         Parameters same as insert_block method.
@@ -768,14 +785,14 @@ class SCFG:
 
         for key, value in scfg_graph.items():
             jump_targets = [i for i in value._jump_targets]
-            jump_targets = str(jump_targets).replace("\'", "\"")
+            jump_targets = str(jump_targets).replace("'", '"')
             back_edges = [i for i in value.backedges]
             jump_target_str = f"""
                 "{key}":
                     jt: {jump_targets}"""
 
             if back_edges:
-                back_edges = str(back_edges).replace("\'", "\"")
+                back_edges = str(back_edges).replace("'", '"')
                 jump_target_str += f"""
                     be: {back_edges}"""
             yaml_string += dedent(jump_target_str)
@@ -783,11 +800,11 @@ class SCFG:
         return yaml_string
 
     def to_dict(self):
-        """Converts the SCFG object to a dictionary representation. 
+        """Converts the SCFG object to a dictionary representation.
 
-        This method returns a dictionary representing the control flow 
-        graph. It iterates over the graph dictionary and generates a 
-        dictionary entry for each block, including jump targets and 
+        This method returns a dictionary representing the control flow
+        graph. It iterates over the graph dictionary and generates a
+        dictionary entry for each block, including jump targets and
         backedges if present.
 
         Returns
@@ -805,11 +822,11 @@ class SCFG:
             graph_dict[key] = curr_dict
         return graph_dict
 
-    def view(self, name: str=None):
+    def view(self, name: str = None):
         """View the current SCFG as a external PDF file.
 
-        This method internally creates a SCFGRenderer corresponding to 
-        the current state of SCFG and calls it's view method to view the 
+        This method internally creates a SCFGRenderer corresponding to
+        the current state of SCFG and calls it's view method to view the
         graph as a graphviz generated external PDF file.
 
         Parameters
@@ -818,7 +835,9 @@ class SCFG:
             Name to be given to the external graphviz generated PDF file.
         """
         from numba_rvsdg.rendering.rendering import SCFGRenderer
+
         SCFGRenderer(self).view(name)
+
 
 class AbstractGraphView(Mapping):
     """Abstract Graph View class.

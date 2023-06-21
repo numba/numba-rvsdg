@@ -31,6 +31,7 @@ def make_flow():
     scfg = flow.build_basicblocks()
     return ByteFlow(bc=bc, scfg=scfg)
 
+
 def test_fig4():
     f = make_flow()
     f.restructure()

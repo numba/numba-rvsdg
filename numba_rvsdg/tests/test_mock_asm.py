@@ -10,7 +10,8 @@ from mock_asm import ProgramGen, parse, VM
 
 
 def test_mock_asm():
-    asm = textwrap.dedent("""
+    asm = textwrap.dedent(
+        """
             print Start
             goto A
         label A
@@ -19,7 +20,8 @@ def test_mock_asm():
             brctr A B
         label B
             print B
-    """)
+    """
+    )
 
     instlist = parse(asm)
     assert instlist[0].operands.text == "Start"
@@ -39,7 +41,8 @@ def test_mock_asm():
 
 
 def test_double_exchange_loop():
-    asm = textwrap.dedent("""
+    asm = textwrap.dedent(
+        """
             print Start
        label A
             print A
@@ -51,7 +54,8 @@ def test_double_exchange_loop():
             brctr A Exit
         label Exit
             print Exit
-    """)
+    """
+    )
     instlist = parse(asm)
     with StringIO() as buf:
         VM(buf).run(instlist)
@@ -69,7 +73,6 @@ def test_program_gen():
     for i in range(total):
         print(str(i).center(80, "="))
         asm = pg.generate_program()
-
 
         instlist = parse(asm)
         with StringIO() as buf:
