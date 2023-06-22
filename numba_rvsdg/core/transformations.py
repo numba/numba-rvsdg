@@ -169,7 +169,7 @@ def loop_restructure_helper(scfg: SCFG, loop: Set[str]):
                     variable_assignment[backedge_variable] = reverse_lookup(
                         backedge_value_table, loop_head
                     )
-                    if needs_synth_exit:
+                    if needs_synth_exit or headers_were_unified:
                         variable_assignment[exit_variable] = reverse_lookup(
                             header_value_table, jt
                         )
