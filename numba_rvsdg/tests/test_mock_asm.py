@@ -227,6 +227,8 @@ class MaxStepError(Exception):
 
 
 class Simulator:
+    DEBUG = False
+
     def __init__(self, scfg: SCFG, buf: StringIO, max_step):
         self.vm = VM(buf)
         self.scfg = scfg
@@ -234,6 +236,10 @@ class Simulator:
         self.ctrl_varmap = dict()
         self.max_step = max_step
         self.step = 0
+
+    def _debug_print(self, *args, **kwargs):
+        if self.DEBUG:
+            print(*args, **kwargs)
 
     def run(self):
         scfg = self.scfg
@@ -254,17 +260,17 @@ class Simulator:
                 assert False, "unreachable"  # in case of coding errors
 
     def run_block(self, block):
-        print("run block", block.name)
+        self._debug_print("run block", block.name)
         if isinstance(block, RegionBlock):
             return self.run_RegionBlock(block)
         elif isinstance(block, MockAsmBasicBlock):
             return self.run_MockAsmBasicBlock(block)
         elif isinstance(block, SyntheticBlock):
-            print("    ", block)
+            self._debug_print("    ", block)
             label = block.name
             handler = getattr(self, f"synth_{type(block).__name__}")
             out = handler(label, block)
-            print("    ctrl_varmap dump:", self.ctrl_varmap)
+            self._debug_print("    ctrl_varmap dump:", self.ctrl_varmap)
             return out
         else:
             assert False, type(block)
@@ -299,7 +305,7 @@ class Simulator:
             raise MaxStepError("step > max_step")
 
         for inst in block.bbinstlist:
-            print("inst", pc, inst)
+            self._debug_print("inst", pc, inst)
             pc = vm.eval_inst(pc, inst)
             self.step += 1
         if block.bbtargets:
@@ -567,8 +573,6 @@ def test_mock_scfg_fuzzer(total=1000):
 
 
 # Interesting cases
-
-
 
 def test_mock_scfg_fuzzer_case36():
     run_fuzzer(seed=36)
