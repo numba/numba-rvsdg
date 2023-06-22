@@ -221,6 +221,9 @@ class ProgramGen:
             elif kind == "brctr":
                 target0 = self.rng.randrange(1, size) # avoid jump back to entry
                 target1 = self.rng.randrange(1, size) # avoid jump back to entry
+                while target1 == target0:
+                    # avoid same target on both side
+                    target1 = self.rng.randrange(1, size)
                 ctr = self.rng.randrange(1, 10)
                 bb.append(f"{indent}ctr {ctr}")
                 bb.append(f"{indent}brctr BB{target0} BB{target1}")
