@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "numba_rvsdg"
-version = "0.0.1"
+version = "0.0.2"
 authors = [
     {name = "Numba Developers", email="none@none.none"},
 ]
@@ -22,5 +22,14 @@ dependencies = [
     "pyyaml",
 ]
 
-[tool.setuptools.packages]
-find = {}
+[tool.setuptools]
+packages = ["numba_rvsdg"]
+
+[project.optional-dependencies]
+dev = [
+    "sphinx",
+    "myst-parser",
+    "furo",
+    "pytest",
+    "sphinx-rtd-theme"
+]

@@ -1,11 +1,11 @@
-
 from unittest import main
 
 from numba_rvsdg.core.datastructures.scfg import SCFG
-from numba_rvsdg.core.datastructures.basic_block import BasicBlock, RegionBlock
+from numba_rvsdg.core.datastructures.basic_block import BasicBlock
 from numba_rvsdg.core.transformations import loop_restructure_helper
 from numba_rvsdg.tests.test_utils import SCFGComparator
 from numba_rvsdg.core.datastructures import block_names
+
 
 class TestInsertBlock(SCFGComparator):
     def test_linear(self):
@@ -26,9 +26,8 @@ class TestInsertBlock(SCFGComparator):
         """
         expected_scfg, _ = SCFG.from_yaml(expected)
         new_name = original_scfg.name_gen.new_block_name(block_names.BASIC)
-        original_scfg._insert_block(
-            new_name, (block_dict["0"],), (block_dict["1"],),
-            BasicBlock
+        original_scfg.insert_block(
+            new_name, (block_dict["0"],), (block_dict["1"],), BasicBlock
         )
         self.assertSCFGEqual(expected_scfg, original_scfg)
 
@@ -54,12 +53,20 @@ class TestInsertBlock(SCFGComparator):
         """
         expected_scfg, expected_block_dict = SCFG.from_yaml(expected)
         new_name = original_scfg.name_gen.new_block_name(block_names.BASIC)
-        original_scfg._insert_block(
-            new_name, (block_dict["0"], block_dict["1"]), (block_dict["2"],),
-            BasicBlock
+        original_scfg.insert_block(
+            new_name,
+            (block_dict["0"], block_dict["1"]),
+            (block_dict["2"],),
+            BasicBlock,
         )
-        self.assertSCFGEqual(expected_scfg, original_scfg, {block_dict["0"]: expected_block_dict["0"],
-                                                            block_dict["1"]: expected_block_dict["1"]})
+        self.assertSCFGEqual(
+            expected_scfg,
+            original_scfg,
+            {
+                block_dict["0"]: expected_block_dict["0"],
+                block_dict["1"]: expected_block_dict["1"],
+            },
+        )
 
     def test_dual_successor(self):
         original = """
@@ -82,11 +89,11 @@ class TestInsertBlock(SCFGComparator):
             jt: ["1", "2"]
         """
         expected_scfg, _ = SCFG.from_yaml(expected)
-        original_scfg._insert_block(
+        original_scfg.insert_block(
             original_scfg.name_gen.new_block_name(block_names.BASIC),
             (block_dict["0"],),
             (block_dict["1"], block_dict["2"]),
-            BasicBlock
+            BasicBlock,
         )
         self.assertSCFGEqual(expected_scfg, original_scfg)
 
@@ -119,11 +126,11 @@ class TestInsertBlock(SCFGComparator):
             jt: ["3", "4"]
         """
         expected_scfg, _ = SCFG.from_yaml(expected)
-        original_scfg._insert_block(
+        original_scfg.insert_block(
             original_scfg.name_gen.new_block_name(block_names.BASIC),
             (block_dict["1"], block_dict["2"]),
             (block_dict["3"], block_dict["4"]),
-            BasicBlock
+            BasicBlock,
         )
         self.assertSCFGEqual(expected_scfg, original_scfg)
 
@@ -156,14 +163,20 @@ class TestInsertBlock(SCFGComparator):
             jt: ["3", "4"]
         """
         expected_scfg, expected_block_dict = SCFG.from_yaml(expected)
-        original_scfg._insert_block(
+        original_scfg.insert_block(
             original_scfg.name_gen.new_block_name(block_names.BASIC),
             (block_dict["1"], block_dict["2"]),
             (block_dict["3"], block_dict["4"]),
-            BasicBlock
+            BasicBlock,
         )
-        self.assertSCFGEqual(expected_scfg, original_scfg, {block_dict["0"]: expected_block_dict["0"],
-                                                            block_dict["2"]: expected_block_dict["2"]})
+        self.assertSCFGEqual(
+            expected_scfg,
+            original_scfg,
+            {
+                block_dict["0"]: expected_block_dict["0"],
+                block_dict["2"]: expected_block_dict["2"],
+            },
+        )
 
 
 class TestJoinReturns(SCFGComparator):
@@ -253,7 +266,10 @@ class TestJoinTailsAndExits(SCFGComparator):
 
         self.assertSCFGEqual(expected_scfg, original_scfg)
         self.assertEqual(block_dict["0"], solo_tail_name)
-        self.assertEqual(expected_scfg.name_gen.new_block_name(block_names.SYNTH_EXIT), solo_exit_name)
+        self.assertEqual(
+            expected_scfg.name_gen.new_block_name(block_names.SYNTH_EXIT),
+            solo_exit_name,
+        )
 
     def test_join_tails_and_exits_case_02_01(self):
         original = """
@@ -288,7 +304,10 @@ class TestJoinTailsAndExits(SCFGComparator):
         )
 
         self.assertSCFGEqual(expected_scfg, original_scfg)
-        self.assertEqual(expected_scfg.name_gen.new_block_name(block_names.SYNTH_TAIL), solo_tail_name)
+        self.assertEqual(
+            expected_scfg.name_gen.new_block_name(block_names.SYNTH_TAIL),
+            solo_tail_name,
+        )
         self.assertEqual(block_dict["3"], solo_exit_name)
 
     def test_join_tails_and_exits_case_02_02(self):
@@ -324,11 +343,13 @@ class TestJoinTailsAndExits(SCFGComparator):
             tails, exits
         )
         self.assertSCFGEqual(expected_scfg, original_scfg)
-        self.assertEqual(expected_scfg.name_gen.new_block_name(block_names.SYNTH_TAIL), solo_tail_name)
+        self.assertEqual(
+            expected_scfg.name_gen.new_block_name(block_names.SYNTH_TAIL),
+            solo_tail_name,
+        )
         self.assertEqual(block_dict["3"], solo_exit_name)
 
     def test_join_tails_and_exits_case_03_01(self):
-
         original = """
         "0":
             jt: ["1", "2"]
@@ -370,11 +391,16 @@ class TestJoinTailsAndExits(SCFGComparator):
             tails, exits
         )
         self.assertSCFGEqual(expected_scfg, original_scfg)
-        self.assertEqual(expected_scfg.name_gen.new_block_name(block_names.SYNTH_TAIL), solo_tail_name)
-        self.assertEqual(expected_scfg.name_gen.new_block_name(block_names.SYNTH_EXIT), solo_exit_name)
+        self.assertEqual(
+            expected_scfg.name_gen.new_block_name(block_names.SYNTH_TAIL),
+            solo_tail_name,
+        )
+        self.assertEqual(
+            expected_scfg.name_gen.new_block_name(block_names.SYNTH_EXIT),
+            solo_exit_name,
+        )
 
     def test_join_tails_and_exits_case_03_02(self):
-
         original = """
         "0":
             jt: ["1", "2"]
@@ -415,12 +441,17 @@ class TestJoinTailsAndExits(SCFGComparator):
             tails, exits
         )
         self.assertSCFGEqual(expected_scfg, original_scfg)
-        self.assertEqual(expected_scfg.name_gen.new_block_name(block_names.SYNTH_TAIL), solo_tail_name)
-        self.assertEqual(expected_scfg.name_gen.new_block_name(block_names.SYNTH_EXIT), solo_exit_name)
+        self.assertEqual(
+            expected_scfg.name_gen.new_block_name(block_names.SYNTH_TAIL),
+            solo_tail_name,
+        )
+        self.assertEqual(
+            expected_scfg.name_gen.new_block_name(block_names.SYNTH_EXIT),
+            solo_exit_name,
+        )
 
 
 class TestLoopRestructure(SCFGComparator):
-
     def test_no_op_mono(self):
         """Loop consists of a single Block."""
         original = """
@@ -470,7 +501,9 @@ class TestLoopRestructure(SCFGComparator):
         """
         original_scfg, block_dict = SCFG.from_yaml(original)
         expected_scfg, _ = SCFG.from_yaml(expected)
-        loop_restructure_helper(original_scfg, set({block_dict["1"], block_dict["2"]}))
+        loop_restructure_helper(
+            original_scfg, set({block_dict["1"], block_dict["2"]})
+        )
         self.assertSCFGEqual(expected_scfg, original_scfg)
 
     def test_backedge_not_exiting(self):
@@ -507,7 +540,9 @@ class TestLoopRestructure(SCFGComparator):
         """
         original_scfg, block_dict = SCFG.from_yaml(original)
         expected_scfg, _ = SCFG.from_yaml(expected)
-        loop_restructure_helper(original_scfg, set({block_dict["1"], block_dict["2"]}))
+        loop_restructure_helper(
+            original_scfg, set({block_dict["1"], block_dict["2"]})
+        )
         self.assertSCFGEqual(expected_scfg, original_scfg)
 
     def test_multi_back_edge_with_backedge_from_header(self):
@@ -542,7 +577,9 @@ class TestLoopRestructure(SCFGComparator):
         """
         original_scfg, block_dict = SCFG.from_yaml(original)
         expected_scfg, _ = SCFG.from_yaml(expected)
-        loop_restructure_helper(original_scfg, set({block_dict["1"], block_dict["2"]}))
+        loop_restructure_helper(
+            original_scfg, set({block_dict["1"], block_dict["2"]})
+        )
         self.assertSCFGEqual(expected_scfg, original_scfg)
 
     def test_double_exit(self):
@@ -586,11 +623,14 @@ class TestLoopRestructure(SCFGComparator):
         """
         original_scfg, block_dict = SCFG.from_yaml(original)
         expected_scfg, _ = SCFG.from_yaml(expected)
-        loop_restructure_helper(original_scfg, set({block_dict["1"], block_dict["2"], block_dict["3"]}))
+        loop_restructure_helper(
+            original_scfg,
+            set({block_dict["1"], block_dict["2"], block_dict["3"]}),
+        )
         self.assertSCFGEqual(expected_scfg, original_scfg)
 
     def test_double_header(self):
-        """ This is like the example from Bahman2015 fig. 3 --
+        """This is like the example from Bahman2015 fig. 3 --
         but with one exiting block removed."""
         original = """
         "0":
@@ -637,11 +677,21 @@ class TestLoopRestructure(SCFGComparator):
         """
         original_scfg, block_dict = SCFG.from_yaml(original)
         expected_scfg, _ = SCFG.from_yaml(expected)
-        loop_restructure_helper(original_scfg, set({block_dict["1"], block_dict["2"], block_dict["3"], block_dict["4"]}))
+        loop_restructure_helper(
+            original_scfg,
+            set(
+                {
+                    block_dict["1"],
+                    block_dict["2"],
+                    block_dict["3"],
+                    block_dict["4"],
+                }
+            ),
+        )
         self.assertSCFGEqual(expected_scfg, original_scfg)
 
     def test_double_header_double_exiting(self):
-        """ This is like the example from Bahman2015 fig. 3.
+        """This is like the example from Bahman2015 fig. 3.
 
         Two headers that need to be multiplexed to, on additional branch that
         becomes the exiting latch and one branch that becomes the exit.
@@ -704,8 +754,19 @@ class TestLoopRestructure(SCFGComparator):
         """
         original_scfg, block_dict = SCFG.from_yaml(original)
         expected_scfg, _ = SCFG.from_yaml(expected)
-        loop_restructure_helper(original_scfg, set({block_dict["1"], block_dict["2"], block_dict["3"], block_dict["4"]}))
+        loop_restructure_helper(
+            original_scfg,
+            set(
+                {
+                    block_dict["1"],
+                    block_dict["2"],
+                    block_dict["3"],
+                    block_dict["4"],
+                }
+            ),
+        )
         self.assertSCFGEqual(expected_scfg, original_scfg)
+
 
 if __name__ == "__main__":
     main()
