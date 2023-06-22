@@ -318,6 +318,6 @@ def render_scfg(scfg):
     Parameters
     ----------
     scfg: SCFG
-        The Pstructured control flow graph (SCFG) to be rendered.
+        The structured control flow graph (SCFG) to be rendered.
     """
     ByteFlowRenderer().render_scfg(scfg).view("scfg")

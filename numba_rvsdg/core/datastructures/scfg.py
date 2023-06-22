@@ -264,7 +264,7 @@ class SCFG:
     def find_head(self) -> str:
         """Finds the head block of the SCFG.
 
-        Assuming the CFG is closed, this will find the block
+        Assuming the SCFG is closed, this will find the block
         that no other blocks are pointing to.
 
         Returns
@@ -283,7 +283,7 @@ class SCFG:
     def compute_scc(self) -> List[Set[str]]:
         """Computes the strongly connected components (SCC) of the current SCFG.
 
-        This method of SCFG computes the stringly connected components of the
+        This method of SCFG computes the strongly connected components of the
         graph using Tarjan's algorithm. The implementation is at the
         scc function from the numba_rvsdg.networkx_vendored.scc module.
         It returns a list of sets, where each set represents an SCC in
@@ -427,15 +427,15 @@ class SCFG:
                 if block in self.graph:
                     to_vist.extend(self.graph[block].jump_targets)
 
-    def add_block(self, basicblock: BasicBlock):
+    def add_block(self, basic_block: BasicBlock):
         """Adds a BasicBlock object to the control flow graph.
 
         Parameters
         ----------
-        basicblock: BasicBlock
-            The basicblock parameter represents the block to be added.
+        basic_block: BasicBlock
+            The basic_block parameter represents the block to be added.
         """
-        self.graph[basicblock.name] = basicblock
+        self.graph[basic_block.name] = basic_block
 
     def remove_blocks(self, names: Set[str]):
         """Removes a BasicBlock object from the control flow graph.
@@ -452,7 +452,7 @@ class SCFG:
         self, new_name: str, predecessors: Set[str], successors: Set[str],
         block_type: SyntheticBlock
     ):
-        """Inserts a new synthetic block into the control flow graph
+        """Inserts a new synthetic block into the SCFG
         between the given successors and predecessors.
 
         This method inserts a new block between the specified successor
