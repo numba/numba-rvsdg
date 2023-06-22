@@ -279,9 +279,6 @@ def find_head_blocks(scfg: SCFG, begin: str) -> Set[str]:
 def find_branch_regions(scfg: SCFG, begin: str, end: str) -> Set[str]:
     # identify branch regions
     doms = _doms(scfg)
-    postdoms = _post_doms(scfg)
-    _imm_doms(postdoms)
-    _imm_doms(doms)
     branch_regions = []
     jump_targets = scfg.graph[begin].jump_targets
     for bra_start in jump_targets:
