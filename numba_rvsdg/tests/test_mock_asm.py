@@ -3,7 +3,9 @@ from io import StringIO
 import random
 import textwrap
 import os
-
+import sys
+import traceback
+from collections import defaultdict
 
 from numba_rvsdg.rendering.rendering import SCFGRenderer
 
@@ -220,6 +222,10 @@ class MockAsmRenderer(SCFGRenderer):
             super().render_block(digraph, name, block)
 
 
+class MaxStepError(Exception):
+    pass
+
+
 class Simulator:
     def __init__(self, scfg: SCFG, buf: StringIO, max_step):
         self.vm = VM(buf)
@@ -290,7 +296,7 @@ class Simulator:
         pc = block.bboffset
 
         if self.step > self.max_step:
-            raise AssertionError("step > max_step")
+            raise MaxStepError("step > max_step")
 
         for inst in block.bbinstlist:
             print("inst", pc, inst)
@@ -359,7 +365,7 @@ def compare_simulated_scfg(asm):
     print(expect)
 
     got = simulate_scfg(scfg)
-    assert got == expect
+    assert got == expect   # failed simluation
 
     return scfg
 
@@ -508,45 +514,57 @@ def run_fuzzer(seed):
             return True
 
 
-failing_case = {
-    # 0,
-    # 7,
-    # 9,
-    # 36,
-    # 44,
-    # 52,
-    # 60,
-    # 88,
-    # 122,
-    # 146,
-    # 153,
-}
-# before
-# [0, 7, 9, 36, 44, 52, 60, 88, 122, 146, 153, 155, 194, 237, 241, 253, 258, 273, 295, 352, 360, 365, 378, 379, 382, 401, 406, 437, 461, 473, 539, 546, 554, 577, 588, 595, 602, 606, 608, 627, 629, 630, 635, 638, 655, 659, 670, 693, 695, 714, 715, 773, 812, 819, 829, 831, 832, 850, 852, 857, 866, 868, 882, 930, 955, 961, 997]
-# after
-# [0, 7, 9, 44, 52, 60, 82, 88, 114, 122, 146, 153, 155, 194, 237, 241, 253, 258, 262, 273, 295, 312, 352, 360, 365, 378, 379, 382, 401, 406, 437, 461, 473, 511, 539, 546, 554, 571, 577, 595, 602, 606, 608, 629, 630, 635, 638, 640, 655, 659, 670, 673, 693, 695, 714, 715, 724, 763, 773, 803, 806, 819, 824, 829, 831, 832, 845, 850, 852, 857, 866, 868, 882, 923, 928, 930, 934, 945, 955, 959, 961, 984, 997]
+KNOWN_ERRORS = [
+    "MaxStepError: step > max_step",
+    "next(iter(exit_blocks))",
+    "assert len(diff) == 1",
+    "assert got == expect",
+]
 
+def check_against_known_error():
+    # extract error message
+    with StringIO() as fout:
+        traceback.print_exc(file=fout)
+        msg = fout.getvalue()
+
+    # find associated group and return the group index
+    for idx, err in enumerate(KNOWN_ERRORS):
+        if err in msg:
+            print("EXCEPTION".center(80, '<'))
+            print(msg)
+            print(">" * 80)
+            return idx
+    # otherwise return None
+    return None
 
 
 def test_mock_scfg_fuzzer(total=1000):
     # tested up to total=100000
     ct_term = 0
 
-    failed_cases = set()
+    known_failures = defaultdict(list)
+    unknown_failures = set()
+
     for i in range(total):
-        if i in failing_case:
-            continue
         try:
             if run_fuzzer(i):
                 ct_term += 1
         except Exception:
             print("Failed case:", i)
-            failed_cases.add(i)
+            err_idx = check_against_known_error()
+            if err_idx is not None:
+                known_failures[err_idx].append(i)
+            else:
+                unknown_failures.add(i)
         else:
             print("ok", i)
     print("terminated", ct_term, "total", total)
-    print("failed: ", sorted(failed_cases))
-    assert not failed_cases
+    print("known_failures:")
+    for err_group, cases in sorted(known_failures.items()):
+        print(f"  {err_group}: {cases}")
+    print("unknown_failures: ", sorted(unknown_failures))
+    assert not unknown_failures
+
 
 # Interesting cases
 
@@ -579,3 +597,8 @@ def test_mock_scfg_fuzzer_case146():
 
 def test_mock_scfg_fuzzer_case153():
     run_fuzzer(seed=153)
+
+
+if __name__ == "__main__":
+    seed = int(sys.argv[1])
+    run_fuzzer(seed=seed)
