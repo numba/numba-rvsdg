@@ -4,13 +4,27 @@ control flow transformation.
 """
 
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import IntEnum
-from pprint import pprint
 from io import StringIO
 from typing import IO
 import random
-import textwrap
+import os
+
+from numba_rvsdg.rendering.rendering import SCFGRenderer
+from numba_rvsdg.core.datastructures.scfg import SCFG, NameGenerator
+from numba_rvsdg.core.datastructures.basic_block import (
+    BasicBlock,
+    RegionBlock,
+    SyntheticBlock,
+)
+from numba_rvsdg.core.transformations import (
+    restructure_loop,
+    restructure_branch,
+)
+
+
+DEBUGGRAPH = int(os.environ.get("MOCKASM_DEBUGGRAPH", 0))
 
 
 class Opcode(IntEnum):
@@ -232,3 +246,262 @@ class ProgramGen:
                 assert kind == ""
             source.extend(bb)
         return "\n".join(source)
+
+
+# The code below are for simulating SCFG transformed MockAsm
+
+
+@dataclass(frozen=True)
+class MockAsmBasicBlock(BasicBlock):
+    bbinstlist: list[Inst] = field(default_factory=list)
+    bboffset: int = 0
+    bbtargets: tuple[int, ...] = ()
+
+
+def _iter_subregions(scfg: "SCFG"):
+    for node in scfg.graph.values():
+        if isinstance(node, RegionBlock):
+            yield node
+            yield from _iter_subregions(node.subregion)
+
+
+def recursive_restructure_loop(scfg: "SCFG"):
+    restructure_loop(scfg.region)
+    for region in _iter_subregions(scfg):
+        restructure_loop(region)
+
+
+def recursive_restructure_branch(scfg: "SCFG"):
+    restructure_branch(scfg.region)
+    for region in _iter_subregions(scfg):
+        restructure_branch(region)
+
+
+def to_scfg(instlist: list[Inst]) -> SCFG:
+    labels = set([0, len(instlist)])
+    for pc, inst in enumerate(instlist):
+        if isinstance(inst.operands, GotoOperands):
+            labels.add(inst.operands.jump_target)
+            if pc + 1 < len(instlist):
+                labels.add(pc + 1)
+        elif isinstance(inst.operands, BrCtrOperands):
+            labels.add(inst.operands.true_target)
+            labels.add(inst.operands.false_target)
+            if pc + 1 < len(instlist):
+                labels.add(pc + 1)
+    block_map_graph = {}
+    scfg = SCFG(block_map_graph, NameGenerator())
+    bb_offsets = sorted(labels)
+    labelmap = {}
+
+    for begin, end in zip(bb_offsets, bb_offsets[1:]):
+        labelmap[begin] = label = scfg.name_gen.new_block_name("mock")
+
+    for begin, end in zip(bb_offsets, bb_offsets[1:]):
+        bb = instlist[begin:end]
+        inst = bb[-1]  # terminator
+        if isinstance(inst.operands, GotoOperands):
+            targets = [inst.operands.jump_target]
+        elif isinstance(inst.operands, BrCtrOperands):
+            targets = [inst.operands.true_target, inst.operands.false_target]
+        elif end < len(instlist):
+            targets = [end]
+        else:
+            targets = []
+
+        label = labelmap[begin]
+        block = MockAsmBasicBlock(
+            name=label,
+            bbinstlist=bb,
+            bboffset=begin,
+            bbtargets=tuple(targets),
+            _jump_targets=tuple(labelmap[tgt] for tgt in targets),
+        )
+        scfg.add_block(block)
+
+    # remove dead code from reachabiliy of entry block
+    reachable = set([labelmap[0]])
+    stack = [labelmap[0]]
+    while stack:
+        blk: BasicBlock = scfg.graph[stack.pop()]
+        for k in blk._jump_targets:
+            if k not in reachable:
+                stack.append(k)
+                reachable.add(k)
+    scfg.remove_blocks(set(scfg.graph.keys()) - reachable)
+
+    print("YAML\n", scfg.to_yaml())
+    scfg.join_returns()
+    if DEBUGGRAPH:
+        MockAsmRenderer(scfg).view("jointed")
+    recursive_restructure_loop(scfg)
+    if DEBUGGRAPH:
+        MockAsmRenderer(scfg).view("loop")
+    recursive_restructure_branch(scfg)
+    if DEBUGGRAPH:
+        MockAsmRenderer(scfg).view("branch")
+    return scfg
+
+
+class MockAsmRenderer(SCFGRenderer):
+    def render_block(self, digraph, name: str, block: BasicBlock):
+        if isinstance(block, MockAsmBasicBlock):
+            # Extend base renderer
+
+            # format bbinstlist
+            instbody = []
+            for inst in block.bbinstlist:
+                instbody.append(f"\l    {inst}")
+
+            body = (
+                name
+                + "\l"
+                + "\n"
+                + "".join(instbody)
+                + "\n"
+                + "\njump targets: "
+                + str(block.jump_targets)
+                + "\nback edges: "
+                + str(block.backedges)
+            )
+
+            digraph.node(str(name), shape="rect", label=body)
+        else:
+            super().render_block(digraph, name, block)
+
+
+class MaxStepError(Exception):
+    pass
+
+
+class Simulator:
+    DEBUG = False
+
+    def __init__(self, scfg: SCFG, buf: StringIO, max_step):
+        self.vm = VM(buf)
+        self.scfg = scfg
+        self.region_stack = []
+        self.ctrl_varmap = dict()
+        self.max_step = max_step
+        self.step = 0
+
+    def _debug_print(self, *args, **kwargs):
+        if self.DEBUG:
+            print(*args, **kwargs)
+
+    def run(self):
+        scfg = self.scfg
+        label = scfg.find_head()
+        while True:
+            action = self.run_block(self.scfg.graph[label])
+            # If we need to return, break and do so
+            if "return" in action:
+                break  # break and return action
+            elif "jumpto" in action:
+                label = action["jumpto"]
+                # Otherwise check if we stay in the region and break otherwise
+                if label in self.scfg.graph:
+                    continue  # stay in the region
+                else:
+                    break  # break and return action
+            else:
+                assert False, "unreachable"  # in case of coding errors
+
+    def run_block(self, block):
+        self._debug_print("run block", block.name)
+        if isinstance(block, RegionBlock):
+            return self.run_RegionBlock(block)
+        elif isinstance(block, MockAsmBasicBlock):
+            return self.run_MockAsmBasicBlock(block)
+        elif isinstance(block, SyntheticBlock):
+            self._debug_print("    ", block)
+            label = block.name
+            handler = getattr(self, f"synth_{type(block).__name__}")
+            out = handler(label, block)
+            self._debug_print("    ctrl_varmap dump:", self.ctrl_varmap)
+            return out
+        else:
+            assert False, type(block)
+
+    def run_RegionBlock(self, block: RegionBlock):
+        self.region_stack.append(block)
+
+        label = block.subregion.find_head()
+        while True:
+            action = self.run_block(block.subregion.graph[label])
+            # If we need to return, break and do so
+            if "return" in action:
+                break  # break and return action
+            elif "jumpto" in action:
+                label = action["jumpto"]
+                # Otherwise check if we stay in the region and break otherwise
+                if label in block.subregion.graph:
+                    continue  # stay in the region
+                else:
+                    break  # break and return action
+            else:
+                assert False, "unreachable"  # in case of coding errors
+
+        self.region_stack.pop()
+        return action
+
+    def run_MockAsmBasicBlock(self, block: MockAsmBasicBlock):
+        vm = self.vm
+        pc = block.bboffset
+
+        if self.step > self.max_step:
+            raise MaxStepError("step > max_step")
+
+        for inst in block.bbinstlist:
+            self._debug_print("inst", pc, inst)
+            pc = vm.eval_inst(pc, inst)
+            self.step += 1
+        if block.bbtargets:
+            pos = block.bbtargets.index(pc)
+            label = block._jump_targets[pos]
+            return {"jumpto": label}
+        else:
+            return {"return": None}
+
+    ### Synthetic Instructions ###
+    def synth_SyntheticAssignment(self, control_label, block):
+        self.ctrl_varmap.update(block.variable_assignment)
+        [label] = block.jump_targets
+        return {"jumpto": label}
+
+    def _synth_branch(self, control_label, block):
+        jump_target = block.branch_value_table[
+            self.ctrl_varmap[block.variable]
+        ]
+        return {"jumpto": jump_target}
+
+    def synth_SyntheticExitingLatch(self, control_label, block):
+        return self._synth_branch(control_label, block)
+
+    def synth_SyntheticHead(self, control_label, block):
+        return self._synth_branch(control_label, block)
+
+    def synth_SyntheticExitBranch(self, control_label, block):
+        return self._synth_branch(control_label, block)
+
+    def synth_SyntheticFill(self, control_label, block):
+        [label] = block.jump_targets
+        return {"jumpto": label}
+
+    def synth_SyntheticReturn(self, control_label, block):
+        [label] = block.jump_targets
+        return {"jumpto": label}
+
+    def synth_SyntheticTail(self, control_label, block):
+        [label] = block.jump_targets
+        return {"jumpto": label}
+
+    def synth_SyntheticBranch(self, control_label, block):
+        [label] = block.jump_targets
+        return {"jumpto": label}
+
+
+def simulate_scfg(scfg: SCFG):
+    with StringIO() as buf:
+        Simulator(scfg, buf, max_step=1000).run()
+        return buf.getvalue()
