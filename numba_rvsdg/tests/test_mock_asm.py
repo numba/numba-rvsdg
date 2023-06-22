@@ -4,8 +4,6 @@ import random
 import textwrap
 import os
 
-from mock_asm import ProgramGen, parse, VM, Inst, GotoOperands, BrCtrOperands
-
 
 from numba_rvsdg.rendering.rendering import SCFGRenderer
 
@@ -20,6 +18,8 @@ from numba_rvsdg.core.transformations import (
     restructure_loop,
     restructure_branch,
 )
+
+from .mock_asm import ProgramGen, parse, VM, Inst, GotoOperands, BrCtrOperands
 
 
 DEBUGGRAPH = int(os.environ.get("DEBUGGRAPH", 0))
