@@ -326,7 +326,7 @@ class SyntheticHead(SyntheticBranch):
 @dataclass(frozen=True)
 class SyntheticExitingLatch(SyntheticBranch):
     """The SyntheticExitingLatch class represents a artificially added
-    exiting latchc block in a structured control flow graph (SCFG).
+    exiting latch block in a structured control flow graph (SCFG).
     """
 
 

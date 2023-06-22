@@ -24,7 +24,7 @@ class BaseRenderer:
     def render_block(
         self, digraph: "Digraph", name: str, block: BasicBlock  # noqa
     ):
-        """Function that defines how the BasicBlcoks in a graph should be
+        """Function that defines how the BasicBlocks in a graph should be
         rendered.
 
         Parameters

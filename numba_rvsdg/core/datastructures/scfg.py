@@ -294,7 +294,7 @@ class SCFG:
         """Computes the strongly connected components (SCC) of the current
         SCFG.
 
-        This method of SCFG computes the stringly connected components of
+        This method of SCFG computes the strongly connected components of
         the graph using Tarjan's algorithm. The implementation is at the
         scc function from the numba_rvsdg.networkx_vendored.scc module.
         It returns a list of sets, where each set represents an SCC in
