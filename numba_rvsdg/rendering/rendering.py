@@ -314,12 +314,16 @@ def render_flow(flow):
 
     The `render_flow`` function takes a `flow` parameter as the `ByteFlow`
     to be transformed and rendered and performs the following operations:
+
         - Renders the pure `ByteFlow` representation of the function using
           `ByteFlowRenderer` and displays it as a document named "before".
+
         - Joins the return blocks in the `ByteFlow` object graph and renders
           the graph, displaying it as a document named "closed".
+
         - Restructures the loops recursively in the `ByteFlow` object graph
           and renders the graph, displaying it as named "loop restructured".
+
         - Restructures the branch recursively in the `ByteFlow` object graph
           and renders the graph, displaying it as named "branch restructured".
 
