@@ -167,7 +167,7 @@ class SCFG:
         Returns
         -------
         block: BasicBlock
-            The requested block
+            The requested block.
         """
         return self.graph[index]
 
@@ -191,7 +191,7 @@ class SCFG:
         """Returns an iterator over the blocks in the SCFG.
 
         Returns an iterator that yields the names and corresponding blocks
-        in the control flow graph. It follows a breadth-first search 
+        in the SCFG. It follows a breadth-first search 
         traversal starting from the head block.
 
         Returns
@@ -262,7 +262,7 @@ class SCFG:
                 yield block
 
     def find_head(self) -> str:
-        """Finds the head block of the CFG.
+        """Finds the head block of the SCFG.
 
         Assuming the CFG is closed, this will find the block
         that no other blocks are pointing to.
