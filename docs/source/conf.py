@@ -9,7 +9,7 @@
 project = 'numba-rvsdg'
 copyright = '2023, Numba Developers'
 author = 'Numba Developers'
-release = '0.0.1'
+release = '0.0.2'
 
 import os
 import sys
