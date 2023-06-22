@@ -7,7 +7,10 @@ from numba_rvsdg.core.datastructures.basic_block import RegionBlock
 from numba_rvsdg.core.datastructures.flow_info import FlowInfo
 from numba_rvsdg.core.utils import _logger, _LogWrap
 
-from numba_rvsdg.core.transformations import restructure_loop, restructure_branch
+from numba_rvsdg.core.transformations import (
+    restructure_loop,
+    restructure_branch,
+)
 
 
 @dataclass(frozen=True)
@@ -97,10 +100,10 @@ class ByteFlow:
     def _restructure_branch(self):
         """Restructures the branches within the corresponding SCFG.
 
-        Creates a deep copy of the SCFG and performs the operation to 
-        restructure branch constructs within the control flow. It applies 
-        the restructuring operation to both the main SCFG and any 
-        subregions within it. It returns a new ByteFlow object with 
+        Creates a deep copy of the SCFG and performs the operation to
+        restructure branch constructs within the control flow. It applies
+        the restructuring operation to both the main SCFG and any
+        subregions within it. It returns a new ByteFlow object with
         the updated SCFG.
 
         Returns

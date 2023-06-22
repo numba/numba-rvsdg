@@ -1,7 +1,6 @@
 import dis
-from collections import ChainMap
 from typing import Tuple, Dict, List
-from dataclasses import dataclass, field, replace
+from dataclasses import dataclass, replace
 
 from numba_rvsdg.core.utils import _next_inst_offset
 
@@ -202,35 +201,35 @@ class SyntheticBlock(BasicBlock):
     """The SyntheticBlock represents a artificially added block in a
     structured control flow graph (SCFG).
     """
-    pass
+
 
 @dataclass(frozen=True)
 class SyntheticExit(SyntheticBlock):
     """The SyntheticExit class represents a artificially added exit block
     in a structured control flow graph (SCFG).
     """
-    pass
+
 
 @dataclass(frozen=True)
 class SyntheticReturn(SyntheticBlock):
     """The SyntheticReturn class represents a artificially added return block
     in a structured control flow graph (SCFG).
     """
-    pass
+
 
 @dataclass(frozen=True)
 class SyntheticTail(SyntheticBlock):
     """The SyntheticTail class represents a artificially added tail block
     in a structured control flow graph (SCFG).
     """
-    pass
+
 
 @dataclass(frozen=True)
 class SyntheticFill(SyntheticBlock):
     """The SyntheticFill class represents a artificially added fill block
     in a structured control flow graph (SCFG).
     """
-    pass
+
 
 @dataclass(frozen=True)
 class SyntheticAssignment(SyntheticBlock):
@@ -247,6 +246,7 @@ class SyntheticAssignment(SyntheticBlock):
         the variable name to the value that is is assigned when
         the block is executed.
     """
+
     variable_assignment: dict = None
 
 
@@ -264,6 +264,7 @@ class SyntheticBranch(SyntheticBlock):
         The value table maps variable values to the repective jump target
         to be executed on the basis of that value.
     """
+
     variable: str = None
     branch_value_table: dict = None
 
@@ -320,23 +321,20 @@ class SyntheticHead(SyntheticBranch):
     """The SyntheticHead class represents a artificially added head block
     in a structured control flow graph (SCFG).
     """
-    pass
 
 
 @dataclass(frozen=True)
 class SyntheticExitingLatch(SyntheticBranch):
-    """The SyntheticExitingLatch class represents a artificially added exiting latch
-    block in a structured control flow graph (SCFG).
+    """The SyntheticExitingLatch class represents a artificially added
+    exiting latch block in a structured control flow graph (SCFG).
     """
-    pass
 
 
 @dataclass(frozen=True)
 class SyntheticExitBranch(SyntheticBranch):
-    """The SyntheticExitBranch class represents a artificially added exit branch
-    block in a structured control flow graph (SCFG).
+    """The SyntheticExitBranch class represents a artificially added
+    exit branch block in a structured control flow graph (SCFG).
     """
-    pass
 
 
 @dataclass(frozen=True)
@@ -364,7 +362,7 @@ class RegionBlock(BasicBlock):
     kind: str = None
     parent_region: "RegionBlock" = None
     header: str = None
-    subregion: "SCFG" = None
+    subregion: "SCFG" = None  # noqa
     exiting: str = None
 
     def replace_header(self, new_header):
@@ -384,5 +382,5 @@ class RegionBlock(BasicBlock):
         ----------
         new_exiting: str
             The new exiting block of the region represented by the RegionBlock.
-     """
+        """
         object.__setattr__(self, "exiting", new_exiting)

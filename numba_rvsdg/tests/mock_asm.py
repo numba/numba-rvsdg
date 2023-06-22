@@ -6,11 +6,8 @@ control flow transformation.
 
 from dataclasses import dataclass
 from enum import IntEnum
-from pprint import pprint
-from io import StringIO
 from typing import IO
 import random
-import textwrap
 
 
 class Opcode(IntEnum):
@@ -131,10 +128,11 @@ class VM:
     - program counter (PC)
     - an output buffer for printing;
     - a LAST_CTR register to store the last accessed counter.
-    - a table that maps PC location of `ctr` instruction to the counter value
+    - a table that maps PC location of `ctr` instruction to the counter
+      value
 
-    The VM do not have another other input source beside the instruction stream.
-    Therefore, a program behavior is known statically.
+    The VM do not have another other input source beside the instruction
+    stream. Therefore, a program behavior is known statically.
 
     """
 
@@ -210,10 +208,7 @@ class ProgramGen:
         # generate BB
         indent = " " * 4
         for i in range(size):
-            bb: list[str] = [
-                f"label BB{i}",
-                f"{indent}print P{i}"
-            ]
+            bb: list[str] = [f"label BB{i}", f"{indent}print P{i}"]
             [kind] = self.rng.choices(["goto", "brctr", ""], [1, 10, 20])
             if kind == "goto":
                 target = self.rng.randrange(size)

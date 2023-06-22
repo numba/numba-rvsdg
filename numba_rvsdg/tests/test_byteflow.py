@@ -7,14 +7,17 @@ from numba_rvsdg.core.datastructures.scfg import SCFG, NameGenerator
 from numba_rvsdg.core.datastructures.flow_info import FlowInfo
 from numba_rvsdg.core.datastructures import block_names
 
+
 def fun():
     x = 1
     return x
 
 
 bytecode = Bytecode(fun)
-# If the function definition line changes, just change the variable below, rest of it will adjust as long as function remains the same
-func_def_line = 10
+# If the function definition line changes, just change the variable below,
+# rest of it will adjust as long as function remains the same
+func_def_line = 11
+
 
 class TestBCMapFromBytecode(unittest.TestCase):
     def test(self):
@@ -114,7 +117,7 @@ class TestPythonBytecodeBlock(unittest.TestCase):
             _jump_targets=(),
             backedges=(),
         )
-        self.assertEqual(block.name, 'python_bytecode_block_0')
+        self.assertEqual(block.name, "python_bytecode_block_0")
         self.assertEqual(block.begin, 0)
         self.assertEqual(block.end, 8)
         self.assertFalse(block.fallthrough)
@@ -128,10 +131,12 @@ class TestPythonBytecodeBlock(unittest.TestCase):
             name=name_gen.new_block_name(block_names.PYTHON_BYTECODE),
             begin=0,
             end=8,
-            _jump_targets=(name_gen.new_block_name(block_names.PYTHON_BYTECODE),),
+            _jump_targets=(
+                name_gen.new_block_name(block_names.PYTHON_BYTECODE),
+            ),
             backedges=(),
         )
-        self.assertEqual(block.jump_targets, ('python_bytecode_block_1',))
+        self.assertEqual(block.jump_targets, ("python_bytecode_block_1",))
         self.assertFalse(block.is_exiting)
 
     def test_get_instructions(self):
@@ -221,8 +226,9 @@ class TestFlowInfo(unittest.TestCase):
         self.assertEqual(len(flowinfo.jump_insts), 0)
 
     def test_from_bytecode(self):
-
-        expected = FlowInfo(block_offsets={0}, jump_insts={8: ()}, last_offset=8)
+        expected = FlowInfo(
+            block_offsets={0}, jump_insts={8: ()}, last_offset=8
+        )
 
         received = FlowInfo.from_bytecode(bytecode)
         self.assertEqual(expected, received)
