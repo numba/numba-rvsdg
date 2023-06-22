@@ -3,9 +3,6 @@ Setup and Installation
 ======================
 
 
-Official numba-rvsdg packages are not yet available. You can manually install 
-numba-rvsdg using the following steps:
-
 Setting up the conda development environment
 --------------------------------------------
 
@@ -21,7 +18,12 @@ The conda environment and all necessary dependencies can be setup using the foll
 Installation using pip
 ----------------------
 
-After setting up the appropriate environment, a development version of the package can be installed as follows::
+Users can install numba-rvsdg using pip as follows::
+
+        pip install numba-rvsdg
+
+Alternatively, after setting up the appropriate environment, Users can also manually install numba-rvsdg using it's git repository.
+A development version of the package can be installed as follows::
 
         git clone https://github.com/numba/numba-rvsdg.git
         cd numba-rvsdg/
