@@ -17,7 +17,27 @@ import dis
 from typing import Dict
 
 class BaseRenderer(object):
+    """Base Renderer class.
+
+    This is the base class for all types of graph renderers. It defines two
+    methods `render_block` and `render_edges` that define how the blocks and edges
+    of the graph are rendered respectively.
+    """
+
     def render_block(self, digraph: "Digraph", name: str, block: BasicBlock):
+        """Function that defines how the BasicBlcoks in a graph should be rendered.
+
+        Parameters
+        ----------
+        digraph: Digraph
+            The graphviz Digraph object that represents the graph/subgraph upon
+            which the current blocks are to be rendered.
+        name: str
+            Name of the block to be rendered.
+        block: BasicBlock
+            The BasicBlock to be rendered.
+
+        """
         if type(block) == BasicBlock:
             self.render_basic_block(digraph, name, block)
         elif type(block) == PythonBytecodeBlock:
@@ -34,6 +54,14 @@ class BaseRenderer(object):
             raise Exception("unreachable")
 
     def render_edges(self, scfg: SCFG):
+        """Function that renders the edges in an SCFG.
+
+        Parameters
+        ----------
+        scfg: SCFG
+            The graph whose edges are to be rendered.
+
+        """
         blocks = dict(scfg)
         def find_base_header(block: BasicBlock):
             if isinstance(block, RegionBlock):
@@ -62,6 +90,19 @@ class BaseRenderer(object):
 
 
 class ByteFlowRenderer(BaseRenderer):
+    """The `ByteFlowRenderer` class is used to render the visual
+    representation of a `ByteFlow` object.
+
+    Attributes
+    ----------
+    g: Digraph
+        The graphviz Digraph object that represents the entire graph upon
+        which the current ByteFlow is to be rendered.
+    bcmap: Dict[int, dis.Instruction]
+        Mapping of bytecode offset to instruction.
+
+    """
+
     def __init__(self):
         from graphviz import Digraph
 
@@ -121,6 +162,8 @@ class ByteFlowRenderer(BaseRenderer):
         digraph.node(str(name), shape="rect", label=body)
 
     def render_byteflow(self, byteflow: ByteFlow):
+        """Renders the provided `ByteFlow` object.
+        """
         self.bcmap_from_bytecode(byteflow.bc)
         # render nodes
         for name, block in byteflow.scfg.graph.items():
@@ -133,6 +176,17 @@ class ByteFlowRenderer(BaseRenderer):
 
 
 class SCFGRenderer(BaseRenderer):
+    """The `SCFGRenderer` class is used to render the visual
+    representation of a `SCFG` object.
+
+    Attributes
+    ----------
+    g: Digraph
+        The graphviz Digraph object that represents the entire graph upon
+        which the current SCFG is to be rendered.
+
+    """
+
     def __init__(self, scfg: SCFG):
         from graphviz import Digraph
 
@@ -203,6 +257,14 @@ class SCFGRenderer(BaseRenderer):
         digraph.node(str(name), shape="rect", label=body)
 
     def view(self, name: str):
+        """Method used to view the current SCFG as an external graphviz generated
+        PDF file.
+
+        Parameters
+        ----------
+        name: str
+            Name to be given to the external graphviz generated PDF file.
+        """
         self.g.view(name)
 
 
@@ -210,10 +272,32 @@ logging.basicConfig(level=logging.DEBUG)
 
 
 def render_func(func):
+    """The `render_func`` function takes a `func` parameter as the Python
+    function to be transformed and rendered and renders the byte flow
+    representation of the bytecode of the function.
+
+    Parameters
+    ----------
+    func: Python function
+        The Python function for which bytecode is to be rendered.
+    """
     render_flow(ByteFlow.from_bytecode(func))
 
 
 def render_flow(flow):
+    """Renders multiple ByteFlow representations across various SCFG transformations.
+
+    The `render_flow`` function takes a `flow` parameter as the `ByteFlow` to be transformed and rendered and performs the following operations:
+        - Renders the pure `ByteFlow` representation of the function using `ByteFlowRenderer` and displays it as a document named "before".
+        - Joins the return blocks in the `ByteFlow` object graph and renders the graph, displaying it as a document named "closed".
+        - Restructures the loops recursively in the `ByteFlow` object graph and renders the graph, displaying it as named "loop restructured".
+        - Restructures the branch recursively in the `ByteFlow` object graph and renders the graph, displaying it as named "branch restructured".
+
+    Parameters
+    ----------
+    flow: ByteFlow
+        The ByteFlow object to be trnasformed and rendered.
+    """
     ByteFlowRenderer().render_byteflow(flow).view("before")
 
     cflow = flow._join_returns()
@@ -227,4 +311,13 @@ def render_flow(flow):
 
 
 def render_scfg(scfg):
+    """The `render_scfg` function takes a `scfg` parameter as the SCFG
+    object to be transformed and rendered and renders the graphviz
+    representation of the SCFG.
+
+    Parameters
+    ----------
+    scfg: SCFG
+        The structured control flow graph (SCFG) to be rendered.
+    """
     ByteFlowRenderer().render_scfg(scfg).view("scfg")

@@ -22,5 +22,14 @@ dependencies = [
     "pyyaml",
 ]
 
-[tool.setuptools.packages]
-find = {}
+[tool.setuptools]
+packages = ["numba_rvsdg"]
+
+[project.optional-dependencies]
+dev = [
+    "sphinx",
+    "myst-parser",
+    "furo",
+    "pytest",
+    "sphinx-rtd-theme"
+]

@@ -3,3 +3,5 @@ numba_rvsdg.egg-info
 .pytest_cache
 *__pycache__
 .coverage
+/build
+/docs/build
