@@ -257,8 +257,7 @@ def run_fuzzer(seed):
 
 
 KNOWN_ERRORS = [
-
-    # needs to investigate
+    # https://github.com/numba/numba-rvsdg/issues/80
     # failing seeds: [312, 352]
     "assert got == expect",
 
@@ -329,11 +328,11 @@ def test_mock_scfg_fuzzer_case0():
     run_fuzzer(seed=0)
 
 def test_mock_scfg_fuzzer_case312():
-    # invalid control variable causes infinite loop
+    # https://github.com/numba/numba-rvsdg/issues/80
     run_fuzzer(seed=312)
 
 def test_mock_scfg_fuzzer_case352():
-    # probably invalid control variable
+    # https://github.com/numba/numba-rvsdg/issues/80
     run_fuzzer(seed=test_mock_scfg_fuzzer_case352)
 
 def test_mock_scfg_fuzzer_case153():
