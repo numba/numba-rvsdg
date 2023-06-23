@@ -105,6 +105,8 @@ def compare_simulated_scfg(asm):
     print(expect)
 
     got = simulate_scfg(scfg)
+    print("GOT".center(80, "="))
+    print(got)
     assert got == expect   # failed simluation
 
     return scfg
@@ -255,13 +257,9 @@ def run_fuzzer(seed):
 
 
 KNOWN_ERRORS = [
-    # infinite loop caused by invalid control variable
-    # failing seeds: [9, 122, 342, 382, 422, 571, 606, 659, 693, 715, 850, 868,
-    #                 927, 943, 961]
-    "MaxStepError: step > max_step",
 
-    # non-infinite loop failures probably caused by invalid control variable
-    # failing seeds: [60, 194, 312, 352, 461, 473, 595, 602, 720, 803, 831]
+    # needs to investigate
+    # failing seeds: [312, 352]
     "assert got == expect",
 
     # https://github.com/numba/numba-rvsdg/issues/44
@@ -284,12 +282,12 @@ def check_against_known_error():
         traceback.print_exc(file=fout)
         msg = fout.getvalue()
 
+    print("EXCEPTION".center(80, '<'))
+    print(msg)
+    print(">" * 80)
     # find associated group and return the group index
     for idx, err in enumerate(KNOWN_ERRORS):
         if err in msg:
-            print("EXCEPTION".center(80, '<'))
-            print(msg)
-            print(">" * 80)
             return idx
     # otherwise return None
     return None
@@ -330,13 +328,13 @@ def test_mock_scfg_fuzzer_case0():
     # https://github.com/numba/numba-rvsdg/issues/44
     run_fuzzer(seed=0)
 
-def test_mock_scfg_fuzzer_case9():
+def test_mock_scfg_fuzzer_case312():
     # invalid control variable causes infinite loop
-    run_fuzzer(seed=9)
+    run_fuzzer(seed=312)
 
-def test_mock_scfg_fuzzer_case60():
+def test_mock_scfg_fuzzer_case352():
     # probably invalid control variable
-    run_fuzzer(seed=60)
+    run_fuzzer(seed=test_mock_scfg_fuzzer_case352)
 
 def test_mock_scfg_fuzzer_case153():
     # https://github.com/numba/numba-rvsdg/issues/48
