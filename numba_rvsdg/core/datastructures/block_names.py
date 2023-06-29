@@ -10,6 +10,9 @@ SYNTH_ASSIGN = "synth_asign"
 SYNTH_RETURN = "synth_return"
 SYNTH_EXIT_LATCH = "synth_exit_latch"
 SYNTH_FILL = "synth_fill"
+SYNTH_EXIT_BRANCH = "synth_exit_branch"
+
+REGION = "region"
 
 all_block_names = {
     BASIC,
@@ -22,4 +25,5 @@ all_block_names = {
     SYNTH_RETURN,
     SYNTH_EXIT_LATCH,
     SYNTH_FILL,
+    REGION,
 }

@@ -15,6 +15,7 @@ from numba_rvsdg.core.datastructures.basic_block import (
     SyntheticReturn,
     SyntheticFill,
     RegionBlock,
+    block_type_names,
 )
 from numba_rvsdg.core.datastructures import block_names
 
@@ -787,7 +788,6 @@ class SCFG:
         blocks = graph_dict["blocks"]
         edges = graph_dict["edges"]
         backedges = graph_dict["backedges"]
-        graph_dict["regions"]
 
         for key, block in blocks.items():
             assert block["type"] in block_names.all_block_names
@@ -825,15 +825,29 @@ class SCFG:
             A YAML string representing the SCFG.
         """
         # Convert to yaml
-        scfg_graph = self.graph
         yaml_string = """"""
 
         blocks = {}
         edges = {}
         backedges = {}
 
-        for key, value in scfg_graph.items():
-            blocks[key] = {"type": "basic"}
+        # This does a dictionary reverse lookup, to determine the key for a given
+        # value.
+        def reverse_lookup(value):
+            for k, v in block_type_names.items():
+                if v == value:
+                    return k
+            else:
+                raise TypeError("Block type not found.")
+
+        for key, value in self:
+            block_type = reverse_lookup(type(value))
+            blocks[key] = {"type": block_type}
+            if block_type == "region":
+                blocks[key]["kind"] = value.kind
+                blocks[key]["contains"] = [
+                    idx.name for idx in value.subregion.graph.values()
+                ]
             edges[key] = [i for i in value._jump_targets]
             backedges[key] = [i for i in value.backedges]
 
@@ -844,6 +858,11 @@ class SCFG:
             block_type = blocks[_block]["type"]
             yaml_string += f"""
         type: {block_type}"""
+            if block_type == "region":
+                yaml_string += f"""
+        kind: {blocks[_block]["kind"]}"""
+                yaml_string += f"""
+        contains: {blocks[_block]["contains"]}"""
 
         yaml_string += "\nedges:"
         for _block in blocks.keys():
@@ -855,7 +874,6 @@ class SCFG:
             if backedges[_block]:
                 yaml_string += f"""
     {_block}: {backedges[_block]}"""
-        yaml_string += "\nregions:"
         return yaml_string
 
     def to_dict(self):
@@ -876,19 +894,26 @@ class SCFG:
         blocks = {}
         edges = {}
         backedges = {}
-        regions = {}
+
+        def reverse_lookup(value):
+            for k, v in block_type_names.items():
+                if v == value:
+                    return k
+            else:
+                raise TypeError("Block type not found.")
 
         for key, value in scfg_graph.items():
-            blocks[key] = {"type": "basic"}
+            block_type = reverse_lookup(type(value))
+            blocks[key] = {"type": block_type}
+            if block_type == "region":
+                blocks[key]["kind"] = value.kind
+                blocks[key]["contains"] = [
+                    idx.name for idx in value.subregion.graph.values()
+                ]
             edges[key] = [i for i in value._jump_targets]
             backedges[key] = [i for i in value.backedges]
 
-        graph_dict = {
-            "blocks": blocks,
-            "edges": edges,
-            "backedges": backedges,
-            "regions": regions,
-        }
+        graph_dict = {"blocks": blocks, "edges": edges, "backedges": backedges}
 
         return graph_dict
 
