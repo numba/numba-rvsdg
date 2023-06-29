@@ -55,7 +55,7 @@ class TestSCFGConversion(SCFGComparator):
                 '0': ['1', '2']
                 '1': ['5']
                 '2': ['1', '5']
-                '3': ['0']
+                '3': ['1']
                 '4': []
                 '5': ['3', '4']
             backedges:
