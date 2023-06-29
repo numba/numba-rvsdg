@@ -19,7 +19,7 @@ class TestInsertBlock(SCFGComparator):
             '0': ['1']
             '1': []
         backedges:
-        regions:"""
+        """
         original_scfg, block_dict = SCFG.from_yaml(original)
         expected = """
         blocks:
@@ -34,7 +34,7 @@ class TestInsertBlock(SCFGComparator):
             '1': []
             '2': ['1']
         backedges:
-        regions:"""
+        """
         expected_scfg, _ = SCFG.from_yaml(expected)
         new_name = original_scfg.name_gen.new_block_name(block_names.BASIC)
         original_scfg.insert_block(
@@ -56,7 +56,6 @@ class TestInsertBlock(SCFGComparator):
             '1': ['2']
             '2': []
         backedges:
-        regions:
         """
         original_scfg, block_dict = SCFG.from_yaml(original)
         expected = """
@@ -75,7 +74,6 @@ class TestInsertBlock(SCFGComparator):
             '2': []
             '3': ['2']
         backedges:
-        regions:
         """
         expected_scfg, expected_block_dict = SCFG.from_yaml(expected)
         new_name = original_scfg.name_gen.new_block_name(block_names.BASIC)
@@ -108,7 +106,6 @@ class TestInsertBlock(SCFGComparator):
             '1': []
             '2': []
         backedges:
-        regions:
         """
         original_scfg, block_dict = SCFG.from_yaml(original)
         expected = """
@@ -127,7 +124,6 @@ class TestInsertBlock(SCFGComparator):
             '2': []
             '3': ['1', '2']
         backedges:
-        regions:
         """
         expected_scfg, _ = SCFG.from_yaml(expected)
         original_scfg.insert_block(
@@ -158,7 +154,6 @@ class TestInsertBlock(SCFGComparator):
             '3': []
             '4': []
         backedges:
-        regions:
         """
         original_scfg, block_dict = SCFG.from_yaml(original)
         expected = """
@@ -183,7 +178,6 @@ class TestInsertBlock(SCFGComparator):
             '4': []
             '5': ['3', '4']
         backedges:
-        regions:
         """
         expected_scfg, _ = SCFG.from_yaml(expected)
         original_scfg.insert_block(
@@ -214,7 +208,7 @@ class TestInsertBlock(SCFGComparator):
             '3': ['0']
             '4': []
         backedges:
-        regions:"""
+        """
         original_scfg, block_dict = SCFG.from_yaml(original)
         expected = """
         blocks:
@@ -238,7 +232,6 @@ class TestInsertBlock(SCFGComparator):
             '4': []
             '5': ['3', '4']
         backedges:
-        regions:
         """
         expected_scfg, expected_block_dict = SCFG.from_yaml(expected)
         original_scfg.insert_block(
@@ -272,7 +265,6 @@ class TestJoinReturns(SCFGComparator):
             '1': []
             '2': []
         backedges:
-        regions:
         """
         original_scfg, block_dict = SCFG.from_yaml(original)
         expected = """
@@ -291,7 +283,6 @@ class TestJoinReturns(SCFGComparator):
             '2': ['3']
             '3': []
         backedges:
-        regions:
         """
         expected_scfg, _ = SCFG.from_yaml(expected)
         original_scfg.join_returns()
@@ -310,7 +301,6 @@ class TestJoinTailsAndExits(SCFGComparator):
             '0': ['1']
             '1': []
         backedges:
-        regions:
         """
         original_scfg, block_dict = SCFG.from_yaml(original)
         expected = """
@@ -323,7 +313,6 @@ class TestJoinTailsAndExits(SCFGComparator):
             '0': ['1']
             '1': []
         backedges:
-        regions:
         """
         expected_scfg, _ = SCFG.from_yaml(expected)
 
@@ -354,7 +343,6 @@ class TestJoinTailsAndExits(SCFGComparator):
             '2': ['3']
             '3': []
         backedges:
-        regions:
         """
         original_scfg, block_dict = SCFG.from_yaml(original)
         expected = """
@@ -376,7 +364,6 @@ class TestJoinTailsAndExits(SCFGComparator):
             '3': []
             '4': ['1', '2']
         backedges:
-        regions:
         """
         expected_scfg, _ = SCFG.from_yaml(expected)
 
@@ -410,7 +397,6 @@ class TestJoinTailsAndExits(SCFGComparator):
             '2': ['3']
             '3': []
         backedges:
-        regions:
         """
         original_scfg, block_dict = SCFG.from_yaml(original)
         expected = """
@@ -432,7 +418,6 @@ class TestJoinTailsAndExits(SCFGComparator):
             '3': []
             '4': ['3']
         backedges:
-        regions:
         """
         expected_scfg, _ = SCFG.from_yaml(expected)
 
@@ -466,7 +451,6 @@ class TestJoinTailsAndExits(SCFGComparator):
             '2': ['1', '3']
             '3': []
         backedges:
-        regions:
         """
         original_scfg, block_dict = SCFG.from_yaml(original)
         expected = """
@@ -488,7 +472,6 @@ class TestJoinTailsAndExits(SCFGComparator):
             '3': []
             '4': ['3']
         backedges:
-        regions:
         """
         expected_scfg, _ = SCFG.from_yaml(expected)
 
@@ -528,7 +511,6 @@ class TestJoinTailsAndExits(SCFGComparator):
             '4': ['5']
             '5': []
         backedges:
-        regions:
         """
         original_scfg, block_dict = SCFG.from_yaml(original)
         expected = """
@@ -559,7 +541,6 @@ class TestJoinTailsAndExits(SCFGComparator):
             '6': ['7']
             '7': ['3', '4']
         backedges:
-        regions:
         """
         expected_scfg, _ = SCFG.from_yaml(expected)
 
@@ -601,7 +582,6 @@ class TestJoinTailsAndExits(SCFGComparator):
             '4': ['5']
             '5': []
         backedges:
-        regions:
         """
         original_scfg, block_dict = SCFG.from_yaml(original)
         expected = """
@@ -632,7 +612,6 @@ class TestJoinTailsAndExits(SCFGComparator):
             '6': ['7']
             '7': ['3', '4']
         backedges:
-        regions:
         """
         expected_scfg, _ = SCFG.from_yaml(expected)
         tails = (block_dict["1"], block_dict["2"])
@@ -667,7 +646,6 @@ class TestLoopRestructure(SCFGComparator):
             '1': ['1', '2']
             '2': []
         backedges:
-        regions:
         """
         expected = """
         blocks:
@@ -683,7 +661,7 @@ class TestLoopRestructure(SCFGComparator):
             '2': []
         backedges:
             '1': ['1']
-        regions:"""
+        """
         original_scfg, block_dict = SCFG.from_yaml(original)
         expected_scfg, _ = SCFG.from_yaml(expected)
         loop_restructure_helper(original_scfg, set({block_dict["1"]}))
@@ -707,7 +685,6 @@ class TestLoopRestructure(SCFGComparator):
             '2': ['1', '3']
             '3': []
         backedges:
-        regions:
         """
         expected = """
         blocks:
@@ -726,7 +703,6 @@ class TestLoopRestructure(SCFGComparator):
             '3': []
         backedges:
             '2': ['1']
-        regions:
         """
         original_scfg, block_dict = SCFG.from_yaml(original)
         expected_scfg, _ = SCFG.from_yaml(expected)
@@ -756,7 +732,6 @@ class TestLoopRestructure(SCFGComparator):
             '2': ['1']
             '3': []
         backedges:
-        regions:
         """
         expected = """
         blocks:
@@ -784,7 +759,6 @@ class TestLoopRestructure(SCFGComparator):
             '6': ['4']
         backedges:
             '4': ['1']
-        regions:
         """
         original_scfg, block_dict = SCFG.from_yaml(original)
         expected_scfg, _ = SCFG.from_yaml(expected)
@@ -810,8 +784,6 @@ class TestLoopRestructure(SCFGComparator):
             '2': ['1', '3']
             '3': []
         backedges:
-        regions:
-
         """
         expected = """
         blocks:
@@ -842,7 +814,6 @@ class TestLoopRestructure(SCFGComparator):
             '7': ['4']
         backedges:
             '4': ['1']
-        regions:
         """
         original_scfg, block_dict = SCFG.from_yaml(original)
         expected_scfg, _ = SCFG.from_yaml(expected)
@@ -876,7 +847,7 @@ class TestLoopRestructure(SCFGComparator):
             '3': ['1', '4']
             '4': []
         backedges:
-        regions:"""
+        """
         expected = """
         blocks:
             '0':
@@ -909,7 +880,7 @@ class TestLoopRestructure(SCFGComparator):
             '8': ['5']
         backedges:
             '5': ['1']
-        regions:"""
+        """
         original_scfg, block_dict = SCFG.from_yaml(original)
         expected_scfg, _ = SCFG.from_yaml(expected)
         loop_restructure_helper(
@@ -943,7 +914,7 @@ class TestLoopRestructure(SCFGComparator):
             '4': ['1']
             '5': []
         backedges:
-        regions:"""
+        """
         expected = """
         blocks:
             '0':
@@ -988,7 +959,7 @@ class TestLoopRestructure(SCFGComparator):
             '12': ['9']
         backedges:
             '9': ['6']
-        regions:"""
+        """
         original_scfg, block_dict = SCFG.from_yaml(original)
         expected_scfg, _ = SCFG.from_yaml(expected)
         loop_restructure_helper(
@@ -1039,7 +1010,7 @@ class TestLoopRestructure(SCFGComparator):
             '6': ['7']
             '7': []
         backedges:
-        regions:"""
+        """
         expected = """
         blocks:
             '0':
@@ -1096,7 +1067,7 @@ class TestLoopRestructure(SCFGComparator):
             '16': ['11']
         backedges:
             '11': ['8']
-        regions:"""
+        """
         original_scfg, block_dict = SCFG.from_yaml(original)
         expected_scfg, _ = SCFG.from_yaml(expected)
         loop_restructure_helper(

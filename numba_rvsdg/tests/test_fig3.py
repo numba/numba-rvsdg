@@ -34,8 +34,10 @@ def make_flow():
 
 
 def test_fig3():
+    # Run this function to print YAML for the given function
     f = make_flow()
-    f.restructure()
+    f = f.restructure()
+    print(f.scfg.to_yaml())
 
 
 if __name__ == "__main__":

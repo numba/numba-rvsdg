@@ -35,7 +35,7 @@ class TestSCFGConversion(SCFGComparator):
                 '3': ['4']
                 '4': []
             backedges:
-            regions:""",
+            """,
             # Case # 2: Cyclic graph, no back edges
             """
             blocks:
@@ -59,7 +59,7 @@ class TestSCFGConversion(SCFGComparator):
                 '4': []
                 '5': ['3', '4']
             backedges:
-            regions:""",
+            """,
             # Case # 3: Graph with backedges
             """
             blocks:
@@ -81,7 +81,7 @@ class TestSCFGConversion(SCFGComparator):
                 '4': ['2', '3']
             backedges:
                 '4': ['2']
-            regions:""",
+            """,
         ]
 
         for case in cases:
@@ -108,7 +108,6 @@ class TestSCFGConversion(SCFGComparator):
                     "4": [],
                 },
                 "backedges": {},
-                "regions": {},
             },
             # Case # 2: Cyclic graph, no back edges
             {
@@ -129,7 +128,6 @@ class TestSCFGConversion(SCFGComparator):
                     "5": ["3", "4"],
                 },
                 "backedges": {},
-                "regions": {},
             },
             # Case # 3: Graph with backedges
             {
@@ -148,7 +146,6 @@ class TestSCFGConversion(SCFGComparator):
                     "4": ["2", "3"],
                 },
                 "backedges": {"4": ["2"]},
-                "regions": {},
             },
         ]
 
@@ -177,7 +174,7 @@ class TestSCFGIterator(SCFGComparator):
             '0': ['1']
             '1': []
         backedges:
-        regions:"""
+        """
         )
         received = list(scfg)
         self.assertEqual(expected, received)
