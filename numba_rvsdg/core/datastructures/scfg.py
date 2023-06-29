@@ -1,6 +1,5 @@
 import dis
 import yaml
-from textwrap import dedent
 from typing import Set, Tuple, Dict, List, Iterator
 from dataclasses import dataclass, field
 from collections import deque
@@ -783,21 +782,34 @@ class SCFG:
         """
         scfg_graph = {}
         name_gen = NameGenerator()
-        block_dict = {}
-        for index in graph_dict.keys():
-            block_dict[index] = name_gen.new_block_name(block_names.BASIC)
-        for index, attributes in graph_dict.items():
-            jump_targets = attributes["jt"]
-            backedges = attributes.get("be", ())
-            name = block_dict[index]
+        block_ref_dict = {}
+
+        blocks = graph_dict["blocks"]
+        edges = graph_dict["edges"]
+        backedges = graph_dict["backedges"]
+        graph_dict["regions"]
+
+        for key, block in blocks.items():
+            assert block["type"] in block_names.all_block_names
+            block_ref_dict[key] = name_gen.new_block_name(block["type"])
+
+        for ref, block_name in block_ref_dict.items():
+            name = block_name
+            block_edges = tuple(block_ref_dict[idx] for idx in edges[ref])
+            if backedges and backedges.get(ref):
+                block_backedges = tuple(
+                    block_ref_dict[idx] for idx in backedges[ref]
+                )
+            else:
+                block_backedges = ()
             block = BasicBlock(
                 name=name,
-                backedges=tuple(block_dict[idx] for idx in backedges),
-                _jump_targets=tuple(block_dict[idx] for idx in jump_targets),
+                backedges=block_backedges,
+                _jump_targets=block_edges,
             )
             scfg_graph[name] = block
         scfg = SCFG(scfg_graph, name_gen=name_gen)
-        return scfg, block_dict
+        return scfg, block_ref_dict
 
     def to_yaml(self):
         """Converts the SCFG object to a YAML string representation.
@@ -816,20 +828,34 @@ class SCFG:
         scfg_graph = self.graph
         yaml_string = """"""
 
+        blocks = {}
+        edges = {}
+        backedges = {}
+
         for key, value in scfg_graph.items():
-            jump_targets = [i for i in value._jump_targets]
-            jump_targets = str(jump_targets).replace("'", '"')
-            back_edges = [i for i in value.backedges]
-            jump_target_str = f"""
-                "{key}":
-                    jt: {jump_targets}"""
+            blocks[key] = {"type": "basic"}
+            edges[key] = [i for i in value._jump_targets]
+            backedges[key] = [i for i in value.backedges]
 
-            if back_edges:
-                back_edges = str(back_edges).replace("'", '"')
-                jump_target_str += f"""
-                    be: {back_edges}"""
-            yaml_string += dedent(jump_target_str)
+        yaml_string += "\nblocks:"
+        for _block in blocks.keys():
+            yaml_string += f"""
+    {_block}:"""
+            block_type = blocks[_block]["type"]
+            yaml_string += f"""
+        type: {block_type}"""
 
+        yaml_string += "\nedges:"
+        for _block in blocks.keys():
+            yaml_string += f"""
+    {_block}: {edges[_block]}"""
+
+        yaml_string += "\nbackedges:"
+        for _block in blocks.keys():
+            if backedges[_block]:
+                yaml_string += f"""
+    {_block}: {backedges[_block]}"""
+        yaml_string += "\nregions:"
         return yaml_string
 
     def to_dict(self):
@@ -846,13 +872,24 @@ class SCFG:
             A dictionary representing the SCFG.
         """
         scfg_graph = self.graph
-        graph_dict = {}
+
+        blocks = {}
+        edges = {}
+        backedges = {}
+        regions = {}
+
         for key, value in scfg_graph.items():
-            curr_dict = {}
-            curr_dict["jt"] = [i for i in value._jump_targets]
-            if value.backedges:
-                curr_dict["be"] = [i for i in value.backedges]
-            graph_dict[key] = curr_dict
+            blocks[key] = {"type": "basic"}
+            edges[key] = [i for i in value._jump_targets]
+            backedges[key] = [i for i in value.backedges]
+
+        graph_dict = {
+            "blocks": blocks,
+            "edges": edges,
+            "backedges": backedges,
+            "regions": regions,
+        }
+
         return graph_dict
 
     def view(self, name: str = None):

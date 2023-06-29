@@ -10,3 +10,16 @@ SYNTH_ASSIGN = "synth_asign"
 SYNTH_RETURN = "synth_return"
 SYNTH_EXIT_LATCH = "synth_exit_latch"
 SYNTH_FILL = "synth_fill"
+
+all_block_names = {
+    BASIC,
+    PYTHON_BYTECODE,
+    SYNTH_HEAD,
+    SYNTH_BRANCH,
+    SYNTH_TAIL,
+    SYNTH_EXIT,
+    SYNTH_ASSIGN,
+    SYNTH_RETURN,
+    SYNTH_EXIT_LATCH,
+    SYNTH_FILL,
+}
