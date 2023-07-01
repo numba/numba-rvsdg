@@ -17,7 +17,7 @@ from numba_rvsdg.core.datastructures.basic_block import (
     RegionBlock,
     block_type_names,
 )
-from numba_rvsdg.core.datastructures import block_names
+from numba_rvsdg.core.datastructures.block_names import block_types
 
 
 @dataclass(frozen=True)
@@ -605,7 +605,7 @@ class SCFG:
             # and the newly created block
             for s in set(jt).intersection(successors):
                 synth_assign = self.name_gen.new_block_name(
-                    block_names.SYNTH_ASSIGN
+                    block_types.SYNTH_ASSIGN
                 )
                 variable_assignment = {}
                 variable_assignment[branch_variable] = branch_variable_value
@@ -653,7 +653,7 @@ class SCFG:
         # close if more than one is found
         if len(return_nodes) > 1:
             return_solo_name = self.name_gen.new_block_name(
-                block_names.SYNTH_RETURN
+                block_types.SYNTH_RETURN
             )
             self.insert_SyntheticReturn(
                 return_solo_name, return_nodes, tuple()
@@ -686,7 +686,7 @@ class SCFG:
             # join only exits
             solo_tail_name = next(iter(tails))
             solo_exit_name = self.name_gen.new_block_name(
-                block_names.SYNTH_EXIT
+                block_types.SYNTH_EXIT
             )
             self.insert_SyntheticExit(solo_exit_name, tails, exits)
             return solo_tail_name, solo_exit_name
@@ -694,7 +694,7 @@ class SCFG:
         if len(tails) >= 2 and len(exits) == 1:
             # join only tails
             solo_tail_name = self.name_gen.new_block_name(
-                block_names.SYNTH_TAIL
+                block_types.SYNTH_TAIL
             )
             solo_exit_name = next(iter(exits))
             self.insert_SyntheticTail(solo_tail_name, tails, exits)
@@ -703,10 +703,10 @@ class SCFG:
         if len(tails) >= 2 and len(exits) >= 2:
             # join both tails and exits
             solo_tail_name = self.name_gen.new_block_name(
-                block_names.SYNTH_TAIL
+                block_types.SYNTH_TAIL
             )
             solo_exit_name = self.name_gen.new_block_name(
-                block_names.SYNTH_EXIT
+                block_types.SYNTH_EXIT
             )
             self.insert_SyntheticTail(solo_tail_name, tails, exits)
             self.insert_SyntheticExit(solo_exit_name, {solo_tail_name}, exits)
@@ -731,7 +731,7 @@ class SCFG:
         return {inst.offset: inst for inst in bc}
 
     @staticmethod
-    def from_yaml(yaml_string):
+    def from_yaml(yaml_string: str, absolute_names: bool = False):
         """Static method that creates an SCFG object from a YAML
         representation.
 
@@ -754,11 +754,11 @@ class SCFG:
             representation/unique name IDs in the SCFG.
         """
         data = yaml.safe_load(yaml_string)
-        scfg, block_dict = SCFG.from_dict(data)
+        scfg, block_dict = SCFG.from_dict(data, absolute_names)
         return scfg, block_dict
 
     @staticmethod
-    def from_dict(graph_dict: dict):
+    def from_dict(graph_dict: dict, absolute_names: bool = False):
         """Static method that creates an SCFG object from a dictionary
         representation.
 
@@ -790,11 +790,21 @@ class SCFG:
         backedges = graph_dict["backedges"]
 
         for key, block in blocks.items():
-            assert block["type"] in block_names.all_block_names
-            block_ref_dict[key] = name_gen.new_block_name(block["type"])
+            assert block["type"] in block_types
+            if absolute_names:
+                if block["type"] == "region":
+                    block_ref_dict[key] = name_gen.new_region_name(
+                        block["kind"]
+                    )
+                else:
+                    block_ref_dict[key] = name_gen.new_block_name(
+                        block["type"]
+                    )
+            else:
+                block_ref_dict[key] = key
 
         for ref, block_name in block_ref_dict.items():
-            name = block_name
+            block_info = blocks[ref]
             block_edges = tuple(block_ref_dict[idx] for idx in edges[ref])
             if backedges and backedges.get(ref):
                 block_backedges = tuple(
@@ -802,12 +812,13 @@ class SCFG:
                 )
             else:
                 block_backedges = ()
-            block = BasicBlock(
-                name=name,
+            block_class = block_type_names[block_info.pop("type")]
+            block = block_class(
+                name=block_name,
                 backedges=block_backedges,
                 _jump_targets=block_edges,
             )
-            scfg_graph[name] = block
+            scfg_graph[block_name] = block
         scfg = SCFG(scfg_graph, name_gen=name_gen)
         return scfg, block_ref_dict
 
@@ -827,50 +838,28 @@ class SCFG:
         # Convert to yaml
         yaml_string = """"""
 
-        blocks = {}
-        edges = {}
-        backedges = {}
+        graph_dict = self.to_dict()
 
-        # This does a dictionary reverse lookup, to determine the key for a given
-        # value.
-        def reverse_lookup(value):
-            for k, v in block_type_names.items():
-                if v == value:
-                    return k
-            else:
-                raise TypeError("Block type not found.")
-
-        for key, value in self:
-            block_type = reverse_lookup(type(value))
-            blocks[key] = {"type": block_type}
-            if block_type == "region":
-                blocks[key]["kind"] = value.kind
-                blocks[key]["contains"] = [
-                    idx.name for idx in value.subregion.graph.values()
-                ]
-            edges[key] = [i for i in value._jump_targets]
-            backedges[key] = [i for i in value.backedges]
+        blocks = graph_dict["blocks"]
+        edges = graph_dict["edges"]
+        backedges = graph_dict["backedges"]
 
         yaml_string += "\nblocks:"
-        for _block in blocks.keys():
+        for _block in sorted(blocks.keys()):
             yaml_string += f"""
     {_block}:"""
-            block_type = blocks[_block]["type"]
-            yaml_string += f"""
-        type: {block_type}"""
-            if block_type == "region":
+            block_dict = blocks[_block]
+            for key, value in block_dict.items():
                 yaml_string += f"""
-        kind: {blocks[_block]["kind"]}"""
-                yaml_string += f"""
-        contains: {blocks[_block]["contains"]}"""
+        {key}: {value}"""
 
         yaml_string += "\nedges:"
-        for _block in blocks.keys():
+        for _block in sorted(blocks.keys()):
             yaml_string += f"""
     {_block}: {edges[_block]}"""
 
         yaml_string += "\nbackedges:"
-        for _block in blocks.keys():
+        for _block in sorted(blocks.keys()):
             if backedges[_block]:
                 yaml_string += f"""
     {_block}: {backedges[_block]}"""
@@ -889,8 +878,6 @@ class SCFG:
         graph_dict: Dict[Dict[...]]
             A dictionary representing the SCFG.
         """
-        scfg_graph = self.graph
-
         blocks = {}
         edges = {}
         backedges = {}
@@ -902,16 +889,32 @@ class SCFG:
             else:
                 raise TypeError("Block type not found.")
 
-        for key, value in scfg_graph.items():
+        for key, value in self:
             block_type = reverse_lookup(type(value))
             blocks[key] = {"type": block_type}
             if block_type == "region":
                 blocks[key]["kind"] = value.kind
-                blocks[key]["contains"] = [
-                    idx.name for idx in value.subregion.graph.values()
-                ]
-            edges[key] = [i for i in value._jump_targets]
-            backedges[key] = [i for i in value.backedges]
+                blocks[key]["contains"] = sorted(
+                    [idx.name for idx in value.subregion.graph.values()]
+                )
+                blocks[key]["header"] = value.header
+                blocks[key]["exiting"] = value.exiting
+                blocks[key]["parent_region"] = value.parent_region.name
+            elif block_type in [
+                block_types.SYNTH_BRANCH,
+                block_types.SYNTH_HEAD,
+                block_types.SYNTH_EXIT_LATCH,
+                block_types.SYNTH_EXIT_BRANCH,
+            ]:
+                blocks[key]["branch_value_table"] = value.branch_value_table
+                blocks[key]["variable"] = value.variable
+            elif block_type in [block_types.SYNTH_ASSIGN]:
+                blocks[key]["variable_assignment"] = value.variable_assignment
+            elif block_type in [block_types.PYTHON_BYTECODE]:
+                blocks[key]["begin"] = value.begin
+                blocks[key]["end"] = value.end
+            edges[key] = sorted([i for i in value._jump_targets])
+            backedges[key] = sorted([i for i in value.backedges])
 
         graph_dict = {"blocks": blocks, "edges": edges, "backedges": backedges}
 

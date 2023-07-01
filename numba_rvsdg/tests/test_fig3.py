@@ -1,6 +1,7 @@
 # Figure 3 of the paper
 from numba_rvsdg.core.datastructures.byte_flow import ByteFlow
 from numba_rvsdg.core.datastructures.flow_info import FlowInfo
+from numba_rvsdg.core.datastructures.scfg import SCFG
 from numba_rvsdg.rendering.rendering import render_flow
 
 # import logging
@@ -37,8 +38,12 @@ def test_fig3():
     # Run this function to print YAML for the given function
     f = make_flow()
     f = f.restructure()
-    print(f.scfg.to_yaml())
 
 
 if __name__ == "__main__":
-    render_flow(make_flow())
+    f = make_flow()
+    render_flow(f)
+    f = f.restructure()
+    graph_yaml = f.scfg.to_yaml()
+    print(graph_yaml)
+    x = SCFG.from_yaml(graph_yaml)
