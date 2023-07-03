@@ -123,7 +123,7 @@ class TestSCFGConversion(SCFGComparator):
                     "0": ["1", "2"],
                     "1": ["5"],
                     "2": ["1", "5"],
-                    "3": ["0"],
+                    "3": ["1"],
                     "4": [],
                     "5": ["3", "4"],
                 },
@@ -166,13 +166,13 @@ class TestSCFGIterator(SCFGComparator):
         scfg, _ = SCFG.from_yaml(
             """
         blocks:
-            '0':
+            'basic_block_0':
                 type: basic
-            '1':
+            'basic_block_1':
                 type: basic
         edges:
-            '0': ['1']
-            '1': []
+            'basic_block_0': ['basic_block_1']
+            'basic_block_1': []
         backedges:
         """
         )

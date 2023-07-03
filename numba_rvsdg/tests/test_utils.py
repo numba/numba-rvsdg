@@ -2,12 +2,12 @@ from unittest import TestCase
 import yaml
 
 from numba_rvsdg.core.datastructures.scfg import SCFG
-from numba_rvsdg.core.datastructures.basic_block import BasicBlock
+from numba_rvsdg.core.datastructures.basic_block import BasicBlock, RegionBlock
 
 
 class SCFGComparator(TestCase):
     def assertSCFGEqual(
-        self, first_scfg: SCFG, second_scfg: SCFG, head_map=None
+        self, first_scfg: SCFG, second_scfg: SCFG, head_map=None, exiting=None
     ):
         if head_map:
             # If more than one head the corresponding map needs to be provided
@@ -41,14 +41,25 @@ class SCFGComparator(TestCase):
             assert len(node.jump_targets) == len(second_node.jump_targets)
             assert len(node.backedges) == len(second_node.backedges)
 
+            # If the given block is a egionBlock, then the underlying SCFGs
+            # for both regions must be equal
+            if isinstance(node, RegionBlock):
+                self.assertSCFGEqual(
+                    node.subregion, second_node.subregion, exiting=node.exiting
+                )
+
             # Add the jump targets as corresponding nodes in block mapping
             # dictionary. Since order must be same we can simply add zip
             # functionality as the correspondence function for nodes
             for jt1, jt2 in zip(node.jump_targets, second_node.jump_targets):
+                if node.name == exiting:
+                    continue
                 block_mapping[jt1] = jt2
                 stack.append(jt1)
 
             for be1, be2 in zip(node.backedges, second_node.backedges):
+                if node.name == exiting:
+                    continue
                 block_mapping[be1] = be2
                 stack.append(be1)
 

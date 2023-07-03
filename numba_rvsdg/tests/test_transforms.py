@@ -208,6 +208,7 @@ class TestInsertBlock(SCFGComparator):
             '3': ['0']
             '4': []
         backedges:
+            '3': ['0']
         """
         original_scfg, block_dict = SCFG.from_yaml(original)
         expected = """
@@ -232,6 +233,7 @@ class TestInsertBlock(SCFGComparator):
             '4': []
             '5': ['3', '4']
         backedges:
+            '3': ['0']
         """
         expected_scfg, expected_block_dict = SCFG.from_yaml(expected)
         original_scfg.insert_block(
