@@ -128,7 +128,7 @@ class Simulator:
             BasicBlock.
 
         """
-        print("AT", name)
+        # print("AT", name)
         block = self.get_block(name)
         self.trace.append((name, block))
         if isinstance(block, RegionBlock):
@@ -225,8 +225,8 @@ class Simulator:
             The str for the block.
 
         """
-        print("----", name)
-        print(f"control variable map: {self.ctrl_varmap}")
+        # print("----", name)
+        # print(f"control variable map: {self.ctrl_varmap}")
         block = self.get_block(name)
         handler = getattr(self, "synth_" + block.__class__.__name__)
         handler(name, block)
@@ -240,13 +240,13 @@ class Simulator:
             The Python bytecode instruction to execute.
 
         """
-        print("----", inst)
-        print(f"variable map before: {self.varmap}")
-        print(f"stack before: {self.stack}")
+        # print("----", inst)
+        # print(f"variable map before: {self.varmap}")
+        # print(f"stack before: {self.stack}")
         handler = getattr(self, f"op_{inst.opname}")
         handler(inst)
-        print(f"variable map after: {self.varmap}")
-        print(f"stack after: {self.stack}")
+        # print(f"variable map after: {self.varmap}")
+        # print(f"stack after: {self.stack}")
 
     ### Synthetic Instructions ### # noqa
     def synth_SyntheticAssignment(self, control_name, block):

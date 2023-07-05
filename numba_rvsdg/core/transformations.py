@@ -1,5 +1,5 @@
 from collections import defaultdict
-from typing import Set, Dict, List
+from typing import Set, Dict, List, Tuple, Optional
 
 from numba_rvsdg.core.datastructures.scfg import SCFG
 from numba_rvsdg.core.datastructures.basic_block import (
@@ -37,14 +37,15 @@ def loop_restructure_helper(scfg: SCFG, loop: Set[str]):
 
     # If there are multiple headers, insert assignment and control blocks,
     # such that only a single loop header remains.
+    loop_head = None
     if len(headers) > 1:
         headers_were_unified = True
         solo_head_name = scfg.name_gen.new_block_name(block_names.SYNTH_HEAD)
         scfg.insert_block_and_control_blocks(solo_head_name, entries, headers)
         loop.add(solo_head_name)
-        loop_head: str = solo_head_name
+        loop_head = solo_head_name
     else:
-        loop_head: str = next(iter(headers))
+        loop_head = next(iter(headers))
     # If there is only a single exiting latch (an exiting block that also has a
     # backedge to the loop header) we can exit early, since the condition for
     # SCFG is fullfilled.
@@ -276,15 +277,19 @@ def find_head_blocks(scfg: SCFG, begin: str) -> Set[str]:
     return head_region_blocks
 
 
-def find_branch_regions(scfg: SCFG, begin: str, end: str) -> Set[str]:
+def find_branch_regions(
+        scfg: SCFG, begin: str, end: str
+) -> List[Optional[Tuple[str, Set[str]]]]:
     # identify branch regions
     doms = _doms(scfg)
-    branch_regions = []
+    branch_regions: List[Optional[Tuple[str, Set[str]]]] = []
     jump_targets = scfg.graph[begin].jump_targets
     for bra_start in jump_targets:
         for jt in jump_targets:
             if jt != bra_start and scfg.is_reachable_dfs(jt, bra_start):
-                branch_regions.append(tuple())
+                # placeholder for empty branch region
+                branch_regions.append(None)
+                # branch_regions.append(tuple())
                 break
         else:
             sub_keys: Set[str] = set()
@@ -298,22 +303,14 @@ def find_branch_regions(scfg: SCFG, begin: str, end: str) -> Set[str]:
     return branch_regions
 
 
-def _find_branch_regions(scfg: SCFG, begin: str, end: str) -> Set[str]:
-    # identify branch regions
-    branch_regions = []
-    for bra_start in scfg[begin].jump_targets:
-        region = []
-        region.append(bra_start)
-    return branch_regions
-
-
 def find_tail_blocks(
-    scfg: SCFG, begin: Set[str], head_region_blocks, branch_regions
+    scfg: SCFG, begin: str, head_region_blocks, branch_regions
 ):
     tail_subregion = {b for b in scfg.graph.keys()}
     tail_subregion.difference_update(head_region_blocks)
     for reg in branch_regions:
         if not reg:
+            # empty branch region
             continue
         b, sub = reg
         tail_subregion.discard(b)
@@ -431,7 +428,7 @@ def extract_region(
 
 def restructure_branch(parent_region: RegionBlock):
     scfg: SCFG = parent_region.subregion
-    print("restructure_branch", scfg.graph)
+    # print("restructure_branch", scfg.graph)
     doms = _doms(scfg)
     postdoms = _post_doms(scfg)
     postimmdoms = _imm_doms(postdoms)
@@ -485,7 +482,7 @@ def restructure_branch(parent_region: RegionBlock):
                 block_names.SYNTH_FILL
             )
             scfg.insert_SyntheticFill(
-                synthetic_branch_block_name, (begin,), tail_headers
+                synthetic_branch_block_name, [begin], tail_headers
             )
 
     # Recompute regions.

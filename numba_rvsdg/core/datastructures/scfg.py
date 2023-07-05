@@ -1,7 +1,7 @@
 import dis
 import yaml
 from textwrap import dedent
-from typing import Set, Tuple, Dict, List, Iterator
+from typing import Set, Tuple, Dict, List, Iterator, Optional
 from dataclasses import dataclass, field
 from collections import deque
 from collections.abc import Mapping
@@ -323,7 +323,7 @@ class SCFG:
 
     def find_headers_and_entries(
         self, subgraph: Set[str]
-    ) -> Tuple[Set[str], Set[str]]:
+    ) -> Tuple[List[str], List[str]]:
         """Finds entries and headers in a given subgraph.
 
         Entries are blocks outside the subgraph that have an edge pointing to
@@ -370,7 +370,7 @@ class SCFG:
 
     def find_exiting_and_exits(
         self, subgraph: Set[str]
-    ) -> Tuple[Set[str], Set[str]]:
+    ) -> Tuple[List[str], List[str]]:
         """Finds exiting and exit blocks in a given subgraph.
 
         Existing blocks are blocks inside the subgraph that have edges to
@@ -466,9 +466,9 @@ class SCFG:
     def insert_block(
         self,
         new_name: str,
-        predecessors: Set[str],
-        successors: Set[str],
-        block_type: SyntheticBlock,
+        predecessors: List[str],
+        successors: List[str],
+        block_type: type[SyntheticBlock],
     ):
         """Inserts a new synthetic block into the SCFG
         between the given successors and predecessors.
@@ -485,11 +485,11 @@ class SCFG:
         ----------
         new_name: str
             The name of the newly created block.
-        predecessors: Set[str]
-            The set of names of BasicBlock that act as predecessors
+        predecessors: List[str]
+            The list of names of BasicBlock that act as predecessors
             for the block to be inserted.
-        successors: Set[str]
-            The set of names of BasicBlock that act as successors
+        successors: List[str]
+            The list of names of BasicBlock that act as successors
             for the block to be inserted.
         block_type: SyntheticBlock
             The type/class of the newly created block.
@@ -497,7 +497,7 @@ class SCFG:
         # TODO: needs a diagram and documentaion
         # initialize new block
         new_block = block_type(
-            name=new_name, _jump_targets=successors, backedges=set()
+            name=new_name, _jump_targets=tuple(successors), backedges=tuple()
         )
         # add block to self
         self.add_block(new_block)
@@ -520,8 +520,8 @@ class SCFG:
     def insert_SyntheticExit(
         self,
         new_name: str,
-        predecessors: Set[str],
-        successors: Set[str],
+        predecessors: List[str],
+        successors: List[str],
     ):
         """Inserts a synthetic exit block into the SCFG.
         Parameters same as insert_block method.
@@ -535,8 +535,8 @@ class SCFG:
     def insert_SyntheticTail(
         self,
         new_name: str,
-        predecessors: Set[str],
-        successors: Set[str],
+        predecessors: List[str],
+        successors: List[str],
     ):
         """Inserts a synthetic tail block into the SCFG.
         Parameters same as insert_block method.
@@ -550,8 +550,8 @@ class SCFG:
     def insert_SyntheticReturn(
         self,
         new_name: str,
-        predecessors: Set[str],
-        successors: Set[str],
+        predecessors: List[str],
+        successors: List[str],
     ):
         """Inserts a synthetic return block into the SCFG.
         Parameters same as insert_block method.
@@ -565,8 +565,8 @@ class SCFG:
     def insert_SyntheticFill(
         self,
         new_name: str,
-        predecessors: Set[str],
-        successors: Set[str],
+        predecessors: List[str],
+        successors: List[str],
     ):
         """Inserts a synthetic fill block into the SCFG.
         Parameters same as insert_block method.
@@ -578,7 +578,7 @@ class SCFG:
         self.insert_block(new_name, predecessors, successors, SyntheticFill)
 
     def insert_block_and_control_blocks(
-        self, new_name: str, predecessors: Set[str], successors: Set[str]
+        self, new_name: str, predecessors: List[str], successors: List[str]
     ):
         """Inserts a new block along with control blocks into the SCFG.
         This method is used for branching assignments.
@@ -633,7 +633,7 @@ class SCFG:
         new_block = SyntheticHead(
             name=new_name,
             _jump_targets=tuple(successors),
-            backedges=set(),
+            backedges=tuple(),
             variable=branch_variable,
             branch_value_table=branch_value_table,
         )
@@ -659,15 +659,15 @@ class SCFG:
                 return_solo_name, return_nodes, tuple()
             )
 
-    def join_tails_and_exits(self, tails: Set[str], exits: Set[str]):
+    def join_tails_and_exits(self, tails: List[str], exits: List[str]):
         """Joins the tails and exits of the SCFG.
 
         Parameters
         ----------
-        tails: Set[str]
-            The set of names of BasicBlock that act as tails in the SCFG.
-        exits: Set[str]
-            The set of names of BasicBlock that act as exits in the SCFG.
+        tails: List[str]
+            The list of names of BasicBlock that act as tails in the SCFG.
+        exits: List[str]
+            The list of names of BasicBlock that act as exits in the SCFG.
 
         Return
         ------
@@ -709,7 +709,7 @@ class SCFG:
                 block_names.SYNTH_EXIT
             )
             self.insert_SyntheticTail(solo_tail_name, tails, exits)
-            self.insert_SyntheticExit(solo_exit_name, {solo_tail_name}, exits)
+            self.insert_SyntheticExit(solo_exit_name, [solo_tail_name], exits)
             return solo_tail_name, solo_exit_name
 
     @staticmethod
@@ -855,7 +855,7 @@ class SCFG:
             graph_dict[key] = curr_dict
         return graph_dict
 
-    def view(self, name: str = None):
+    def view(self, name: Optional[str] = None):
         """View the current SCFG as a external PDF file.
 
         This method internally creates a SCFGRenderer corresponding to
@@ -934,7 +934,7 @@ class ConcealedRegionView(AbstractGraphView):
         is based on.
     """
 
-    scfg: SCFG = None
+    scfg: SCFG
 
     def __init__(self, scfg):
         """Initializes the ConcealedRegionView with the given SCFG.
@@ -973,7 +973,7 @@ class ConcealedRegionView(AbstractGraphView):
         """
         return self.region_view_iterator()
 
-    def region_view_iterator(self, head: str = None) -> Iterator[str]:
+    def region_view_iterator(self, head: Optional[str] = None) -> Iterator[str]:
         """Region View Iterator.
 
         This iterator is region aware, which means that regions are "concealed"

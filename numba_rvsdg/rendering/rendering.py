@@ -1,4 +1,5 @@
 import logging
+from abc import abstractmethod
 from numba_rvsdg.core.datastructures.basic_block import (
     BasicBlock,
     RegionBlock,
@@ -10,7 +11,8 @@ from numba_rvsdg.core.datastructures.basic_block import (
 from numba_rvsdg.core.datastructures.scfg import SCFG
 from numba_rvsdg.core.datastructures.byte_flow import ByteFlow
 import dis
-from typing import Dict
+from typing import Dict, Optional
+from graphviz import Digraph  # type: ignore
 
 
 class BaseRenderer:
@@ -21,8 +23,38 @@ class BaseRenderer:
     edges of the graph are rendered respectively.
     """
 
+    g: "Digraph"
+
+    @abstractmethod
+    def render_basic_block(
+        self, digraph: "Digraph", name: str, block: PythonBytecodeBlock
+    ):
+        """
+        """
+
+    @abstractmethod
+    def render_control_variable_block(
+        self, digraph: "Digraph", name: str, block: SyntheticAssignment
+    ):
+        """
+        """
+
+    @abstractmethod
+    def render_branching_block(
+        self, digraph: "Digraph", name: str, block: SyntheticBranch
+    ):
+        """
+        """
+
+    @abstractmethod
+    def render_region_block(
+        self, digraph: "Digraph", name: str, regionblock: RegionBlock
+    ):
+        """
+        """
+
     def render_block(
-        self, digraph: "Digraph", name: str, block: BasicBlock  # noqa
+        self, digraph: "Digraph", name: str, block: BasicBlock
     ):
         """Function that defines how the BasicBlocks in a graph should be
         rendered.
@@ -38,16 +70,12 @@ class BaseRenderer:
             The BasicBlock to be rendered.
 
         """
-        if type(block) == BasicBlock:
-            self.render_basic_block(digraph, name, block)
-        elif type(block) == PythonBytecodeBlock:
+        if type(block) == PythonBytecodeBlock:
             self.render_basic_block(digraph, name, block)
         elif type(block) == SyntheticAssignment:
             self.render_control_variable_block(digraph, name, block)
         elif isinstance(block, SyntheticBranch):
             self.render_branching_block(digraph, name, block)
-        elif isinstance(block, SyntheticBlock):
-            self.render_basic_block(digraph, name, block)
         elif type(block) == RegionBlock:
             self.render_region_block(digraph, name, block)
         else:
@@ -114,7 +142,7 @@ class ByteFlowRenderer(BaseRenderer):
         self.g = Digraph()
 
     def render_region_block(
-        self, digraph: "Digraph", name: str, regionblock: RegionBlock  # noqa
+        self, digraph: "Digraph", name: str, regionblock: RegionBlock
     ):
         # render subgraph
         with digraph.subgraph(name=f"cluster_{name}") as subg:
@@ -130,7 +158,7 @@ class ByteFlowRenderer(BaseRenderer):
                 self.render_block(subg, name, block)
 
     def render_basic_block(
-        self, digraph: "Digraph", name: str, block: BasicBlock  # noqa
+        self, digraph: "Digraph", name: str, block: PythonBytecodeBlock
     ):
         if name.startswith("python_bytecode"):
             instlist = block.get_instructions(self.bcmap)
@@ -144,7 +172,7 @@ class ByteFlowRenderer(BaseRenderer):
         digraph.node(str(name), shape="rect", label=body)
 
     def render_control_variable_block(
-        self, digraph: "Digraph", name: str, block: BasicBlock  # noqa
+        self, digraph: "Digraph", name: str, block: SyntheticAssignment
     ):
         if isinstance(name, str):
             body = name + r"\l"
@@ -156,7 +184,7 @@ class ByteFlowRenderer(BaseRenderer):
         digraph.node(str(name), shape="rect", label=body)
 
     def render_branching_block(
-        self, digraph: "Digraph", name: str, block: BasicBlock  # noqa
+        self, digraph: "Digraph", name: str, block: SyntheticBranch
     ):
         if isinstance(name, str):
             body = name + r"\l"
@@ -204,7 +232,7 @@ class SCFGRenderer(BaseRenderer):
         self.render_edges(scfg)
 
     def render_region_block(
-        self, digraph: "Digraph", name: str, regionblock: RegionBlock  # noqa
+        self, digraph: "Digraph", name: str, regionblock: RegionBlock
     ):
         # render subgraph
         with digraph.subgraph(name=f"cluster_{name}") as subg:
@@ -228,7 +256,7 @@ class SCFGRenderer(BaseRenderer):
                 self.render_block(subg, name, block)
 
     def render_basic_block(
-        self, digraph: "Digraph", name: str, block: BasicBlock  # noqa
+        self, digraph: "Digraph", name: str, block: PythonBytecodeBlock
     ):
         body = (
             name
@@ -242,7 +270,7 @@ class SCFGRenderer(BaseRenderer):
         digraph.node(str(name), shape="rect", label=body)
 
     def render_control_variable_block(
-        self, digraph: "Digraph", name: str, block: BasicBlock  # noqa
+        self, digraph: "Digraph", name: str, block: SyntheticAssignment
     ):
         if isinstance(name, str):
             body = name + r"\l"
@@ -261,7 +289,7 @@ class SCFGRenderer(BaseRenderer):
         digraph.node(str(name), shape="rect", label=body)
 
     def render_branching_block(
-        self, digraph: "Digraph", name: str, block: BasicBlock  # noqa
+        self, digraph: "Digraph", name: str, block: SyntheticBranch
     ):
         if isinstance(name, str):
             body = name + r"\l"
@@ -280,7 +308,7 @@ class SCFGRenderer(BaseRenderer):
             raise Exception("Unknown name type: " + name)
         digraph.node(str(name), shape="rect", label=body)
 
-    def view(self, name: str):
+    def view(self, name: Optional[str] = None):
         """Method used to view the current SCFG as an external graphviz
         generated PDF file.
 
