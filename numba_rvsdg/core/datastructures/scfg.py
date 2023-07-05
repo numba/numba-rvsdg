@@ -1,5 +1,6 @@
 import dis
 import yaml
+from textwrap import indent
 from typing import Set, Tuple, Dict, List, Iterator
 from dataclasses import dataclass, field
 from collections import deque
@@ -900,7 +901,7 @@ class SCFG:
             A YAML string representing the SCFG.
         """
         # Convert to yaml
-        yaml_string = """"""
+        yaml_string = ys = ""
 
         graph_dict = self.to_dict()
 
@@ -908,26 +909,21 @@ class SCFG:
         edges = graph_dict["edges"]
         backedges = graph_dict["backedges"]
 
-        yaml_string += "\nblocks:"
-        for _block in sorted(blocks.keys()):
-            yaml_string += f"""
-    '{_block}':"""
-            block_dict = blocks[_block]
-            for key, value in block_dict.items():
-                yaml_string += f"""
-        {key}: {value}"""
+        ys += "\nblocks:\n"
+        for b in sorted(blocks):
+            ys += indent(f"'{b}':\n", " " * 8)
+            for k, v in blocks[b].items():
+                ys += indent(f"{k}: {v}\n", " " * 12)
 
-        yaml_string += "\nedges:"
-        for _block in sorted(blocks.keys()):
-            yaml_string += f"""
-    '{_block}': {edges[_block]}"""
+        ys += "\nedges:\n"
+        for b in sorted(blocks):
+            ys += indent(f"'{b}': {edges[b]}\n", " " * 8)
 
-        yaml_string += "\nbackedges:"
-        for _block in sorted(blocks.keys()):
-            if backedges[_block]:
-                yaml_string += f"""
-    '{_block}': {backedges[_block]}"""
-        return yaml_string
+        ys += "\nbackedges:\n"
+        for b in sorted(blocks):
+            if backedges[b]:
+                ys += indent(f"'{b}': {backedges[b]}\n", " " * 8)
+        return ys
 
     def to_dict(self):
         """Converts the SCFG object to a dictionary representation.
