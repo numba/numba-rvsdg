@@ -233,8 +233,8 @@ class SyntheticFill(SyntheticBlock):
 
 @dataclass(frozen=True)
 class SyntheticAssignment(SyntheticBlock):
-    """The SyntheticAssignment class represents a artificially added assignment block
-    in a structured control flow graph (SCFG).
+    """The SyntheticAssignment class represents a artificially added
+    assignment block in a structured control flow graph (SCFG).
 
     This block is responsible for giving variables their values,
     once the respective block is executed.
@@ -362,7 +362,7 @@ class RegionBlock(BasicBlock):
     kind: str = ""
     parent_region: "RegionBlock" = None  # type: ignore
     header: str = ""
-    subregion: "SCFG" = None  # type: ignore
+    subregion: "SCFG" = None  # type: ignore  # noqa
     exiting: str = ""
 
     def replace_header(self, new_header):

@@ -973,7 +973,9 @@ class ConcealedRegionView(AbstractGraphView):
         """
         return self.region_view_iterator()
 
-    def region_view_iterator(self, head: Optional[str] = None) -> Iterator[str]:
+    def region_view_iterator(
+            self, head: Optional[str] = None
+    ) -> Iterator[str]:
         """Region View Iterator.
 
         This iterator is region aware, which means that regions are "concealed"
