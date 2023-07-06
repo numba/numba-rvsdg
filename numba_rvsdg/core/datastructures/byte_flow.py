@@ -1,6 +1,7 @@
 import dis
 from copy import deepcopy
 from dataclasses import dataclass
+from typing import Generator, Callable
 
 from numba_rvsdg.core.datastructures.scfg import SCFG
 from numba_rvsdg.core.datastructures.basic_block import RegionBlock
@@ -30,10 +31,10 @@ class ByteFlow:
     """
 
     bc: dis.Bytecode
-    scfg: "SCFG"
+    scfg: SCFG
 
     @staticmethod
-    def from_bytecode(code) -> "ByteFlow":
+    def from_bytecode(code: Callable) -> "ByteFlow":  # type: ignore
         """Creates a ByteFlow object from the given python
         function.
 
@@ -54,13 +55,13 @@ class ByteFlow:
             The resulting ByteFlow object.
         """
         bc = dis.Bytecode(code)
-        _logger.debug("Bytecode\n%s", _LogWrap(lambda: bc.dis()))
+        _logger.debug("Bytecode\n%s", _LogWrap(lambda: bc.dis()))  # type: ignore  # noqa E501
 
         flowinfo = FlowInfo.from_bytecode(bc)
         scfg = flowinfo.build_basicblocks()
         return ByteFlow(bc=bc, scfg=scfg)
 
-    def _join_returns(self):
+    def _join_returns(self) -> "ByteFlow":
         """Joins the return blocks within the corresponding SCFG.
 
         This method creates a deep copy of the SCFG and performs
@@ -76,7 +77,7 @@ class ByteFlow:
         scfg.join_returns()
         return ByteFlow(bc=self.bc, scfg=scfg)
 
-    def _restructure_loop(self):
+    def _restructure_loop(self) -> "ByteFlow":
         """Restructures the loops within the corresponding SCFG.
 
         Creates a deep copy of the SCFG and performs the operation to
@@ -97,7 +98,7 @@ class ByteFlow:
             restructure_loop(region)
         return ByteFlow(bc=self.bc, scfg=scfg)
 
-    def _restructure_branch(self):
+    def _restructure_branch(self) -> "ByteFlow":
         """Restructures the branches within the corresponding SCFG.
 
         Creates a deep copy of the SCFG and performs the operation to
@@ -117,7 +118,7 @@ class ByteFlow:
             restructure_branch(region)
         return ByteFlow(bc=self.bc, scfg=scfg)
 
-    def restructure(self):
+    def restructure(self) -> "ByteFlow":
         """Applies join_returns, restructure_loop and restructure_branch
         in the respective order on the SCFG.
 
@@ -146,8 +147,9 @@ class ByteFlow:
         return ByteFlow(bc=self.bc, scfg=scfg)
 
 
-def _iter_subregions(scfg: "SCFG"):
+def _iter_subregions(scfg: SCFG) -> Generator[RegionBlock, SCFG, None]:
     for node in scfg.graph.values():
         if isinstance(node, RegionBlock):
             yield node
+            assert node.subregion is not None
             yield from _iter_subregions(node.subregion)

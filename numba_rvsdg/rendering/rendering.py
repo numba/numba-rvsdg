@@ -11,7 +11,7 @@ from numba_rvsdg.core.datastructures.scfg import SCFG
 from numba_rvsdg.core.datastructures.byte_flow import ByteFlow
 import dis
 from typing import Dict, Optional
-from graphviz import Digraph  # type: ignore
+from graphviz import Digraph
 
 
 class BaseRenderer:
@@ -27,34 +27,30 @@ class BaseRenderer:
     @abstractmethod
     def render_basic_block(
         self, digraph: "Digraph", name: str, block: PythonBytecodeBlock
-    ):
-        """
-        """
+    ) -> None:
+        """ """
 
     @abstractmethod
     def render_control_variable_block(
         self, digraph: "Digraph", name: str, block: SyntheticAssignment
-    ):
-        """
-        """
+    ) -> None:
+        """ """
 
     @abstractmethod
     def render_branching_block(
         self, digraph: "Digraph", name: str, block: SyntheticBranch
-    ):
-        """
-        """
+    ) -> None:
+        """ """
 
     @abstractmethod
     def render_region_block(
         self, digraph: "Digraph", name: str, regionblock: RegionBlock
-    ):
-        """
-        """
+    ) -> None:
+        """ """
 
     def render_block(
         self, digraph: "Digraph", name: str, block: BasicBlock
-    ):
+    ) -> None:
         """Function that defines how the BasicBlocks in a graph should be
         rendered.
 
@@ -80,7 +76,7 @@ class BaseRenderer:
         else:
             raise Exception("unreachable")
 
-    def render_edges(self, scfg: SCFG):
+    def render_edges(self, scfg: SCFG) -> None:
         """Function that renders the edges in an SCFG.
 
         Parameters
@@ -91,9 +87,9 @@ class BaseRenderer:
         """
         blocks = dict(scfg)
 
-        def find_base_header(block: BasicBlock):
+        def find_base_header(block: BasicBlock) -> BasicBlock:
             if isinstance(block, RegionBlock):
-                block = blocks[block.header]
+                block = blocks[block.header]  # type: ignore
                 block = find_base_header(block)
             return block
 
@@ -135,14 +131,14 @@ class ByteFlowRenderer(BaseRenderer):
 
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         from graphviz import Digraph
 
         self.g = Digraph()
 
     def render_region_block(
         self, digraph: "Digraph", name: str, regionblock: RegionBlock
-    ):
+    ) -> None:
         # render subgraph
         with digraph.subgraph(name=f"cluster_{name}") as subg:
             color = "blue"
@@ -153,12 +149,13 @@ class ByteFlowRenderer(BaseRenderer):
             if regionblock.kind == "head":
                 color = "red"
             subg.attr(color=color, label=regionblock.name)
+            assert regionblock.subregion is not None
             for name, block in regionblock.subregion.graph.items():
                 self.render_block(subg, name, block)
 
     def render_basic_block(
         self, digraph: "Digraph", name: str, block: PythonBytecodeBlock
-    ):
+    ) -> None:
         if name.startswith("python_bytecode"):
             instlist = block.get_instructions(self.bcmap)
             body = name + r"\l"
@@ -172,7 +169,7 @@ class ByteFlowRenderer(BaseRenderer):
 
     def render_control_variable_block(
         self, digraph: "Digraph", name: str, block: SyntheticAssignment
-    ):
+    ) -> None:
         if isinstance(name, str):
             body = name + r"\l"
             body += r"\l".join(
@@ -184,7 +181,7 @@ class ByteFlowRenderer(BaseRenderer):
 
     def render_branching_block(
         self, digraph: "Digraph", name: str, block: SyntheticBranch
-    ):
+    ) -> None:
         if isinstance(name, str):
             body = name + r"\l"
             body += rf"variable: {block.variable}\l"
@@ -195,9 +192,8 @@ class ByteFlowRenderer(BaseRenderer):
             raise Exception("Unknown name type: " + name)
         digraph.node(str(name), shape="rect", label=body)
 
-    def render_byteflow(self, byteflow: ByteFlow):
-        """Renders the provided `ByteFlow` object.
-        """
+    def render_byteflow(self, byteflow: ByteFlow) -> "Digraph":
+        """Renders the provided `ByteFlow` object."""
         self.bcmap_from_bytecode(byteflow.bc)
         # render nodes
         for name, block in byteflow.scfg.graph.items():
@@ -205,7 +201,7 @@ class ByteFlowRenderer(BaseRenderer):
         self.render_edges(byteflow.scfg)
         return self.g
 
-    def bcmap_from_bytecode(self, bc: dis.Bytecode):
+    def bcmap_from_bytecode(self, bc: dis.Bytecode) -> None:
         self.bcmap: Dict[int, dis.Instruction] = SCFG.bcmap_from_bytecode(bc)
 
 
@@ -232,7 +228,7 @@ class SCFGRenderer(BaseRenderer):
 
     def render_region_block(
         self, digraph: "Digraph", name: str, regionblock: RegionBlock
-    ):
+    ) -> None:
         # render subgraph
         with digraph.subgraph(name=f"cluster_{name}") as subg:
             color = "blue"
@@ -251,12 +247,13 @@ class SCFGRenderer(BaseRenderer):
             )
 
             subg.attr(color=color, label=label)
+            assert regionblock.subregion is not None
             for name, block in regionblock.subregion.graph.items():
                 self.render_block(subg, name, block)
 
     def render_basic_block(
         self, digraph: "Digraph", name: str, block: PythonBytecodeBlock
-    ):
+    ) -> None:
         body = (
             name
             + r"\l"
@@ -270,7 +267,7 @@ class SCFGRenderer(BaseRenderer):
 
     def render_control_variable_block(
         self, digraph: "Digraph", name: str, block: SyntheticAssignment
-    ):
+    ) -> None:
         if isinstance(name, str):
             body = name + r"\l"
             body += r"\l".join(
@@ -289,7 +286,7 @@ class SCFGRenderer(BaseRenderer):
 
     def render_branching_block(
         self, digraph: "Digraph", name: str, block: SyntheticBranch
-    ):
+    ) -> None:
         if isinstance(name, str):
             body = name + r"\l"
             body += rf"variable: {block.variable}\l"
@@ -307,7 +304,7 @@ class SCFGRenderer(BaseRenderer):
             raise Exception("Unknown name type: " + name)
         digraph.node(str(name), shape="rect", label=body)
 
-    def view(self, name: Optional[str] = None):
+    def view(self, name: Optional[str] = None) -> None:
         """Method used to view the current SCFG as an external graphviz
         generated PDF file.
 
@@ -322,7 +319,7 @@ class SCFGRenderer(BaseRenderer):
 logging.basicConfig(level=logging.DEBUG)
 
 
-def render_func(func):
+def render_func(func) -> None:  # type: ignore
     """The `render_func`` function takes a `func` parameter as the Python
     function to be transformed and rendered and renders the byte flow
     representation of the bytecode of the function.
@@ -335,7 +332,7 @@ def render_func(func):
     render_flow(ByteFlow.from_bytecode(func))
 
 
-def render_flow(flow):
+def render_flow(flow: ByteFlow) -> None:
     """Renders multiple ByteFlow representations across various SCFG
     transformations.
 
@@ -371,7 +368,7 @@ def render_flow(flow):
     ByteFlowRenderer().render_byteflow(bflow).view("branch restructured")
 
 
-def render_scfg(scfg):
+def render_scfg(scfg: SCFG) -> None:
     """The `render_scfg` function takes a `scfg` parameter as the SCFG
     object to be transformed and rendered and renders the graphviz
     representation of the SCFG.
@@ -381,4 +378,5 @@ def render_scfg(scfg):
     scfg: SCFG
         The structured control flow graph (SCFG) to be rendered.
     """
-    ByteFlowRenderer().render_scfg(scfg).view("scfg")
+    # is this function used??
+    ByteFlowRenderer().render_scfg(scfg).view("scfg")  # type: ignore

@@ -1,10 +1,19 @@
 import dis
 import yaml
 from textwrap import dedent
-from typing import Set, Tuple, Dict, List, Iterator, Optional
+from typing import (
+    Set,
+    Tuple,
+    Dict,
+    List,
+    Iterator,
+    Optional,
+    Generator,
+    Mapping,
+    Sized,
+)
 from dataclasses import dataclass, field
 from collections import deque
-from collections.abc import Mapping
 
 from numba_rvsdg.core.datastructures.basic_block import (
     BasicBlock,
@@ -128,7 +137,7 @@ class NameGenerator:
 
 
 @dataclass(frozen=True)
-class SCFG:
+class SCFG(Sized):
     """SCFG (Structured Control Flow Graph) class.
 
     The SCFG class represents a map of names to blocks within the control
@@ -154,7 +163,7 @@ class SCFG:
     # This is the top-level region that this SCFG represents.
     region: RegionBlock = field(init=False, compare=False)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         name = self.name_gen.new_region_name("meta")
         new_region = RegionBlock(
             name=name,
@@ -166,7 +175,7 @@ class SCFG:
         )
         object.__setattr__(self, "region", new_region)
 
-    def __getitem__(self, index):
+    def __getitem__(self, index: str) -> BasicBlock:
         """Access a block from the graph dictionary using the block name.
 
         Parameters
@@ -181,7 +190,7 @@ class SCFG:
         """
         return self.graph[index]
 
-    def __contains__(self, index):
+    def __contains__(self, index: str) -> bool:
         """Checks if the given index exists in the graph dictionary.
 
         Parameters
@@ -197,7 +206,15 @@ class SCFG:
         """
         return index in self.graph
 
-    def __iter__(self):
+    def __len__(self) -> int:
+        """
+        Returns
+        -------
+        Number of nodes in the graph
+        """
+        return len(self.graph)
+
+    def __iter__(self) -> Generator[Tuple[str, BasicBlock], None, None]:
         """Returns an iterator over the blocks in the SCFG.
 
         Returns an iterator that yields the names and corresponding blocks
@@ -233,12 +250,13 @@ class SCFG:
             # If this is a region, recursively yield everything from that
             # specific region.
             if type(block) == RegionBlock:
+                assert block.subregion is not None
                 yield from block.subregion
             # finally add any jump_targets to the list of names to visit
             to_visit.extend(block.jump_targets)
 
     @property
-    def concealed_region_view(self):
+    def concealed_region_view(self) -> "ConcealedRegionView":
         """A property that returns a ConcealedRegionView object, representing
         a concealed view of the control flow graph.
 
@@ -308,18 +326,18 @@ class SCFG:
         from numba_rvsdg.networkx_vendored.scc import scc
 
         class GraphWrap:
-            def __init__(self, graph):
+            def __init__(self, graph: Mapping[str, BasicBlock]) -> None:
                 self.graph = graph
 
-            def __getitem__(self, vertex):
+            def __getitem__(self, vertex: str) -> List[str]:
                 out = self.graph[vertex].jump_targets
                 # Exclude node outside of the subgraph
                 return [k for k in out if k in self.graph]
 
-            def __iter__(self):
+            def __iter__(self) -> Iterator[str]:
                 return iter(self.graph.keys())
 
-        return list(scc(GraphWrap(self.graph)))
+        return list(scc(GraphWrap(self.graph)))  # type: ignore
 
     def find_headers_and_entries(
         self, subgraph: Set[str]
@@ -363,6 +381,8 @@ class SCFG:
             # to it's parent region block's graph.
             if self.region.kind != "meta":
                 parent_region = self.region.parent_region
+                assert parent_region is not None
+                assert parent_region.subregion is not None
                 _, entries = parent_region.subregion.find_headers_and_entries(
                     {self.region.name}
                 )
@@ -403,7 +423,7 @@ class SCFG:
                 exiting.add(inside)
         return sorted(exiting), sorted(exits)
 
-    def is_reachable_dfs(self, begin: str, end: str):  # -> TypeGuard:
+    def is_reachable_dfs(self, begin: str, end: str) -> bool:  # -> TypeGuard:
         """Checks if the end block is reachable from the begin block in the
         SCFG.
 
@@ -442,7 +462,7 @@ class SCFG:
                 if block in self.graph:
                     to_vist.extend(self.graph[block].jump_targets)
 
-    def add_block(self, basic_block: BasicBlock):
+    def add_block(self, basic_block: BasicBlock) -> None:
         """Adds a BasicBlock object to the control flow graph.
 
         Parameters
@@ -452,7 +472,7 @@ class SCFG:
         """
         self.graph[basic_block.name] = basic_block
 
-    def remove_blocks(self, names: Set[str]):
+    def remove_blocks(self, names: Set[str]) -> None:
         """Removes a BasicBlock object from the control flow graph.
 
         Parameters
@@ -469,7 +489,7 @@ class SCFG:
         predecessors: List[str],
         successors: List[str],
         block_type: type[SyntheticBlock],
-    ):
+    ) -> None:
         """Inserts a new synthetic block into the SCFG
         between the given successors and predecessors.
 
@@ -522,7 +542,7 @@ class SCFG:
         new_name: str,
         predecessors: List[str],
         successors: List[str],
-    ):
+    ) -> None:
         """Inserts a synthetic exit block into the SCFG.
         Parameters same as insert_block method.
 
@@ -537,7 +557,7 @@ class SCFG:
         new_name: str,
         predecessors: List[str],
         successors: List[str],
-    ):
+    ) -> None:
         """Inserts a synthetic tail block into the SCFG.
         Parameters same as insert_block method.
 
@@ -552,7 +572,7 @@ class SCFG:
         new_name: str,
         predecessors: List[str],
         successors: List[str],
-    ):
+    ) -> None:
         """Inserts a synthetic return block into the SCFG.
         Parameters same as insert_block method.
 
@@ -567,7 +587,7 @@ class SCFG:
         new_name: str,
         predecessors: List[str],
         successors: List[str],
-    ):
+    ) -> None:
         """Inserts a synthetic fill block into the SCFG.
         Parameters same as insert_block method.
 
@@ -579,7 +599,7 @@ class SCFG:
 
     def insert_block_and_control_blocks(
         self, new_name: str, predecessors: List[str], successors: List[str]
-    ):
+    ) -> None:
         """Inserts a new block along with control blocks into the SCFG.
         This method is used for branching assignments.
         Parameters same as insert_block method.
@@ -640,7 +660,7 @@ class SCFG:
         # add block to self
         self.add_block(new_block)
 
-    def join_returns(self):
+    def join_returns(self) -> None:
         """Close the CFG.
 
         A closed CFG is a CFG with a unique entry and exit node that have no
@@ -655,11 +675,11 @@ class SCFG:
             return_solo_name = self.name_gen.new_block_name(
                 block_names.SYNTH_RETURN
             )
-            self.insert_SyntheticReturn(
-                return_solo_name, return_nodes, tuple()
-            )
+            self.insert_SyntheticReturn(return_solo_name, return_nodes, [])
 
-    def join_tails_and_exits(self, tails: List[str], exits: List[str]):
+    def join_tails_and_exits(
+        self, tails: List[str], exits: List[str]
+    ) -> Tuple[str, str]:
         """Joins the tails and exits of the SCFG.
 
         Parameters
@@ -712,8 +732,10 @@ class SCFG:
             self.insert_SyntheticExit(solo_exit_name, [solo_tail_name], exits)
             return solo_tail_name, solo_exit_name
 
+        assert False, "unreachable"
+
     @staticmethod
-    def bcmap_from_bytecode(bc: dis.Bytecode):
+    def bcmap_from_bytecode(bc: dis.Bytecode) -> Dict[int, dis.Instruction]:
         """Static method that creates a bytecode map from a `dis.Bytecode`
         object.
 
@@ -731,7 +753,7 @@ class SCFG:
         return {inst.offset: inst for inst in bc}
 
     @staticmethod
-    def from_yaml(yaml_string):
+    def from_yaml(yaml_string: str) -> "Tuple[SCFG, Dict[str, str]]":
         """Static method that creates an SCFG object from a YAML
         representation.
 
@@ -758,7 +780,9 @@ class SCFG:
         return scfg, block_dict
 
     @staticmethod
-    def from_dict(graph_dict: dict):
+    def from_dict(
+        graph_dict: Dict[str, Dict[str, List[str]]]
+    ) -> "Tuple[SCFG, Dict[str, str]]":
         """Static method that creates an SCFG object from a dictionary
         representation.
 
@@ -799,7 +823,7 @@ class SCFG:
         scfg = SCFG(scfg_graph, name_gen=name_gen)
         return scfg, block_dict
 
-    def to_yaml(self):
+    def to_yaml(self) -> str:
         """Converts the SCFG object to a YAML string representation.
 
         The method returns a YAML string representing the control
@@ -818,21 +842,21 @@ class SCFG:
 
         for key, value in scfg_graph.items():
             jump_targets = [i for i in value._jump_targets]
-            jump_targets = str(jump_targets).replace("'", '"')
+            jump_targets = str(jump_targets).replace("'", '"')  # type: ignore
             back_edges = [i for i in value.backedges]
             jump_target_str = f"""
                 "{key}":
                     jt: {jump_targets}"""
 
             if back_edges:
-                back_edges = str(back_edges).replace("'", '"')
+                back_edges = str(back_edges).replace("'", '"')  # type: ignore
                 jump_target_str += f"""
                     be: {back_edges}"""
             yaml_string += dedent(jump_target_str)
 
         return yaml_string
 
-    def to_dict(self):
+    def to_dict(self) -> Dict[str, Dict[str, List[str]]]:
         """Converts the SCFG object to a dictionary representation.
 
         This method returns a dictionary representing the control flow
@@ -855,7 +879,7 @@ class SCFG:
             graph_dict[key] = curr_dict
         return graph_dict
 
-    def view(self, name: Optional[str] = None):
+    def view(self, name: Optional[str] = None) -> None:
         """View the current SCFG as a external PDF file.
 
         This method internally creates a SCFGRenderer corresponding to
@@ -872,13 +896,15 @@ class SCFG:
         SCFGRenderer(self).view(name)
 
 
-class AbstractGraphView(Mapping):
+class AbstractGraphView(
+    Mapping[str, BasicBlock]
+):  # todo: improve this annotation
     """Abstract Graph View class.
 
     The AbstractGraphView class serves as a template for graph views.
     """
 
-    def __getitem__(self, item):
+    def __getitem__(self, item: str) -> BasicBlock:
         """Retrieves the value associated with the given key or name
         in the respective graph view.
 
@@ -894,7 +920,7 @@ class AbstractGraphView(Mapping):
         """
         raise NotImplementedError
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[str]:
         """Returns an iterator over the name of blocks in the graph view.
 
         Returns
@@ -904,7 +930,7 @@ class AbstractGraphView(Mapping):
         """
         raise NotImplementedError
 
-    def __len__(self):
+    def __len__(self) -> int:
         """Returns the number of elements in the given region view.
 
         Return
@@ -936,7 +962,7 @@ class ConcealedRegionView(AbstractGraphView):
 
     scfg: SCFG
 
-    def __init__(self, scfg):
+    def __init__(self, scfg: SCFG) -> None:
         """Initializes the ConcealedRegionView with the given SCFG.
 
         Parameters
@@ -946,7 +972,7 @@ class ConcealedRegionView(AbstractGraphView):
         """
         self.scfg = scfg
 
-    def __getitem__(self, item):
+    def __getitem__(self, item: str) -> BasicBlock:
         """Retrieves the value associated with the given key or name
         in the respective graph view.
 
@@ -962,7 +988,7 @@ class ConcealedRegionView(AbstractGraphView):
         """
         return self.scfg[item]
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[str]:
         """Returns an iterator over the name of blocks in the concealed
         graph view.
 
@@ -974,7 +1000,7 @@ class ConcealedRegionView(AbstractGraphView):
         return self.region_view_iterator()
 
     def region_view_iterator(
-            self, head: Optional[str] = None
+        self, head: Optional[str] = None
     ) -> Iterator[str]:
         """Region View Iterator.
 
@@ -1021,6 +1047,7 @@ class ConcealedRegionView(AbstractGraphView):
                 # If this is a region, continue on to the exiting block, i.e.
                 # the region is presented a single fall-through block to the
                 # consumer of this iterator.
+                assert block.subregion is not None
                 to_visit.extend(block.subregion[block.exiting].jump_targets)
             else:
                 # otherwise add any jump_targets to the list of names to visit
@@ -1029,7 +1056,7 @@ class ConcealedRegionView(AbstractGraphView):
             # finally, yield the name
             yield name
 
-    def __len__(self):
+    def __len__(self) -> int:
         """Returns the number of elements in the concealed region view.
 
         Return

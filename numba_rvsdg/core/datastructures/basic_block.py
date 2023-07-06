@@ -1,5 +1,5 @@
 import dis
-from typing import Tuple, Dict, List
+from typing import Tuple, Dict, List, Optional
 from dataclasses import dataclass, replace, field
 
 from numba_rvsdg.core.utils import _next_inst_offset
@@ -93,7 +93,9 @@ class BasicBlock:
             return replace(self, backedges=(target,))
         return self
 
-    def replace_jump_targets(self, jump_targets: Tuple) -> "BasicBlock":
+    def replace_jump_targets(
+        self, jump_targets: Tuple[str, ...]
+    ) -> "BasicBlock":
         """Replaces jump targets of this block by the given tuple.
 
         This method replaces the jump targets of the current BasicBlock.
@@ -117,7 +119,7 @@ class BasicBlock:
         """
         return replace(self, _jump_targets=jump_targets)
 
-    def replace_backedges(self, backedges: Tuple) -> "BasicBlock":
+    def replace_backedges(self, backedges: Tuple[str, ...]) -> "BasicBlock":
         """Replaces back edges of this block by the given tuple.
 
         This method replaces the back edges of the current BasicBlock.
@@ -152,9 +154,9 @@ class PythonBytecodeBlock(BasicBlock):
         The bytecode offset immediately after the last bytecode of the block.
     """
 
-    begin: int = 0
+    begin: int = -1
 
-    end: int = 0
+    end: int = -1
 
     def get_instructions(
         self, bcmap: Dict[int, dis.Instruction]
@@ -265,10 +267,12 @@ class SyntheticBranch(SyntheticBlock):
         to be executed on the basis of that value.
     """
 
-    variable: str = ''
+    variable: str = ""
     branch_value_table: Dict[int, str] = field(default_factory=lambda: {})
 
-    def replace_jump_targets(self, jump_targets: Tuple) -> "BasicBlock":
+    def replace_jump_targets(
+        self, jump_targets: Tuple[str, ...]
+    ) -> "BasicBlock":
         """Replaces jump targets of this block by the given tuple.
 
         This method replaces the jump targets of  the current BasicBlock.
@@ -359,13 +363,13 @@ class RegionBlock(BasicBlock):
         The exiting node of the region.
     """
 
-    kind: str = ""
-    parent_region: "RegionBlock" = None  # type: ignore
-    header: str = ""
-    subregion: "SCFG" = None  # type: ignore  # noqa
-    exiting: str = ""
+    kind: Optional[str] = None
+    parent_region: Optional["RegionBlock"] = None
+    header: Optional[str] = None
+    subregion: Optional["SCFG"] = None  # type: ignore  # noqa
+    exiting: Optional[str] = None
 
-    def replace_header(self, new_header):
+    def replace_header(self, new_header: str) -> None:
         """This method performs a inplace replacement of the header block.
 
         Parameters
@@ -375,7 +379,7 @@ class RegionBlock(BasicBlock):
         """
         object.__setattr__(self, "header", new_header)
 
-    def replace_exiting(self, new_exiting):
+    def replace_exiting(self, new_exiting: str) -> None:
         """This method performs a inplace replacement of the header block.
 
         Parameters

@@ -5,6 +5,8 @@ LICENSE: https://github.com/networkx/networkx/blob/main/LICENSE.txt
 
 """
 
+# mypy: ignore-errors
+
 
 def scc(G):
     preorder = {}

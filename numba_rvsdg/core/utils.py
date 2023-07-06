@@ -4,10 +4,10 @@ _logger = logging.getLogger(__name__)
 
 
 class _LogWrap:
-    def __init__(self, fn):
+    def __init__(self, fn):  # type: ignore
         self._fn = fn
 
-    def __str__(self):
+    def __str__(self):  # type: ignore
         return self._fn()
 
 
