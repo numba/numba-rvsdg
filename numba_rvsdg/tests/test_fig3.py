@@ -1,3 +1,5 @@
+# mypy: ignore-errors
+
 # Figure 3 of the paper
 from numba_rvsdg.core.datastructures.byte_flow import ByteFlow
 from numba_rvsdg.core.datastructures.flow_info import FlowInfo

@@ -1,3 +1,5 @@
+# mypy: ignore-errors
+
 from dis import Bytecode, Instruction, Positions
 
 import unittest

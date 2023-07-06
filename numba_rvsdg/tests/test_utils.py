@@ -1,3 +1,5 @@
+# mypy: ignore-errors
+
 from unittest import TestCase
 import yaml
 

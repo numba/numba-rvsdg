@@ -1,3 +1,5 @@
+# mypy: ignore-errors
+
 """
 Defines a mock assembly with a minimal operation semantic for testing
 control flow transformation.
