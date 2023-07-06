@@ -2,7 +2,12 @@ from unittest import TestCase
 import yaml
 
 from numba_rvsdg.core.datastructures.scfg import SCFG
-from numba_rvsdg.core.datastructures.basic_block import BasicBlock, RegionBlock
+from numba_rvsdg.core.datastructures.basic_block import (
+    BasicBlock,
+    RegionBlock,
+    SyntheticBranch,
+    SyntheticAssignment,
+)
 
 
 class SCFGComparator(TestCase):
@@ -47,6 +52,15 @@ class SCFGComparator(TestCase):
                 self.assertSCFGEqual(
                     node.subregion, second_node.subregion, exiting=node.exiting
                 )
+            elif isinstance(node, SyntheticAssignment):
+                assert (
+                    node.variable_assignment == second_node.variable_assignment
+                )
+            elif isinstance(node, SyntheticBranch):
+                assert (
+                    node.branch_value_table == second_node.branch_value_table
+                )
+                assert node.variable == second_node.variable
 
             # Add the jump targets as corresponding nodes in block mapping
             # dictionary. Since order must be same we can simply add zip
