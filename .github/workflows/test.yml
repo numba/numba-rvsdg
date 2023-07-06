@@ -56,7 +56,7 @@ jobs:
         run: |
           conda install python=3.11 pre-commit pyyaml graphviz
 
-      - name: Run mypy
+      - name: Run pre-commit
         shell: bash -l {0}
         run: |
-          pre-commit run
+          pre-commit run -a
