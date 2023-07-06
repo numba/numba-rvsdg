@@ -41,8 +41,8 @@ class SCFGComparator(TestCase):
             assert len(node.jump_targets) == len(second_node.jump_targets)
             assert len(node.backedges) == len(second_node.backedges)
 
-            # If the given block is a egionBlock, then the underlying SCFGs
-            # for both regions must be equal
+            # If the given block is a RegionBlock, then the underlying SCFGs
+            # for both regions must be equal.
             if isinstance(node, RegionBlock):
                 self.assertSCFGEqual(
                     node.subregion, second_node.subregion, exiting=node.exiting

@@ -938,9 +938,7 @@ class SCFG:
         graph_dict: Dict[Dict[...]]
             A dictionary representing the SCFG.
         """
-        blocks = {}
-        edges = {}
-        backedges = {}
+        blocks, edges, backedges = {}, {}, {}
 
         def reverse_lookup(value):
             for k, v in block_type_names.items():
