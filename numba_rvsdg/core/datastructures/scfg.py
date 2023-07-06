@@ -17,6 +17,7 @@ from numba_rvsdg.core.datastructures.basic_block import (
     SyntheticFill,
     PythonBytecodeBlock,
     RegionBlock,
+    SyntheticBranch,
     block_type_names,
 )
 from numba_rvsdg.core.datastructures.block_names import (
@@ -901,7 +902,7 @@ class SCFG:
             A YAML string representing the SCFG.
         """
         # Convert to yaml
-        yaml_string = ys = ""
+        ys = ""
 
         graph_dict = self.to_dict()
 
@@ -940,7 +941,7 @@ class SCFG:
         """
         blocks, edges, backedges = {}, {}, {}
 
-        def reverse_lookup(value):
+        def reverse_lookup(value: type):
             for k, v in block_type_names.items():
                 if v == value:
                     return k
@@ -950,7 +951,7 @@ class SCFG:
         for key, value in self:
             block_type = reverse_lookup(type(value))
             blocks[key] = {"type": block_type}
-            if block_type == "region":
+            if isinstance(value, RegionBlock):
                 blocks[key]["kind"] = value.kind
                 blocks[key]["contains"] = sorted(
                     [idx.name for idx in value.subregion.graph.values()]
@@ -958,17 +959,12 @@ class SCFG:
                 blocks[key]["header"] = value.header
                 blocks[key]["exiting"] = value.exiting
                 blocks[key]["parent_region"] = value.parent_region.name
-            elif block_type in [
-                SYNTH_BRANCH,
-                SYNTH_HEAD,
-                SYNTH_EXIT_LATCH,
-                SYNTH_EXIT_BRANCH,
-            ]:
+            elif isinstance(value, SyntheticBranch):
                 blocks[key]["branch_value_table"] = value.branch_value_table
                 blocks[key]["variable"] = value.variable
-            elif block_type in [SYNTH_ASSIGN]:
+            elif isinstance(value, SyntheticAssignment):
                 blocks[key]["variable_assignment"] = value.variable_assignment
-            elif block_type in [PYTHON_BYTECODE]:
+            elif isinstance(value, PythonBytecodeBlock):
                 blocks[key]["begin"] = value.begin
                 blocks[key]["end"] = value.end
             edges[key] = sorted([i for i in value._jump_targets])
