@@ -136,7 +136,6 @@ class FlowInfo:
                 begin=begin,
                 end=end,
                 _jump_targets=targets,
-                backedges=(),
             )
             scfg.add_block(block)
         return scfg

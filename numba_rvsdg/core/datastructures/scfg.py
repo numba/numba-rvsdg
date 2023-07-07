@@ -510,15 +510,13 @@ class SCFG:
         """
         # TODO: needs a diagram and documentaion
         # initialize new block
-        new_block = block_type(
-            name=new_name, _jump_targets=successors, backedges=set()
-        )
+        new_block = block_type(name=new_name, _jump_targets=successors)
         # add block to self
         self.add_block(new_block)
         # Replace any arcs from any of predecessors to any of successors with
         # an arc through the inserted block instead.
         for name in predecessors:
-            block = self.graph.pop(name)
+            block = self.graph[name]
             jt = list(block.jump_targets)
             if successors:
                 for s in successors:
@@ -529,7 +527,7 @@ class SCFG:
                             jt.pop(jt.index(s))
             else:
                 jt.append(new_name)
-            self.add_block(block.replace_jump_targets(jump_targets=tuple(jt)))
+            block.change_jump_targets(jump_targets=tuple(jt))
 
     def insert_SyntheticExit(
         self,
@@ -624,7 +622,6 @@ class SCFG:
                 synth_assign_block = SyntheticAssignment(
                     name=synth_assign,
                     _jump_targets=(new_name,),
-                    backedges=(),
                     variable_assignment=variable_assignment,
                 )
                 # add block
@@ -636,16 +633,11 @@ class SCFG:
                 # replace previous successor with synth_assign
                 jt[jt.index(s)] = synth_assign
             # finally, replace the jump_targets
-            self.add_block(
-                self.graph.pop(name).replace_jump_targets(
-                    jump_targets=tuple(jt)
-                )
-            )
+            self.graph[name].change_jump_targets(jump_targets=tuple(jt))
         # initialize new block, which will hold the branching table
         new_block = SyntheticHead(
             name=new_name,
             _jump_targets=tuple(successors),
-            backedges=set(),
             variable=branch_variable,
             branch_value_table=branch_value_table,
         )
@@ -838,7 +830,6 @@ class SCFG:
                     block = RegionBlock(
                         name=current_name,
                         _jump_targets=block_edges,
-                        backedges=block_backedges,
                         kind=block_info["kind"],
                         header=block_info["header"],
                         exiting=block_info["exiting"],
@@ -852,7 +843,6 @@ class SCFG:
                 ]:
                     block = block_class(
                         name=current_name,
-                        backedges=block_backedges,
                         _jump_targets=block_edges,
                         branch_value_table=block_info["branch_value_table"],
                         variable=block_info["variable"],
@@ -861,23 +851,22 @@ class SCFG:
                     block = SyntheticAssignment(
                         name=current_name,
                         _jump_targets=block_edges,
-                        backedges=block_backedges,
                         variable_assignment=block_info["variable_assignment"],
                     )
                 elif block_type in [PYTHON_BYTECODE]:
                     block = PythonBytecodeBlock(
                         name=current_name,
                         _jump_targets=block_edges,
-                        backedges=block_backedges,
                         begin=block_info["begin"],
                         end=block_info["end"],
                     )
                 else:
                     block = block_class(
                         name=current_name,
-                        backedges=block_backedges,
                         _jump_targets=block_edges,
                     )
+                for backedge in block_backedges:
+                    block.declare_backedge(backedge)
                 scfg_graph[current_name] = block
                 if current_name != exiting:
                     queue.update(edges[current_name])
@@ -968,7 +957,13 @@ class SCFG:
                 blocks[key]["begin"] = value.begin
                 blocks[key]["end"] = value.end
             edges[key] = sorted([i for i in value._jump_targets])
-            backedges[key] = sorted([i for i in value.backedges])
+            backedges[key] = sorted(
+                [
+                    i
+                    for idx, i in enumerate(value._jump_targets)
+                    if value.backedges[idx]
+                ]
+            )
 
         graph_dict = {"blocks": blocks, "edges": edges, "backedges": backedges}
 
