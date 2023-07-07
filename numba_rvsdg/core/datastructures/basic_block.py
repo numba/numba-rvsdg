@@ -1,6 +1,6 @@
 import dis
 from typing import Tuple, Dict, List
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, replace, field
 
 from numba_rvsdg.core.utils import _next_inst_offset
 from numba_rvsdg.core.datastructures import block_names
@@ -20,15 +20,20 @@ class BasicBlock:
     _jump_targets: Tuple[str]
         Jump targets (branch destinations) for this block.
 
-    backedges: Tuple[str]
-        Backedges for this block.
+    backedges: Tuple[bool]
+        Indicates if the Jump target at the particular index
+        is a backedge or not.
     """
 
     name: str
 
     _jump_targets: Tuple[str] = tuple()
 
-    backedges: Tuple[str] = tuple()
+    backedges: Tuple[bool] = field(init=False)
+
+    def __post_init__(self):
+        backedges = tuple([False] * len(self._jump_targets))
+        object.__setattr__(self, "backedges", backedges)
 
     @property
     def is_exiting(self) -> bool:
@@ -70,32 +75,27 @@ class BasicBlock:
 
         """
         acc = []
-        for j in self._jump_targets:
-            if j not in self.backedges:
+        for idx, j in enumerate(self._jump_targets):
+            if not self.backedges[idx]:
                 acc.append(j)
         return tuple(acc)
 
-    def declare_backedge(self, target: str) -> "BasicBlock":
+    def declare_backedge(self, target: str):
         """Declare one of the jump targets as a backedge of this block.
 
         Parameters
         ----------
         target: str
             The jump target that is to be declared as a backedge.
-
-        Returns
-        -------
-        basic_block: BasicBlock
-            The resulting block.
-
         """
-        if target in self.jump_targets:
-            assert not self.backedges
-            return replace(self, backedges=(target,))
-        return self
+        assert target in self._jump_targets
+        idx = self._jump_targets.index(target)
+        current_backedges = list(self.backedges)
+        current_backedges[idx] = True
+        object.__setattr__(self, "backedges", tuple(current_backedges))
 
-    def replace_jump_targets(self, jump_targets: Tuple) -> "BasicBlock":
-        """Replaces jump targets of this block by the given tuple.
+    def change_jump_targets(self, jump_targets: Tuple):
+        """Changes jump targets of this block by the given tuple.
 
         This method replaces the jump targets of the current BasicBlock.
         The provided jump targets must be in the same order as their
@@ -109,34 +109,18 @@ class BasicBlock:
         ----------
         jump_targets: Tuple
             The new jump target tuple. Must be ordered.
-
-        Returns
-        -------
-        basic_block: BasicBlock
-            The resulting BasicBlock.
-
         """
-        return replace(self, _jump_targets=jump_targets)
+        is_backedge = {}
+        new_backedges = []
 
-    def replace_backedges(self, backedges: Tuple) -> "BasicBlock":
-        """Replaces back edges of this block by the given tuple.
+        for idx, i in enumerate(self.backedges):
+            is_backedge[self._jump_targets[idx]] = i
 
-        This method replaces the back edges of the current BasicBlock.
-        The provided back edges must be in the same order as their
-        intended original replacements.
+        for i in jump_targets:
+            new_backedges.append(is_backedge.get(i, False))
 
-        Parameters
-        ----------
-        backedges: Tuple
-            The new back edges tuple. Must be ordered.
-
-        Returns
-        -------
-        basic_block: BasicBlock
-            The resulting BasicBlock.
-
-        """
-        return replace(self, backedges=backedges)
+        object.__setattr__(self, "_jump_targets", jump_targets)
+        object.__setattr__(self, "backedges", new_backedges)
 
 
 @dataclass(frozen=True)
@@ -234,8 +218,8 @@ class SyntheticFill(SyntheticBlock):
 
 @dataclass(frozen=True)
 class SyntheticAssignment(SyntheticBlock):
-    """The SyntheticAssignment class represents a artificially added assignment block
-    in a structured control flow graph (SCFG).
+    """The SyntheticAssignment class represents a artificially added
+    assignment block in a structured control flow graph (SCFG).
 
     This block is responsible for giving variables their values,
     once the respective block is executed.
@@ -385,6 +369,17 @@ class RegionBlock(BasicBlock):
             The new exiting block of the region represented by the RegionBlock.
         """
         object.__setattr__(self, "exiting", new_exiting)
+
+    def replace_parent(self, new_parent):
+        """This method performs a inplace replacement of the parent region
+        block.
+
+        Parameters
+        ----------
+        new_exiting: str
+            The new exiting block of the region represented by the RegionBlock.
+        """
+        object.__setattr__(self, "parent", new_parent)
 
 
 block_type_names = {
