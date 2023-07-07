@@ -1,6 +1,5 @@
 from collections import ChainMap
 from dis import Instruction
-from numba_rvsdg.core.datastructures.byte_flow import ByteFlow
 from numba_rvsdg.core.datastructures.basic_block import (
     PythonBytecodeBlock,
     RegionBlock,
@@ -23,8 +22,8 @@ class Simulator:
 
     Parameters
     ----------
-    flow: ByteFlow
-        The ByteFlow to be simulated.
+    scfg: SCFG
+        The SCFG to be simulated.
     globals: dict of any
         The globals to become available during simulation
 
@@ -49,12 +48,10 @@ class Simulator:
 
     """
 
-    def __init__(self, flow: ByteFlow, globals: dict):
-        self.flow = flow
-        self.scfg = flow.scfg
+    def __init__(self, scfg, globals: dict):
+        self.scfg = scfg
         self.globals = ChainMap(globals, builtins.__dict__)
 
-        self.bcmap = {inst.offset: inst for inst in flow.bc}
         self.varmap = dict()
         self.ctrl_varmap = dict()
         self.stack = []
@@ -70,7 +67,7 @@ class Simulator:
         `region_stack`. That is to say, if we have recursed into regions, the
         BasicBlock is  returned from the current region (the top region of the
         region_stack). Otherwise the BasicBlock is returned from the initial
-        ByteFlow supplied to the simulator. The method `run_RegionBlock` is
+        SCFG supplied to the simulator. The method `run_RegionBlock` is
         responsible for maintaining the `region_stack`.
 
         Parameters
@@ -87,9 +84,9 @@ class Simulator:
         # Recursed into regions, return block from region
         if self.region_stack:
             return self.region_stack[-1].subregion[name]
-        # Not recursed into regions, return block from ByteFlow
+        # Not recursed into regions, return block from SCFG
         else:
-            return self.flow.scfg[name]
+            return self.scfg[name]
 
     def run(self, args):
         """Run the given simulator with given args.
