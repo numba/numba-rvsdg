@@ -192,17 +192,14 @@ class TestConcealedRegionView(TestCase):
 
     def test_concealed_region_view_iter(self):
         flow = ByteFlow.from_bytecode(self.foo)
-        restructured = flow._restructure_loop()
+        flow._restructure_loop()
         expected = [
             ("python_bytecode_block_0", PythonBytecodeBlock),
             ("loop_region_0", RegionBlock),
             ("python_bytecode_block_3", PythonBytecodeBlock),
         ]
         received = list(
-            (
-                (k, type(v))
-                for k, v in restructured.scfg.concealed_region_view.items()
-            )
+            ((k, type(v)) for k, v in flow.scfg.concealed_region_view.items())
         )
         self.assertEqual(expected, received)
 

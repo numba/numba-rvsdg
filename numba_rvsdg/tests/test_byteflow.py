@@ -115,7 +115,6 @@ class TestPythonBytecodeBlock(unittest.TestCase):
             begin=0,
             end=8,
             _jump_targets=(),
-            backedges=(),
         )
         self.assertEqual(block.name, "python_bytecode_block_0")
         self.assertEqual(block.begin, 0)
@@ -134,7 +133,6 @@ class TestPythonBytecodeBlock(unittest.TestCase):
             _jump_targets=(
                 name_gen.new_block_name(block_names.PYTHON_BYTECODE),
             ),
-            backedges=(),
         )
         self.assertEqual(block.jump_targets, ("python_bytecode_block_1",))
         self.assertFalse(block.is_exiting)
@@ -146,7 +144,6 @@ class TestPythonBytecodeBlock(unittest.TestCase):
             begin=0,
             end=8,
             _jump_targets=(),
-            backedges=(),
         )
         expected = [
             Instruction(
@@ -243,7 +240,6 @@ class TestFlowInfo(unittest.TestCase):
                     begin=0,
                     end=10,
                     _jump_targets=(),
-                    backedges=(),
                 )
             }
         )
@@ -267,7 +263,6 @@ class TestByteFlow(unittest.TestCase):
                     begin=0,
                     end=10,
                     _jump_targets=(),
-                    backedges=(),
                 )
             }
         )

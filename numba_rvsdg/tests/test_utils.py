@@ -65,17 +65,11 @@ class SCFGComparator(TestCase):
             # Add the jump targets as corresponding nodes in block mapping
             # dictionary. Since order must be same we can simply add zip
             # functionality as the correspondence function for nodes
-            for jt1, jt2 in zip(node.jump_targets, second_node.jump_targets):
+            for jt1, jt2 in zip(node._jump_targets, second_node._jump_targets):
                 if node.name == exiting:
                     continue
                 block_mapping[jt1] = jt2
                 stack.append(jt1)
-
-            for be1, be2 in zip(node.backedges, second_node.backedges):
-                if node.name == exiting:
-                    continue
-                block_mapping[be1] = be2
-                stack.append(be1)
 
     def assertYAMLEqual(
         self, first_yaml: SCFG, second_yaml: SCFG, head_map: dict
