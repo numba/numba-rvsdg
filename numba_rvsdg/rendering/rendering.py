@@ -74,22 +74,19 @@ class BaseRenderer:
             if isinstance(src_block, RegionBlock):
                 continue
             src_block = find_base_header(src_block)
-            for dst_name in src_block.jump_targets:
+            for idx, dst_name in enumerate(src_block._jump_targets):
                 dst_name = find_base_header(blocks[dst_name]).name
                 if dst_name in blocks.keys():
-                    self.g.edge(str(src_block.name), str(dst_name))
-                else:
-                    raise Exception("unreachable " + str(src_block))
-            for dst_name in src_block.backedges:
-                dst_name = find_base_header(blocks[dst_name]).name
-                if dst_name in blocks.keys():
-                    self.g.edge(
-                        str(src_block.name),
-                        str(dst_name),
-                        style="dashed",
-                        color="grey",
-                        constraint="0",
-                    )
+                    if src_block.backedges[idx]:
+                        self.g.edge(
+                            str(src_block.name),
+                            str(dst_name),
+                            style="dashed",
+                            color="grey",
+                            constraint="0",
+                        )
+                    else:
+                        self.g.edge(str(src_block.name), str(dst_name))
                 else:
                     raise Exception("unreachable " + str(src_block))
 
@@ -169,8 +166,7 @@ class ByteFlowRenderer(BaseRenderer):
         digraph.node(str(name), shape="rect", label=body)
 
     def render_byteflow(self, byteflow: ByteFlow):
-        """Renders the provided `ByteFlow` object.
-        """
+        """Renders the provided `ByteFlow` object."""
         self.bcmap_from_bytecode(byteflow.bc)
         # render nodes
         for name, block in byteflow.scfg.graph.items():
