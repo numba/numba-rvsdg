@@ -1,10 +1,11 @@
 import dis
 import yaml
 from textwrap import indent
-from typing import Set, Tuple, Dict, List, Iterator
+from typing import Set, Tuple, Dict, List, Iterator, Sequence
 from dataclasses import dataclass, field
 from collections import deque
 from collections.abc import Mapping
+from numba_rvsdg.core.utils import _logger, _LogWrap
 
 from numba_rvsdg.core.datastructures.basic_block import (
     BasicBlock,
@@ -31,6 +32,13 @@ from numba_rvsdg.core.datastructures.block_names import (
     SYNTH_RETURN,
     SYNTH_EXIT_LATCH,
     SYNTH_EXIT_BRANCH,
+)
+from numba_rvsdg.core.utils import (
+    is_conditional_jump,
+    _next_inst_offset,
+    is_unconditional_jump,
+    is_exiting,
+    _prev_inst_offset,
 )
 
 
@@ -984,6 +992,124 @@ class SCFG:
         from numba_rvsdg.rendering.rendering import SCFGRenderer
 
         SCFGRenderer(self).view(name)
+
+    def restructure_loop(self):
+        """Restructures the loops within the corresponding SCFG using
+        the algorithm LOOP RESTRUCTURING from section 4.1 of Bahmann2015.
+        It applies the restructuring operation to both the main SCFG
+        and any subregions within it.
+        """
+        from numba_rvsdg.core.transformations import restructure_loop
+
+        restructure_loop(self.region)
+        for region in _iter_subregions(self):
+            restructure_loop(region)
+
+    def restructure_branch(self):
+        """Restructures the branches within the corresponding SCFG. It applies
+        the restructuring operation to both the main SCFG and any
+        subregions within it.
+        """
+        from numba_rvsdg.core.transformations import restructure_branch
+
+        restructure_branch(self.region)
+        for region in _iter_subregions(self):
+            restructure_branch(region)
+
+    def restructure(self):
+        """Applies join_returns, restructure_loop and restructure_branch
+        in the respective order on the SCFG. Applies a series of
+        restructuring operations to it. The operations include
+        joining return blocks, restructuring loop constructs, and
+        restructuring branch constructs.
+        """
+        # close
+        self.join_returns()
+        # handle loop
+        self.restructure_loop()
+        # handle branch
+        self.restructure_branch()
+
+    @staticmethod
+    def from_bytecode(function):
+        bc = dis.Bytecode(function)
+        return SCFG._from_bytecode(bc)
+
+    @staticmethod
+    def _from_bytecode(code: list, end_offset=None):
+        _logger.debug("Bytecode\n%s", _LogWrap(lambda: code.dis()))
+        block_offsets: Set[int] = set()
+        jump_insts: Dict[int, Tuple[int, ...]] = {}
+        last_offset: int = 0
+
+        def _add_jump_inst(offset: int, targets: Sequence[int]):
+            """Internal method to add a jump instruction.
+
+            This method adds the target offsets of the jump instruction
+            to the block_offsets set and updates the jump_insts dictionary.
+
+            Parameters
+            ----------
+            offset: int
+                The given target offset.
+            targets: Sequence[int]
+                target jump instrcutions.
+            """
+            for off in targets:
+                assert isinstance(off, int)
+                block_offsets.add(off)
+            jump_insts[offset] = tuple(targets)
+
+        for inst in code:
+            # Handle jump-target instruction
+            if inst.offset == 0 or inst.is_jump_target:
+                block_offsets.add(inst.offset)
+            # Handle by op
+            if is_conditional_jump(inst.opname):
+                _add_jump_inst(
+                    inst.offset, (_next_inst_offset(inst.offset), inst.argval)
+                )
+            elif is_unconditional_jump(inst.opname):
+                _add_jump_inst(inst.offset, (inst.argval,))
+            elif is_exiting(inst.opname):
+                _add_jump_inst(inst.offset, ())
+
+        last_offset = inst.offset
+
+        scfg = SCFG()
+        offsets = sorted(block_offsets)
+        # enumerate names
+        names = {
+            offset: scfg.name_gen.new_block_name(PYTHON_BYTECODE)
+            for offset in offsets
+        }
+        if end_offset is None:
+            end_offset = _next_inst_offset(last_offset)
+
+        for begin, end in zip(offsets, [*offsets[1:], end_offset]):
+            name = names[begin]
+            targets: Tuple[str, ...]
+            term_offset = _prev_inst_offset(end)
+            if term_offset not in jump_insts:
+                # implicit jump
+                targets = (names[end],)
+            else:
+                targets = tuple(names[o] for o in jump_insts[term_offset])
+            block = PythonBytecodeBlock(
+                name=name,
+                begin=begin,
+                end=end,
+                _jump_targets=targets,
+            )
+            scfg.add_block(block)
+        return scfg
+
+
+def _iter_subregions(scfg: "SCFG"):
+    for node in scfg.graph.values():
+        if isinstance(node, RegionBlock):
+            yield node
+            yield from _iter_subregions(node.subregion)
 
 
 class AbstractGraphView(Mapping):

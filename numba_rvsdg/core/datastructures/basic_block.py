@@ -141,6 +141,8 @@ class PythonBytecodeBlock(BasicBlock):
 
     end: int = None
 
+    bcmap: dis.Bytecode = None
+
     def get_instructions(
         self, bcmap: Dict[int, dis.Instruction]
     ) -> List[dis.Instruction]:
