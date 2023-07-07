@@ -1,5 +1,3 @@
-from numba_rvsdg.core.datastructures.byte_flow import ByteFlow
-from numba_rvsdg.core.datastructures.flow_info import FlowInfo
 from numba_rvsdg.core.datastructures.scfg import SCFG
 from numba_rvsdg.tests.test_utils import SCFGComparator
 import dis
@@ -412,7 +410,7 @@ class TestBahmannFigures(SCFGComparator):
     def test_figure_3(self):
         # Figure 3 of the paper
 
-        # fake bytecode just good enough for FlowInfo
+        # fake bytecode just good enough for SCFG
         bc = [
             dis.Instruction("OP", 1, None, None, "", 0, None, False),
             dis.Instruction(
@@ -437,18 +435,16 @@ class TestBahmannFigures(SCFGComparator):
                 "RETURN_VALUE", 1, None, None, "", 20, None, False
             ),
         ]
-        flow = FlowInfo.from_bytecode(bc)
-        scfg = flow.build_basicblocks()
-        byteflow = ByteFlow(bc=bc, scfg=scfg)
-        byteflow.restructure()
+        scfg = SCFG.from_bytecode(bc)
+        scfg.restructure()
 
         x, _ = SCFG.from_yaml(fig_3_yaml)
-        self.assertSCFGEqual(x, byteflow.scfg)
+        self.assertSCFGEqual(x, scfg)
 
     def test_figure_4(self):
         # Figure 4 of the paper
 
-        # fake bytecode just good enough for FlowInfo
+        # fake bytecode just good enough for SCFG
         bc = [
             dis.Instruction("OP", 1, None, None, "", 0, None, False),
             dis.Instruction(
@@ -470,14 +466,8 @@ class TestBahmannFigures(SCFGComparator):
                 "RETURN_VALUE", 1, None, None, "", 18, None, False
             ),
         ]
-        flow = FlowInfo.from_bytecode(bc)
-        scfg = flow.build_basicblocks()
-        byteflow = ByteFlow(bc=bc, scfg=scfg)
-        byteflow.restructure()
+        scfg = SCFG.from_bytecode(bc)
+        scfg.restructure()
 
         x, _ = SCFG.from_yaml(fig_4_yaml)
-        self.assertSCFGEqual(x, byteflow.scfg)
-
-
-x = TestBahmannFigures()
-x.test_figure_3()
+        self.assertSCFGEqual(x, scfg)

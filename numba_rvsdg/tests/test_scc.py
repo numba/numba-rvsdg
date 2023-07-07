@@ -1,5 +1,5 @@
-from numba_rvsdg.core.datastructures.byte_flow import ByteFlow
-from numba_rvsdg.rendering.rendering import render_flow
+from numba_rvsdg.core.datastructures.scfg import SCFG
+from numba_rvsdg.rendering.rendering import render_scfg
 
 
 def scc(G):
@@ -46,14 +46,14 @@ def scc(G):
     return out
 
 
-def make_flow(func):
-    return ByteFlow.from_bytecode(func)
+def make_scfg(func):
+    return SCFG.from_bytecode(func)
 
 
 def test_scc():
-    f = make_flow(scc)
-    f.restructure()
+    scfg = make_scfg(scc)
+    scfg.restructure()
 
 
 if __name__ == "__main__":
-    render_flow(make_flow(scc))
+    render_scfg(make_scfg(scc))
