@@ -423,7 +423,7 @@ class SCFG(Sized):
                 exiting.add(inside)
         return sorted(exiting), sorted(exits)
 
-    def is_reachable_dfs(self, begin: str, end: str) -> bool:  # -> TypeGuard:
+    def is_reachable_dfs(self, begin: str, end: str) -> bool:
         """Checks if the end block is reachable from the begin block in the
         SCFG.
 

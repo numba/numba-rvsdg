@@ -5,6 +5,7 @@ LICENSE: https://github.com/networkx/networkx/blob/main/LICENSE.txt
 
 """
 
+# Ignore all mypy errors since this file has been vendored.
 # mypy: ignore-errors
 
 

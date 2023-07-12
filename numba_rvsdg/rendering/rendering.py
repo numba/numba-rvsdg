@@ -6,6 +6,7 @@ from numba_rvsdg.core.datastructures.basic_block import (
     PythonBytecodeBlock,
     SyntheticAssignment,
     SyntheticBranch,
+    SyntheticBlock,
 )
 from numba_rvsdg.core.datastructures.scfg import SCFG
 from numba_rvsdg.core.datastructures.byte_flow import ByteFlow
@@ -26,7 +27,7 @@ class BaseRenderer:
 
     @abstractmethod
     def render_basic_block(
-        self, digraph: "Digraph", name: str, block: PythonBytecodeBlock
+        self, digraph: "Digraph", name: str, block: BasicBlock
     ) -> None:
         """ """
 
@@ -65,6 +66,8 @@ class BaseRenderer:
             The BasicBlock to be rendered.
 
         """
+        if type(block) == BasicBlock:
+            self.render_basic_block(digraph, name, block)
         if type(block) == PythonBytecodeBlock:
             self.render_basic_block(digraph, name, block)
         elif type(block) == SyntheticAssignment:
@@ -73,6 +76,8 @@ class BaseRenderer:
             self.render_branching_block(digraph, name, block)
         elif type(block) == RegionBlock:
             self.render_region_block(digraph, name, block)
+        elif isinstance(block, SyntheticBlock):
+            self.render_basic_block(digraph, name, block)
         else:
             raise Exception("unreachable")
 
@@ -154,9 +159,11 @@ class ByteFlowRenderer(BaseRenderer):
                 self.render_block(subg, name, block)
 
     def render_basic_block(
-        self, digraph: "Digraph", name: str, block: PythonBytecodeBlock
+        self, digraph: "Digraph", name: str, block: BasicBlock
     ) -> None:
-        if name.startswith("python_bytecode"):
+        if name.startswith("python_bytecode") and isinstance(
+            block, PythonBytecodeBlock
+        ):
             instlist = block.get_instructions(self.bcmap)
             body = name + r"\l"
             body += r"\l".join(
@@ -252,7 +259,7 @@ class SCFGRenderer(BaseRenderer):
                 self.render_block(subg, name, block)
 
     def render_basic_block(
-        self, digraph: "Digraph", name: str, block: PythonBytecodeBlock
+        self, digraph: "Digraph", name: str, block: BasicBlock
     ) -> None:
         body = (
             name

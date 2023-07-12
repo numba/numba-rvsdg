@@ -295,7 +295,6 @@ def find_branch_regions(
             if jt != bra_start and scfg.is_reachable_dfs(jt, bra_start):
                 # placeholder for empty branch region
                 branch_regions.append(None)
-                # branch_regions.append(tuple())
                 break
         else:
             sub_keys: Set[str] = set()
@@ -318,7 +317,7 @@ def find_tail_blocks(
     tail_subregion = {b for b in scfg.graph.keys()}
     tail_subregion.difference_update(head_region_blocks)
     for reg in branch_regions:
-        if not reg:
+        if reg is None:
             # empty branch region
             continue
         b, sub = reg
