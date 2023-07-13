@@ -617,7 +617,7 @@ class SCFG:
             # Need to create synthetic assignments for each arc from a
             # predecessors to a successor and insert it between the predecessor
             # and the newly created block
-            for s in set(jt).intersection(successors):
+            for s in sorted(set(jt).intersection(successors)):
                 synth_assign = self.name_gen.new_block_name(SYNTH_ASSIGN)
                 variable_assignment = {}
                 variable_assignment[branch_variable] = branch_variable_value
