@@ -22,15 +22,10 @@ from numba_rvsdg.core.datastructures.basic_block import (
 )
 from numba_rvsdg.core.datastructures.block_names import (
     block_types,
-    PYTHON_BYTECODE,
-    SYNTH_HEAD,
-    SYNTH_BRANCH,
     SYNTH_TAIL,
     SYNTH_EXIT,
     SYNTH_ASSIGN,
     SYNTH_RETURN,
-    SYNTH_EXIT_LATCH,
-    SYNTH_EXIT_BRANCH,
 )
 
 
@@ -783,110 +778,78 @@ class SCFG:
             Dictionary of block names in YAML string corresponding to their
             representation/unique name IDs in the SCFG.
         """
-        name_gen = NameGenerator()
         block_ref_dict = {}
+        for key, block in graph_dict["blocks"].items():
+            assert block["type"] in block_types
+            block_ref_dict[key] = key
 
+        # Find head of the graph, i.e. node which isn't in anyones contains
+        # and no edges point towards it (backedges are allowed)
+        heads = find_heads(graph_dict)
+        assert len(heads) > 0
+
+        name_gen = NameGenerator()
+        scfg = SCFG.make_scfg(graph_dict, heads, block_ref_dict, name_gen)
+
+        return scfg, block_ref_dict
+
+    @staticmethod
+    def make_scfg(
+        graph_dict,
+        curr_heads: set,
+        block_ref_dict,
+        name_gen,
+        exiting: str = None,
+    ):
         blocks = graph_dict["blocks"]
         edges = graph_dict["edges"]
         backedges = graph_dict["backedges"]
         if backedges is None:
             backedges = {}
 
-        for key, block in blocks.items():
-            assert block["type"] in block_types
-            block_ref_dict[key] = key
-
-        # Find head of the graph, i.e. node which isn't in anyones contains
-        # and no edges point towards it (backedges are allowed)
-        heads = set(blocks.keys())
-        for block_name, block_data in blocks.items():
-            if block_data.get("contains"):
-                heads.difference_update(block_data["contains"])
-            jump_targets = set(edges[block_name])
-            if backedges.get(block_name):
-                jump_targets.difference_update(set(backedges[block_name]))
-            heads.difference_update(jump_targets)
-        assert len(heads) > 0
-
+        scfg_graph = {}
         seen = set()
+        queue = curr_heads
 
-        def make_scfg(curr_heads: set, exiting: str = None):
-            scfg_graph = {}
-            queue = curr_heads
-            while queue:
-                current_name = queue.pop()
-                if current_name in seen:
-                    continue
-                seen.add(current_name)
+        while queue:
+            current_name = queue.pop()
+            if current_name in seen:
+                continue
+            seen.add(current_name)
 
-                block_info = blocks[current_name]
-                block_edges = tuple(
-                    block_ref_dict[idx] for idx in edges[current_name]
+            (
+                block_info,
+                block_type,
+                block_edges,
+                block_backedges,
+            ) = extract_block_info(
+                blocks, current_name, block_ref_dict, edges, backedges
+            )
+
+            if block_type == "region":
+                block_info["subregion"] = SCFG.make_scfg(
+                    graph_dict,
+                    {block_info["header"]},
+                    block_ref_dict,
+                    name_gen,
+                    block_info["exiting"],
                 )
-                if backedges and backedges.get(current_name):
-                    block_backedges = tuple(
-                        block_ref_dict[idx] for idx in backedges[current_name]
-                    )
-                else:
-                    block_backedges = ()
-                block_type = block_info.get("type")
-                block_class = block_type_names[block_type]
-                if block_type == "region":
-                    scfg = make_scfg(
-                        {block_info["header"]}, block_info["exiting"]
-                    )
-                    block = RegionBlock(
-                        name=current_name,
-                        _jump_targets=block_edges,
-                        backedges=block_backedges,
-                        kind=block_info["kind"],
-                        header=block_info["header"],
-                        exiting=block_info["exiting"],
-                        subregion=scfg,
-                    )
-                elif block_type in [
-                    SYNTH_BRANCH,
-                    SYNTH_HEAD,
-                    SYNTH_EXIT_LATCH,
-                    SYNTH_EXIT_BRANCH,
-                ]:
-                    block = block_class(
-                        name=current_name,
-                        backedges=block_backedges,
-                        _jump_targets=block_edges,
-                        branch_value_table=block_info["branch_value_table"],
-                        variable=block_info["variable"],
-                    )
-                elif block_type in [SYNTH_ASSIGN]:
-                    block = SyntheticAssignment(
-                        name=current_name,
-                        _jump_targets=block_edges,
-                        backedges=block_backedges,
-                        variable_assignment=block_info["variable_assignment"],
-                    )
-                elif block_type in [PYTHON_BYTECODE]:
-                    block = PythonBytecodeBlock(
-                        name=current_name,
-                        _jump_targets=block_edges,
-                        backedges=block_backedges,
-                        begin=block_info["begin"],
-                        end=block_info["end"],
-                    )
-                else:
-                    block = block_class(
-                        name=current_name,
-                        backedges=block_backedges,
-                        _jump_targets=block_edges,
-                    )
-                scfg_graph[current_name] = block
-                if current_name != exiting:
-                    queue.update(edges[current_name])
+                block_info.pop("contains")
 
-            scfg = SCFG(scfg_graph, name_gen=name_gen)
-            return scfg
+            block_class = block_type_names[block_type]
+            block = block_class(
+                name=current_name,
+                backedges=block_backedges,
+                _jump_targets=block_edges,
+                **block_info,
+            )
 
-        scfg = make_scfg(heads)
-        return scfg, block_ref_dict
+            scfg_graph[current_name] = block
+            if current_name != exiting:
+                queue.update(edges[current_name])
+
+        scfg = SCFG(scfg_graph, name_gen=name_gen)
+        return scfg
 
     def to_yaml(self):
         """Converts the SCFG object to a YAML string representation.
@@ -989,6 +952,41 @@ class SCFG:
         from numba_rvsdg.rendering.rendering import SCFGRenderer
 
         SCFGRenderer(self).view(name)
+
+
+def find_heads(graph_dict: dict):
+    blocks = graph_dict["blocks"]
+    edges = graph_dict["edges"]
+    backedges = graph_dict["backedges"]
+    if backedges is None:
+        backedges = {}
+
+    heads = set(blocks.keys())
+    for block_name, block_data in blocks.items():
+        if block_data.get("contains"):
+            heads.difference_update(block_data["contains"])
+        jump_targets = set(edges[block_name])
+        if backedges.get(block_name):
+            jump_targets.difference_update(set(backedges[block_name]))
+        heads.difference_update(jump_targets)
+
+    return heads
+
+
+def extract_block_info(blocks, current_name, block_ref_dict, edges, backedges):
+    block_info = blocks[current_name].copy()
+    block_edges = tuple(block_ref_dict[idx] for idx in edges[current_name])
+
+    if backedges.get(current_name):
+        block_backedges = tuple(
+            block_ref_dict[idx] for idx in backedges[current_name]
+        )
+    else:
+        block_backedges = ()
+
+    block_type = block_info.pop("type")
+
+    return block_info, block_type, block_edges, block_backedges
 
 
 class AbstractGraphView(Mapping):
