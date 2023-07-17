@@ -783,13 +783,13 @@ class SCFG:
             assert block["type"] in block_types
             block_ref_dict[key] = key
 
-        # Find head of the graph, i.e. node which isn't in anyones contains
-        # and no edges point towards it (backedges are allowed)
-        heads = find_heads(graph_dict)
-        assert len(heads) > 0
+        outer_graph = find_outer_graph(graph_dict)
+        assert len(outer_graph) > 0
 
         name_gen = NameGenerator()
-        scfg = SCFG.make_scfg(graph_dict, heads, block_ref_dict, name_gen)
+        scfg = SCFG.make_scfg(
+            graph_dict, outer_graph, block_ref_dict, name_gen
+        )
 
         return scfg, block_ref_dict
 
@@ -911,10 +911,22 @@ class SCFG:
             else:
                 raise TypeError("Block type not found.")
 
-        for key, value in self:
+        seen = set()
+        q = set()
+        # Order of elements doesn't matter since they're going to
+        # be sorted at the end.
+        q.update(self.graph.items())
+
+        while q:
+            key, value = q.pop()
+            if key in seen:
+                continue
+            seen.add(key)
+
             block_type = reverse_lookup(type(value))
             blocks[key] = {"type": block_type}
             if isinstance(value, RegionBlock):
+                q.update(value.subregion.graph.items())
                 blocks[key]["kind"] = value.kind
                 blocks[key]["contains"] = sorted(
                     [idx.name for idx in value.subregion.graph.values()]
@@ -954,23 +966,15 @@ class SCFG:
         SCFGRenderer(self).view(name)
 
 
-def find_heads(graph_dict: dict):
+def find_outer_graph(graph_dict: dict):
     blocks = graph_dict["blocks"]
-    edges = graph_dict["edges"]
-    backedges = graph_dict["backedges"]
-    if backedges is None:
-        backedges = {}
 
-    heads = set(blocks.keys())
-    for block_name, block_data in blocks.items():
+    outer_blocks = set(blocks.keys())
+    for _, block_data in blocks.items():
         if block_data.get("contains"):
-            heads.difference_update(block_data["contains"])
-        jump_targets = set(edges[block_name])
-        if backedges.get(block_name):
-            jump_targets.difference_update(set(backedges[block_name]))
-        heads.difference_update(jump_targets)
+            outer_blocks.difference_update(block_data["contains"])
 
-    return heads
+    return outer_blocks
 
 
 def extract_block_info(blocks, current_name, block_ref_dict, edges, backedges):
