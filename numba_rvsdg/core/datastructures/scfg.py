@@ -727,6 +727,22 @@ class SCFG:
         """
         return {inst.offset: inst for inst in bc}
 
+    def view(self, name: str = None):
+        """View the current SCFG as a external PDF file.
+
+        This method internally creates a SCFGRenderer corresponding to
+        the current state of SCFG and calls it's view method to view the
+        graph as a graphviz generated external PDF file.
+
+        Parameters
+        ----------
+        name: str
+            Name to be given to the external graphviz generated PDF file.
+        """
+        from numba_rvsdg.rendering.rendering import SCFGRenderer
+
+        SCFGRenderer(self).view(name)
+
     @staticmethod
     def from_yaml(yaml_string: str):
         """Static method that creates an SCFG object from a YAML
@@ -735,7 +751,122 @@ class SCFG:
         This method takes a YAML string
         representing the control flow graph and returns an SCFG
         object and a dictionary of block names in YAML string
-        corresponding to thier representation/unique name IDs in the SCFG.
+        corresponding to their representation/unique name IDs in the SCFG.
+
+        Internally forwards the `yaml_string` to `SCFGIO.from_yaml()`
+        helper method.
+
+        Parameters
+        ----------
+        yaml: str
+            The input YAML string from which the SCFG is to be constructed.
+
+        Return
+        ------
+        scfg: SCFG
+            The corresponding SCFG created using the YAML representation.
+        block_dict: Dict[str, str]
+            Dictionary of block names in YAML string corresponding to their
+            representation/unique name IDs in the SCFG.
+
+        See also
+        --------
+        numba_rvsdg.core.datastructures.scfg.SCFGIO.from_yaml()
+        """
+        return SCFGIO.from_yaml(yaml_string)
+
+    @staticmethod
+    def from_dict(graph_dict: dict):
+        """Static method that creates an SCFG object from a dictionary
+        representation.
+
+        This method takes a dictionary (graph_dict)
+        representing the control flow graph and returns an SCFG
+        object and a dictionary of block names. The input dictionary
+        should have block indices as keys and dictionaries of block
+        attributes as values.
+
+        Internally forwards the `graph_dict` to `SCFGIO.from_dict()`
+        helper method.
+
+        Parameters
+        ----------
+        graph_dict: dict
+            The input dictionary from which the SCFG is to be constructed.
+
+        Return
+        ------
+        scfg: SCFG
+            The corresponding SCFG created using the dictionary representation.
+        block_dict: Dict[str, str]
+            Dictionary of block names in YAML string corresponding to their
+            representation/unique name IDs in the SCFG.
+
+        See also
+        --------
+        numba_rvsdg.core.datastructures.scfg.SCFGIO.from_dict()
+        """
+        return SCFGIO.from_dict(graph_dict)
+
+    def to_yaml(self):
+        """Converts the SCFG object to a YAML string representation.
+
+        The method returns a YAML string representing the control
+        flow graph. It iterates over the graph dictionary and
+        generates YAML entries for each block, including jump
+        targets and backedges.
+
+        Internally calls the `SCFGIO.to_yaml()` helper method on
+        current `SCFG` object.
+
+        Returns
+        -------
+        yaml: str
+            A YAML string representing the SCFG.
+
+        See also
+        --------
+        numba_rvsdg.core.datastructures.scfg.SCFGIO.to_yaml()
+        """
+        return SCFGIO.to_yaml(self)
+
+    def to_dict(self):
+        """Converts the SCFG object to a dictionary representation.
+
+        This method returns a dictionary representing the control flow
+        graph. It iterates over the graph dictionary and generates a
+        dictionary entry for each block, including jump targets and
+        backedges if present.
+
+        Internally calls the `SCFGIO.to_dict()` helper method on
+        current `SCFG` object.
+
+        Returns
+        -------
+        graph_dict: Dict[Dict[...]]
+            A dictionary representing the SCFG.
+
+        See also
+        --------
+        numba_rvsdg.core.datastructures.scfg.SCFGIO.to_dict()
+        """
+        return SCFGIO.to_dict(self)
+
+
+class SCFGIO:
+    """Helper class for `SCFG` object transformation to and from various
+    other formats. Currently supports YAML and dictionary format.
+    """
+
+    @staticmethod
+    def from_yaml(yaml_string: str):
+        """Static helper method that creates an SCFG object from a YAML
+        representation.
+
+        This method takes a YAML string
+        representing the control flow graph and returns an SCFG
+        object and a dictionary of block names in YAML string
+        corresponding to their representation/unique name IDs in the SCFG.
 
         Parameters
         ----------
@@ -756,7 +887,7 @@ class SCFG:
 
     @staticmethod
     def from_dict(graph_dict: dict):
-        """Static method that creates an SCFG object from a dictionary
+        """Static helper method that creates an SCFG object from a dictionary
         representation.
 
         This method takes a dictionary (graph_dict)
@@ -774,7 +905,7 @@ class SCFG:
         ------
         scfg: SCFG
             The corresponding SCFG created using the dictionary representation.
-        block_dict: Dict[str, str]
+        block_ref_dict: Dict[str, str]
             Dictionary of block names in YAML string corresponding to their
             representation/unique name IDs in the SCFG.
         """
@@ -783,11 +914,11 @@ class SCFG:
             assert block["type"] in block_types
             block_ref_dict[key] = key
 
-        outer_graph = find_outer_graph(graph_dict)
+        outer_graph = SCFGIO.find_outer_graph(graph_dict)
         assert len(outer_graph) > 0
 
         name_gen = NameGenerator()
-        scfg = SCFG.make_scfg(
+        scfg = SCFGIO.make_scfg(
             graph_dict, outer_graph, block_ref_dict, name_gen
         )
 
@@ -801,6 +932,30 @@ class SCFG:
         name_gen,
         exiting: str = None,
     ):
+        """Helper method for building a single 'level' of the heirarchical
+        structure in an `SCFG` graph at a time. Recusively calls itself
+        to build the entire graph.
+
+        Parameters
+        ----------
+        graph_dict: dict
+            The input dictionary from which the SCFG is to be constructed.
+        curr_heads: set
+            The set of blocks to start iterating from.
+        block_ref_dict: Dict[str, str]
+            Dictionary of block names in YAML string corresponding to their
+            representation/unique name IDs in the SCFG.
+        name_gen: NameGenerator
+            The corresponding `NameGenerator` object for the `SCFG` object
+            to be created.
+        exiting: str
+            The exiting node for the current region being iterated.
+
+        Return
+        ------
+        scfg: SCFG
+            The corresponding SCFG created using the dictionary representation.
+        """
         blocks = graph_dict["blocks"]
         edges = graph_dict["edges"]
         backedges = graph_dict["backedges"]
@@ -822,12 +977,12 @@ class SCFG:
                 block_type,
                 block_edges,
                 block_backedges,
-            ) = extract_block_info(
+            ) = SCFGIO.extract_block_info(
                 blocks, current_name, block_ref_dict, edges, backedges
             )
 
             if block_type == "region":
-                block_info["subregion"] = SCFG.make_scfg(
+                block_info["subregion"] = SCFGIO.make_scfg(
                     graph_dict,
                     {block_info["header"]},
                     block_ref_dict,
@@ -851,13 +1006,20 @@ class SCFG:
         scfg = SCFG(scfg_graph, name_gen=name_gen)
         return scfg
 
-    def to_yaml(self):
-        """Converts the SCFG object to a YAML string representation.
+    @staticmethod
+    def to_yaml(scfg):
+        """Helper method to convert the SCFG object to a YAML
+        string representation.
 
         The method returns a YAML string representing the control
         flow graph. It iterates over the graph dictionary and
         generates YAML entries for each block, including jump
         targets and backedges.
+
+        Parameters
+        ----------
+        scfg: SCFG
+            The `SCFG` object to be transformed.
 
         Returns
         -------
@@ -867,7 +1029,7 @@ class SCFG:
         # Convert to yaml
         ys = ""
 
-        graph_dict = self.to_dict()
+        graph_dict = SCFGIO.to_dict(scfg)
 
         blocks = graph_dict["blocks"]
         edges = graph_dict["edges"]
@@ -889,13 +1051,20 @@ class SCFG:
                 ys += indent(f"'{b}': {backedges[b]}\n", " " * 8)
         return ys
 
-    def to_dict(self):
-        """Converts the SCFG object to a dictionary representation.
+    @staticmethod
+    def to_dict(scfg):
+        """Helper method to convert the SCFG object to a dictionary
+        representation.
 
         This method returns a dictionary representing the control flow
         graph. It iterates over the graph dictionary and generates a
         dictionary entry for each block, including jump targets and
         backedges if present.
+
+        Parameters
+        ----------
+        scfg: SCFG
+            The `SCFG` object to be transformed.
 
         Returns
         -------
@@ -915,7 +1084,7 @@ class SCFG:
         q = set()
         # Order of elements doesn't matter since they're going to
         # be sorted at the end.
-        q.update(self.graph.items())
+        q.update(scfg.graph.items())
 
         while q:
             key, value = q.pop()
@@ -949,48 +1118,77 @@ class SCFG:
 
         return graph_dict
 
-    def view(self, name: str = None):
-        """View the current SCFG as a external PDF file.
-
-        This method internally creates a SCFGRenderer corresponding to
-        the current state of SCFG and calls it's view method to view the
-        graph as a graphviz generated external PDF file.
+    @staticmethod
+    def find_outer_graph(graph_dict: dict):
+        """Helper method to find the outermost graph components
+        of an `SCFG` object. (i.e. Components that aren't
+        contained in any other region)
 
         Parameters
         ----------
-        name: str
-            Name to be given to the external graphviz generated PDF file.
+        graph_dict: dict
+            The input dictionary from which the SCFG is to be constructed.
+
+        Return
+        ------
+        outer_blocks: set[str]
+            Set of all the block names that lie in the outer most graph or
+            aren't a part of any region.
         """
-        from numba_rvsdg.rendering.rendering import SCFGRenderer
+        blocks = graph_dict["blocks"]
 
-        SCFGRenderer(self).view(name)
+        outer_blocks = set(blocks.keys())
+        for _, block_data in blocks.items():
+            if block_data.get("contains"):
+                outer_blocks.difference_update(block_data["contains"])
 
+        return outer_blocks
 
-def find_outer_graph(graph_dict: dict):
-    blocks = graph_dict["blocks"]
+    @staticmethod
+    def extract_block_info(
+        blocks, current_name, block_ref_dict, edges, backedges
+    ):
+        """Helper method to extract information from various components of
+        an `SCFG` graph.
 
-    outer_blocks = set(blocks.keys())
-    for _, block_data in blocks.items():
-        if block_data.get("contains"):
-            outer_blocks.difference_update(block_data["contains"])
+        Parameters
+        ----------
+        blocks: Dict[str, dict]
+            Dictionary containing all the blocks info
+        current_name: str
+            Name of the block whose information is to be extracted.
+        block_ref_dict: Dict[str, str]
+            Dictionary of block names in YAML string corresponding to their
+            representation/unique name IDs in the SCFG.
+        edges: Dict[str, list[str]]
+            Dictionary representing the edges of the graph.
+        backedges: Dict[str, list[str]]
+            Dictionary representing the backedges of the graph.
 
-    return outer_blocks
+        Return
+        ------
+        block_info: Dict[str, Any]
+            Dictionary containing information about the block.
+        block_type: str
+            String representing the type of block.
+        block_edges: List[str]
+            List of edges of the requested block.
+        block_backedges: List[str]
+            List of backedges of the requested block.
+        """
+        block_info = blocks[current_name].copy()
+        block_edges = tuple(block_ref_dict[idx] for idx in edges[current_name])
 
+        if backedges.get(current_name):
+            block_backedges = tuple(
+                block_ref_dict[idx] for idx in backedges[current_name]
+            )
+        else:
+            block_backedges = ()
 
-def extract_block_info(blocks, current_name, block_ref_dict, edges, backedges):
-    block_info = blocks[current_name].copy()
-    block_edges = tuple(block_ref_dict[idx] for idx in edges[current_name])
+        block_type = block_info.pop("type")
 
-    if backedges.get(current_name):
-        block_backedges = tuple(
-            block_ref_dict[idx] for idx in backedges[current_name]
-        )
-    else:
-        block_backedges = ()
-
-    block_type = block_info.pop("type")
-
-    return block_info, block_type, block_edges, block_backedges
+        return block_info, block_type, block_edges, block_backedges
 
 
 class AbstractGraphView(Mapping):
