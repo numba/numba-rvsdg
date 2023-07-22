@@ -1,10 +1,11 @@
 import dis
 import yaml
-from textwrap import dedent
-from typing import Set, Tuple, Dict, List, Iterator
+from textwrap import indent
+from typing import Set, Tuple, Dict, List, Iterator, Sequence
 from dataclasses import dataclass, field
 from collections import deque
 from collections.abc import Mapping
+from numba_rvsdg.core.utils import _logger, _LogWrap
 
 from numba_rvsdg.core.datastructures.basic_block import (
     BasicBlock,
@@ -15,9 +16,30 @@ from numba_rvsdg.core.datastructures.basic_block import (
     SyntheticTail,
     SyntheticReturn,
     SyntheticFill,
+    PythonBytecodeBlock,
     RegionBlock,
+    SyntheticBranch,
+    block_type_names,
 )
-from numba_rvsdg.core.datastructures import block_names
+from numba_rvsdg.core.datastructures.block_names import (
+    block_types,
+    PYTHON_BYTECODE,
+    SYNTH_HEAD,
+    SYNTH_BRANCH,
+    SYNTH_TAIL,
+    SYNTH_EXIT,
+    SYNTH_ASSIGN,
+    SYNTH_RETURN,
+    SYNTH_EXIT_LATCH,
+    SYNTH_EXIT_BRANCH,
+)
+from numba_rvsdg.core.utils import (
+    is_conditional_jump,
+    _next_inst_offset,
+    is_unconditional_jump,
+    is_exiting,
+    _prev_inst_offset,
+)
 
 
 @dataclass(frozen=True)
@@ -496,15 +518,13 @@ class SCFG:
         """
         # TODO: needs a diagram and documentaion
         # initialize new block
-        new_block = block_type(
-            name=new_name, _jump_targets=successors, backedges=set()
-        )
+        new_block = block_type(name=new_name, _jump_targets=successors)
         # add block to self
         self.add_block(new_block)
         # Replace any arcs from any of predecessors to any of successors with
         # an arc through the inserted block instead.
         for name in predecessors:
-            block = self.graph.pop(name)
+            block = self.graph[name]
             jt = list(block.jump_targets)
             if successors:
                 for s in successors:
@@ -515,7 +535,7 @@ class SCFG:
                             jt.pop(jt.index(s))
             else:
                 jt.append(new_name)
-            self.add_block(block.replace_jump_targets(jump_targets=tuple(jt)))
+            block.change_jump_targets(jump_targets=tuple(jt))
 
     def insert_SyntheticExit(
         self,
@@ -604,15 +624,12 @@ class SCFG:
             # predecessors to a successor and insert it between the predecessor
             # and the newly created block
             for s in set(jt).intersection(successors):
-                synth_assign = self.name_gen.new_block_name(
-                    block_names.SYNTH_ASSIGN
-                )
+                synth_assign = self.name_gen.new_block_name(SYNTH_ASSIGN)
                 variable_assignment = {}
                 variable_assignment[branch_variable] = branch_variable_value
                 synth_assign_block = SyntheticAssignment(
                     name=synth_assign,
                     _jump_targets=(new_name,),
-                    backedges=(),
                     variable_assignment=variable_assignment,
                 )
                 # add block
@@ -624,16 +641,11 @@ class SCFG:
                 # replace previous successor with synth_assign
                 jt[jt.index(s)] = synth_assign
             # finally, replace the jump_targets
-            self.add_block(
-                self.graph.pop(name).replace_jump_targets(
-                    jump_targets=tuple(jt)
-                )
-            )
+            self.graph[name].change_jump_targets(jump_targets=tuple(jt))
         # initialize new block, which will hold the branching table
         new_block = SyntheticHead(
             name=new_name,
             _jump_targets=tuple(successors),
-            backedges=set(),
             variable=branch_variable,
             branch_value_table=branch_value_table,
         )
@@ -652,9 +664,7 @@ class SCFG:
         ]
         # close if more than one is found
         if len(return_nodes) > 1:
-            return_solo_name = self.name_gen.new_block_name(
-                block_names.SYNTH_RETURN
-            )
+            return_solo_name = self.name_gen.new_block_name(SYNTH_RETURN)
             self.insert_SyntheticReturn(
                 return_solo_name, return_nodes, tuple()
             )
@@ -685,29 +695,21 @@ class SCFG:
         if len(tails) == 1 and len(exits) == 2:
             # join only exits
             solo_tail_name = next(iter(tails))
-            solo_exit_name = self.name_gen.new_block_name(
-                block_names.SYNTH_EXIT
-            )
+            solo_exit_name = self.name_gen.new_block_name(SYNTH_EXIT)
             self.insert_SyntheticExit(solo_exit_name, tails, exits)
             return solo_tail_name, solo_exit_name
 
         if len(tails) >= 2 and len(exits) == 1:
             # join only tails
-            solo_tail_name = self.name_gen.new_block_name(
-                block_names.SYNTH_TAIL
-            )
+            solo_tail_name = self.name_gen.new_block_name(SYNTH_TAIL)
             solo_exit_name = next(iter(exits))
             self.insert_SyntheticTail(solo_tail_name, tails, exits)
             return solo_tail_name, solo_exit_name
 
         if len(tails) >= 2 and len(exits) >= 2:
             # join both tails and exits
-            solo_tail_name = self.name_gen.new_block_name(
-                block_names.SYNTH_TAIL
-            )
-            solo_exit_name = self.name_gen.new_block_name(
-                block_names.SYNTH_EXIT
-            )
+            solo_tail_name = self.name_gen.new_block_name(SYNTH_TAIL)
+            solo_exit_name = self.name_gen.new_block_name(SYNTH_EXIT)
             self.insert_SyntheticTail(solo_tail_name, tails, exits)
             self.insert_SyntheticExit(solo_exit_name, {solo_tail_name}, exits)
             return solo_tail_name, solo_exit_name
@@ -731,7 +733,7 @@ class SCFG:
         return {inst.offset: inst for inst in bc}
 
     @staticmethod
-    def from_yaml(yaml_string):
+    def from_yaml(yaml_string: str):
         """Static method that creates an SCFG object from a YAML
         representation.
 
@@ -781,23 +783,107 @@ class SCFG:
             Dictionary of block names in YAML string corresponding to their
             representation/unique name IDs in the SCFG.
         """
-        scfg_graph = {}
         name_gen = NameGenerator()
-        block_dict = {}
-        for index in graph_dict.keys():
-            block_dict[index] = name_gen.new_block_name(block_names.BASIC)
-        for index, attributes in graph_dict.items():
-            jump_targets = attributes["jt"]
-            backedges = attributes.get("be", ())
-            name = block_dict[index]
-            block = BasicBlock(
-                name=name,
-                backedges=tuple(block_dict[idx] for idx in backedges),
-                _jump_targets=tuple(block_dict[idx] for idx in jump_targets),
-            )
-            scfg_graph[name] = block
-        scfg = SCFG(scfg_graph, name_gen=name_gen)
-        return scfg, block_dict
+        block_ref_dict = {}
+
+        blocks = graph_dict["blocks"]
+        edges = graph_dict["edges"]
+        backedges = graph_dict["backedges"]
+        if backedges is None:
+            backedges = {}
+
+        for key, block in blocks.items():
+            assert block["type"] in block_types
+            block_ref_dict[key] = key
+
+        # Find head of the graph, i.e. node which isn't in anyones contains
+        # and no edges point towards it (backedges are allowed)
+        heads = set(blocks.keys())
+        for block_name, block_data in blocks.items():
+            if block_data.get("contains"):
+                heads.difference_update(block_data["contains"])
+            jump_targets = set(edges[block_name])
+            if backedges.get(block_name):
+                jump_targets.difference_update(set(backedges[block_name]))
+            heads.difference_update(jump_targets)
+        assert len(heads) > 0
+
+        seen = set()
+
+        def make_scfg(curr_heads: set, exiting: str = None):
+            scfg_graph = {}
+            queue = curr_heads
+            while queue:
+                current_name = queue.pop()
+                if current_name in seen:
+                    continue
+                seen.add(current_name)
+
+                block_info = blocks[current_name]
+                block_edges = tuple(
+                    block_ref_dict[idx] for idx in edges[current_name]
+                )
+                if backedges and backedges.get(current_name):
+                    block_backedges = tuple(
+                        block_ref_dict[idx] for idx in backedges[current_name]
+                    )
+                else:
+                    block_backedges = ()
+                block_type = block_info.get("type")
+                block_class = block_type_names[block_type]
+                if block_type == "region":
+                    scfg = make_scfg(
+                        {block_info["header"]}, block_info["exiting"]
+                    )
+                    block = RegionBlock(
+                        name=current_name,
+                        _jump_targets=block_edges,
+                        kind=block_info["kind"],
+                        header=block_info["header"],
+                        exiting=block_info["exiting"],
+                        subregion=scfg,
+                    )
+                elif block_type in [
+                    SYNTH_BRANCH,
+                    SYNTH_HEAD,
+                    SYNTH_EXIT_LATCH,
+                    SYNTH_EXIT_BRANCH,
+                ]:
+                    block = block_class(
+                        name=current_name,
+                        _jump_targets=block_edges,
+                        branch_value_table=block_info["branch_value_table"],
+                        variable=block_info["variable"],
+                    )
+                elif block_type in [SYNTH_ASSIGN]:
+                    block = SyntheticAssignment(
+                        name=current_name,
+                        _jump_targets=block_edges,
+                        variable_assignment=block_info["variable_assignment"],
+                    )
+                elif block_type in [PYTHON_BYTECODE]:
+                    block = PythonBytecodeBlock(
+                        name=current_name,
+                        _jump_targets=block_edges,
+                        begin=block_info["begin"],
+                        end=block_info["end"],
+                    )
+                else:
+                    block = block_class(
+                        name=current_name,
+                        _jump_targets=block_edges,
+                    )
+                for backedge in block_backedges:
+                    block.declare_backedge(backedge)
+                scfg_graph[current_name] = block
+                if current_name != exiting:
+                    queue.update(edges[current_name])
+
+            scfg = SCFG(scfg_graph, name_gen=name_gen)
+            return scfg
+
+        scfg = make_scfg(heads)
+        return scfg, block_ref_dict
 
     def to_yaml(self):
         """Converts the SCFG object to a YAML string representation.
@@ -813,24 +899,29 @@ class SCFG:
             A YAML string representing the SCFG.
         """
         # Convert to yaml
-        scfg_graph = self.graph
-        yaml_string = """"""
+        ys = ""
 
-        for key, value in scfg_graph.items():
-            jump_targets = [i for i in value._jump_targets]
-            jump_targets = str(jump_targets).replace("'", '"')
-            back_edges = [i for i in value.backedges]
-            jump_target_str = f"""
-                "{key}":
-                    jt: {jump_targets}"""
+        graph_dict = self.to_dict()
 
-            if back_edges:
-                back_edges = str(back_edges).replace("'", '"')
-                jump_target_str += f"""
-                    be: {back_edges}"""
-            yaml_string += dedent(jump_target_str)
+        blocks = graph_dict["blocks"]
+        edges = graph_dict["edges"]
+        backedges = graph_dict["backedges"]
 
-        return yaml_string
+        ys += "\nblocks:\n"
+        for b in sorted(blocks):
+            ys += indent(f"'{b}':\n", " " * 8)
+            for k, v in blocks[b].items():
+                ys += indent(f"{k}: {v}\n", " " * 12)
+
+        ys += "\nedges:\n"
+        for b in sorted(blocks):
+            ys += indent(f"'{b}': {edges[b]}\n", " " * 8)
+
+        ys += "\nbackedges:\n"
+        for b in sorted(blocks):
+            if backedges[b]:
+                ys += indent(f"'{b}': {backedges[b]}\n", " " * 8)
+        return ys
 
     def to_dict(self):
         """Converts the SCFG object to a dictionary representation.
@@ -845,14 +936,45 @@ class SCFG:
         graph_dict: Dict[Dict[...]]
             A dictionary representing the SCFG.
         """
-        scfg_graph = self.graph
-        graph_dict = {}
-        for key, value in scfg_graph.items():
-            curr_dict = {}
-            curr_dict["jt"] = [i for i in value._jump_targets]
-            if value.backedges:
-                curr_dict["be"] = [i for i in value.backedges]
-            graph_dict[key] = curr_dict
+        blocks, edges, backedges = {}, {}, {}
+
+        def reverse_lookup(value: type):
+            for k, v in block_type_names.items():
+                if v == value:
+                    return k
+            else:
+                raise TypeError("Block type not found.")
+
+        for key, value in self:
+            block_type = reverse_lookup(type(value))
+            blocks[key] = {"type": block_type}
+            if isinstance(value, RegionBlock):
+                blocks[key]["kind"] = value.kind
+                blocks[key]["contains"] = sorted(
+                    [idx.name for idx in value.subregion.graph.values()]
+                )
+                blocks[key]["header"] = value.header
+                blocks[key]["exiting"] = value.exiting
+                blocks[key]["parent_region"] = value.parent_region.name
+            elif isinstance(value, SyntheticBranch):
+                blocks[key]["branch_value_table"] = value.branch_value_table
+                blocks[key]["variable"] = value.variable
+            elif isinstance(value, SyntheticAssignment):
+                blocks[key]["variable_assignment"] = value.variable_assignment
+            elif isinstance(value, PythonBytecodeBlock):
+                blocks[key]["begin"] = value.begin
+                blocks[key]["end"] = value.end
+            edges[key] = sorted([i for i in value._jump_targets])
+            backedges[key] = sorted(
+                [
+                    i
+                    for idx, i in enumerate(value._jump_targets)
+                    if value.backedges[idx]
+                ]
+            )
+
+        graph_dict = {"blocks": blocks, "edges": edges, "backedges": backedges}
+
         return graph_dict
 
     def view(self, name: str = None):
@@ -870,6 +992,124 @@ class SCFG:
         from numba_rvsdg.rendering.rendering import SCFGRenderer
 
         SCFGRenderer(self).view(name)
+
+    def restructure_loop(self):
+        """Restructures the loops within the corresponding SCFG using
+        the algorithm LOOP RESTRUCTURING from section 4.1 of Bahmann2015.
+        It applies the restructuring operation to both the main SCFG
+        and any subregions within it.
+        """
+        from numba_rvsdg.core.transformations import restructure_loop
+
+        restructure_loop(self.region)
+        for region in _iter_subregions(self):
+            restructure_loop(region)
+
+    def restructure_branch(self):
+        """Restructures the branches within the corresponding SCFG. It applies
+        the restructuring operation to both the main SCFG and any
+        subregions within it.
+        """
+        from numba_rvsdg.core.transformations import restructure_branch
+
+        restructure_branch(self.region)
+        for region in _iter_subregions(self):
+            restructure_branch(region)
+
+    def restructure(self):
+        """Applies join_returns, restructure_loop and restructure_branch
+        in the respective order on the SCFG. Applies a series of
+        restructuring operations to it. The operations include
+        joining return blocks, restructuring loop constructs, and
+        restructuring branch constructs.
+        """
+        # close
+        self.join_returns()
+        # handle loop
+        self.restructure_loop()
+        # handle branch
+        self.restructure_branch()
+
+    @staticmethod
+    def from_bytecode(function):
+        bc = dis.Bytecode(function)
+        return SCFG._from_bytecode(bc)
+
+    @staticmethod
+    def _from_bytecode(code: list, end_offset=None):
+        _logger.debug("Bytecode\n%s", _LogWrap(lambda: code.dis()))
+        block_offsets: Set[int] = set()
+        jump_insts: Dict[int, Tuple[int, ...]] = {}
+        last_offset: int = 0
+
+        def _add_jump_inst(offset: int, targets: Sequence[int]):
+            """Internal method to add a jump instruction.
+
+            This method adds the target offsets of the jump instruction
+            to the block_offsets set and updates the jump_insts dictionary.
+
+            Parameters
+            ----------
+            offset: int
+                The given target offset.
+            targets: Sequence[int]
+                target jump instrcutions.
+            """
+            for off in targets:
+                assert isinstance(off, int)
+                block_offsets.add(off)
+            jump_insts[offset] = tuple(targets)
+
+        for inst in code:
+            # Handle jump-target instruction
+            if inst.offset == 0 or inst.is_jump_target:
+                block_offsets.add(inst.offset)
+            # Handle by op
+            if is_conditional_jump(inst.opname):
+                _add_jump_inst(
+                    inst.offset, (_next_inst_offset(inst.offset), inst.argval)
+                )
+            elif is_unconditional_jump(inst.opname):
+                _add_jump_inst(inst.offset, (inst.argval,))
+            elif is_exiting(inst.opname):
+                _add_jump_inst(inst.offset, ())
+
+        last_offset = inst.offset
+
+        scfg = SCFG()
+        offsets = sorted(block_offsets)
+        # enumerate names
+        names = {
+            offset: scfg.name_gen.new_block_name(PYTHON_BYTECODE)
+            for offset in offsets
+        }
+        if end_offset is None:
+            end_offset = _next_inst_offset(last_offset)
+
+        for begin, end in zip(offsets, [*offsets[1:], end_offset]):
+            name = names[begin]
+            targets: Tuple[str, ...]
+            term_offset = _prev_inst_offset(end)
+            if term_offset not in jump_insts:
+                # implicit jump
+                targets = (names[end],)
+            else:
+                targets = tuple(names[o] for o in jump_insts[term_offset])
+            block = PythonBytecodeBlock(
+                name=name,
+                begin=begin,
+                end=end,
+                _jump_targets=targets,
+            )
+            scfg.add_block(block)
+        return scfg
+
+
+def _iter_subregions(scfg: "SCFG"):
+    for node in scfg.graph.values():
+        if isinstance(node, RegionBlock):
+            yield node
+            yield from _iter_subregions(node.subregion)
 
 
 class AbstractGraphView(Mapping):

@@ -58,9 +58,7 @@ def loop_restructure_helper(scfg: SCFG, loop: Set[str]):
         and len(exiting_blocks) == 1
         and backedge_blocks[0] == next(iter(exiting_blocks))
     ):
-        scfg.add_block(
-            scfg.graph.pop(backedge_blocks[0]).declare_backedge(loop_head)
-        )
+        scfg.graph[backedge_blocks[0]].declare_backedge(loop_head)
         return
 
     # The synthetic exiting latch and synthetic exit need to be created
@@ -147,7 +145,6 @@ def loop_restructure_helper(scfg: SCFG, loop: Set[str]):
                     synth_assign_block = SyntheticAssignment(
                         name=synth_assign,
                         _jump_targets=(synth_exiting_latch,),
-                        backedges=(),
                         variable_assignment=variable_assignment,
                     )
                     # Insert the assignment to the scfg
@@ -177,20 +174,17 @@ def loop_restructure_helper(scfg: SCFG, loop: Set[str]):
                     # that point to the headers, no need to add a backedge,
                     # since it will be contained in the SyntheticExitingLatch
                     # later on.
-                    block = scfg.graph.pop(name)
+                    block = scfg.graph[name]
                     jts = list(block.jump_targets)
                     for h in headers:
                         if h in jts:
                             jts.remove(h)
-                    scfg.add_block(
-                        block.replace_jump_targets(jump_targets=tuple(jts))
-                    )
+                    block.change_jump_targets(jump_targets=tuple(jts))
                     # Setup the assignment block and initialize it with the
                     # correct jump_targets and variable assignment.
                     synth_assign_block = SyntheticAssignment(
                         name=synth_assign,
                         _jump_targets=(synth_exiting_latch,),
-                        backedges=(),
                         variable_assignment=variable_assignment,
                     )
                     # Add the new block to the SCFG
@@ -199,11 +193,7 @@ def loop_restructure_helper(scfg: SCFG, loop: Set[str]):
                     new_jt[new_jt.index(jt)] = synth_assign
             # finally, replace the jump_targets for this block with the new
             # ones
-            scfg.add_block(
-                scfg.graph.pop(name).replace_jump_targets(
-                    jump_targets=tuple(new_jt)
-                )
-            )
+            scfg.graph[name].change_jump_targets(jump_targets=tuple(new_jt))
     # Add any new blocks to the loop.
     loop.update(new_blocks)
 
@@ -214,10 +204,10 @@ def loop_restructure_helper(scfg: SCFG, loop: Set[str]):
             synth_exit if needs_synth_exit else next(iter(exit_blocks)),
             loop_head,
         ),
-        backedges=(loop_head,),
         variable=backedge_variable,
         branch_value_table=backedge_value_table,
     )
+    synth_exiting_latch_block.declare_backedge(loop_head)
     loop.add(synth_exiting_latch)
     scfg.add_block(synth_exiting_latch_block)
     # If an exit is to be created, we do so too, but only add it to the scfg,
@@ -226,7 +216,6 @@ def loop_restructure_helper(scfg: SCFG, loop: Set[str]):
         synth_exit_block = SyntheticExitBranch(
             name=synth_exit,
             _jump_targets=tuple(exit_blocks),
-            backedges=(),
             variable=exit_variable,
             branch_value_table=exit_value_table,
         )
@@ -329,29 +318,18 @@ def update_exiting(
 ):
     # Recursively updates the exiting blocks of a regionblock
     region_exiting = region_block.exiting
-    region_exiting_block: BasicBlock = region_block.subregion.graph.pop(
+    region_exiting_block: BasicBlock = region_block.subregion.graph[
         region_exiting
-    )
+    ]
     jt = list(region_exiting_block._jump_targets)
     for idx, s in enumerate(jt):
         if s is new_region_header:
             jt[idx] = new_region_name
-    region_exiting_block = region_exiting_block.replace_jump_targets(
-        jump_targets=tuple(jt)
-    )
-    be = list(region_exiting_block.backedges)
-    for idx, s in enumerate(be):
-        if s is new_region_header:
-            be[idx] = new_region_name
-    region_exiting_block = region_exiting_block.replace_backedges(
-        backedges=tuple(be)
-    )
+    region_exiting_block.change_jump_targets(jump_targets=tuple(jt))
     if isinstance(region_exiting_block, RegionBlock):
         region_exiting_block = update_exiting(
             region_exiting_block, new_region_header, new_region_name
         )
-    region_block.subregion.add_block(region_exiting_block)
-    return region_block
 
 
 def extract_region(
@@ -381,27 +359,20 @@ def extract_region(
             # the SCFG represents should not be the meta region.
             assert scfg.region.kind != "meta"
             continue
-        entry = scfg.graph.pop(name)
+        entry = scfg.graph[name]
         jt = list(entry._jump_targets)
         for idx, s in enumerate(jt):
             if s is region_header:
                 jt[idx] = region_name
-        entry = entry.replace_jump_targets(jump_targets=tuple(jt))
-        be = list(entry.backedges)
-        for idx, s in enumerate(be):
-            if s is region_header:
-                be[idx] = region_name
-        entry = entry.replace_backedges(backedges=tuple(be))
+        entry.change_jump_targets(jump_targets=tuple(jt))
         # If the entry itself is a region, update it's
         # exiting blocks too, recursively
         if isinstance(entry, RegionBlock):
-            entry = update_exiting(entry, region_header, region_name)
-        scfg.add_block(entry)
+            update_exiting(entry, region_header, region_name)
 
     region = RegionBlock(
         name=region_name,
         _jump_targets=scfg[region_exiting].jump_targets,
-        backedges=(),
         kind=region_kind,
         header=region_header,
         subregion=head_subgraph,
@@ -426,7 +397,7 @@ def extract_region(
     # update the parent region
     for k, v in region.subregion.graph.items():
         if isinstance(v, RegionBlock):
-            object.__setattr__(v, "parent_region", region)
+            v.replace_parent(region)
 
 
 def restructure_branch(parent_region: RegionBlock):
