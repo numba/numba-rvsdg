@@ -932,8 +932,8 @@ class SCFGIO:
         name_gen,
         exiting: str = None,
     ):
-        """Helper method for building a single 'level' of the heirarchical
-        structure in an `SCFG` graph at a time. Recusively calls itself
+        """Helper method for building a single 'level' of the hierarchical
+        structure in an `SCFG` graph at a time. Recursively calls itself
         to build the entire graph.
 
         Parameters
