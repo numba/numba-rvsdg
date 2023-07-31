@@ -3,6 +3,7 @@ from typing import Tuple, Dict, List
 from dataclasses import dataclass, replace
 
 from numba_rvsdg.core.utils import _next_inst_offset
+from numba_rvsdg.core.datastructures import block_names
 
 
 @dataclass(frozen=True)
@@ -384,3 +385,19 @@ class RegionBlock(BasicBlock):
             The new exiting block of the region represented by the RegionBlock.
         """
         object.__setattr__(self, "exiting", new_exiting)
+
+
+block_type_names = {
+    block_names.BASIC: BasicBlock,
+    block_names.PYTHON_BYTECODE: PythonBytecodeBlock,
+    block_names.SYNTH_HEAD: SyntheticHead,
+    block_names.SYNTH_BRANCH: SyntheticBranch,
+    block_names.SYNTH_TAIL: SyntheticTail,
+    block_names.SYNTH_EXIT: SyntheticExit,
+    block_names.SYNTH_ASSIGN: SyntheticAssignment,
+    block_names.SYNTH_RETURN: SyntheticReturn,
+    block_names.SYNTH_EXIT_LATCH: SyntheticExitingLatch,
+    block_names.SYNTH_EXIT_BRANCH: SyntheticExitBranch,
+    block_names.SYNTH_FILL: SyntheticFill,
+    block_names.REGION: RegionBlock,
+}

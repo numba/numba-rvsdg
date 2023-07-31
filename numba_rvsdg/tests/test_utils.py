@@ -2,12 +2,17 @@ from unittest import TestCase
 import yaml
 
 from numba_rvsdg.core.datastructures.scfg import SCFG
-from numba_rvsdg.core.datastructures.basic_block import BasicBlock
+from numba_rvsdg.core.datastructures.basic_block import (
+    BasicBlock,
+    RegionBlock,
+    SyntheticBranch,
+    SyntheticAssignment,
+)
 
 
 class SCFGComparator(TestCase):
     def assertSCFGEqual(
-        self, first_scfg: SCFG, second_scfg: SCFG, head_map=None
+        self, first_scfg: SCFG, second_scfg: SCFG, head_map=None, exiting=None
     ):
         if head_map:
             # If more than one head the corresponding map needs to be provided
@@ -41,14 +46,34 @@ class SCFGComparator(TestCase):
             assert len(node.jump_targets) == len(second_node.jump_targets)
             assert len(node.backedges) == len(second_node.backedges)
 
+            # If the given block is a RegionBlock, then the underlying SCFGs
+            # for both regions must be equal.
+            if isinstance(node, RegionBlock):
+                self.assertSCFGEqual(
+                    node.subregion, second_node.subregion, exiting=node.exiting
+                )
+            elif isinstance(node, SyntheticAssignment):
+                assert (
+                    node.variable_assignment == second_node.variable_assignment
+                )
+            elif isinstance(node, SyntheticBranch):
+                assert (
+                    node.branch_value_table == second_node.branch_value_table
+                )
+                assert node.variable == second_node.variable
+
             # Add the jump targets as corresponding nodes in block mapping
             # dictionary. Since order must be same we can simply add zip
             # functionality as the correspondence function for nodes
             for jt1, jt2 in zip(node.jump_targets, second_node.jump_targets):
+                if node.name == exiting:
+                    continue
                 block_mapping[jt1] = jt2
                 stack.append(jt1)
 
             for be1, be2 in zip(node.backedges, second_node.backedges):
+                if node.name == exiting:
+                    continue
                 block_mapping[be1] = be2
                 stack.append(be1)
 
@@ -75,21 +100,32 @@ class SCFGComparator(TestCase):
             if node_name in seen:
                 continue
             seen.add(node_name)
-            node: BasicBlock = first_yaml[node_name]
             # Assert that there's a corresponding mapping of current node
             # in second scfg
             assert node_name in block_mapping.keys()
-            # Get the corresponding node in second graph
-            second_node_name = block_mapping[node_name]
-            second_node: BasicBlock = second_yaml[second_node_name]
+            co_node_name = block_mapping[node_name]
+
+            node_properties = first_yaml["blocks"][node_name]
+            co_node_properties = second_yaml["blocks"][co_node_name]
+            assert node_properties == co_node_properties
+
             # Both nodes should have equal number of jump targets and backedges
-            assert len(node["jt"]) == len(second_node["jt"])
-            if "be" in node.keys():
-                assert len(node["be"]) == len(second_node["be"])
+            assert len(first_yaml["edges"][node_name]) == len(
+                second_yaml["edges"][co_node_name]
+            )
+            if first_yaml["backedges"] and first_yaml["backedges"].get(
+                node_name
+            ):
+                assert len(first_yaml["backedges"][node_name]) == len(
+                    second_yaml["backedges"][co_node_name]
+                )
 
             # Add the jump targets as corresponding nodes in block mapping
             # dictionary. Since order must be same we can simply add zip
             # functionality as the correspondence function for nodes
-            for jt1, jt2 in zip(node["jt"], second_node["jt"]):
+            for jt1, jt2 in zip(
+                first_yaml["edges"][node_name],
+                second_yaml["edges"][co_node_name],
+            ):
                 block_mapping[jt1] = jt2
                 stack.append(jt1)

@@ -10,19 +10,30 @@ from numba_rvsdg.core.datastructures import block_names
 class TestInsertBlock(SCFGComparator):
     def test_linear(self):
         original = """
-        "0":
-            jt: ["1"]
-        "1":
-            jt: []
+        blocks:
+            '0':
+                type: basic
+            '1':
+                type: basic
+        edges:
+            '0': ['1']
+            '1': []
+        backedges:
         """
         original_scfg, block_dict = SCFG.from_yaml(original)
         expected = """
-        "0":
-            jt: ["2"]
-        "1":
-            jt: []
-        "2":
-            jt: ["1"]
+        blocks:
+            '0':
+                type: basic
+            '1':
+                type: basic
+            '2':
+                type: basic
+        edges:
+            '0': ['2']
+            '1': []
+            '2': ['1']
+        backedges:
         """
         expected_scfg, _ = SCFG.from_yaml(expected)
         new_name = original_scfg.name_gen.new_block_name(block_names.BASIC)
@@ -33,23 +44,36 @@ class TestInsertBlock(SCFGComparator):
 
     def test_dual_predecessor(self):
         original = """
-        "0":
-            jt: ["2"]
-        "1":
-            jt: ["2"]
-        "2":
-            jt: []
+        blocks:
+            '0':
+                type: basic
+            '1':
+                type: basic
+            '2':
+                type: basic
+        edges:
+            '0': ['2']
+            '1': ['2']
+            '2': []
+        backedges:
         """
         original_scfg, block_dict = SCFG.from_yaml(original)
         expected = """
-        "0":
-            jt: ["3"]
-        "1":
-            jt: ["3"]
-        "2":
-            jt: []
-        "3":
-            jt: ["2"]
+        blocks:
+            '0':
+                type: basic
+            '1':
+                type: basic
+            '2':
+                type: basic
+            '3':
+                type: basic
+        edges:
+            '0': ['3']
+            '1': ['3']
+            '2': []
+            '3': ['2']
+        backedges:
         """
         expected_scfg, expected_block_dict = SCFG.from_yaml(expected)
         new_name = original_scfg.name_gen.new_block_name(block_names.BASIC)
@@ -70,23 +94,36 @@ class TestInsertBlock(SCFGComparator):
 
     def test_dual_successor(self):
         original = """
-        "0":
-            jt: ["1", "2"]
-        "1":
-            jt: []
-        "2":
-            jt: []
+        blocks:
+            '0':
+                type: basic
+            '1':
+                type: basic
+            '2':
+                type: basic
+        edges:
+            '0': ['1', '2']
+            '1': []
+            '2': []
+        backedges:
         """
         original_scfg, block_dict = SCFG.from_yaml(original)
         expected = """
-        "0":
-            jt: ["3"]
-        "1":
-            jt: []
-        "2":
-            jt: []
-        "3":
-            jt: ["1", "2"]
+        blocks:
+            '0':
+                type: basic
+            '1':
+                type: basic
+            '2':
+                type: basic
+            '3':
+                type: basic
+        edges:
+            '0': ['3']
+            '1': []
+            '2': []
+            '3': ['1', '2']
+        backedges:
         """
         expected_scfg, _ = SCFG.from_yaml(expected)
         original_scfg.insert_block(
@@ -99,31 +136,48 @@ class TestInsertBlock(SCFGComparator):
 
     def test_dual_predecessor_and_dual_successor(self):
         original = """
-        "0":
-            jt: ["1", "2"]
-        "1":
-            jt: ["3"]
-        "2":
-            jt: ["4"]
-        "3":
-            jt: []
-        "4":
-            jt: []
+        blocks:
+            '0':
+                type: basic
+            '1':
+                type: basic
+            '2':
+                type: basic
+            '3':
+                type: basic
+            '4':
+                type: basic
+        edges:
+            '0': ['1', '2']
+            '1': ['3']
+            '2': ['4']
+            '3': []
+            '4': []
+        backedges:
         """
         original_scfg, block_dict = SCFG.from_yaml(original)
         expected = """
-        "0":
-            jt: ["1", "2"]
-        "1":
-            jt: ["5"]
-        "2":
-            jt: ["5"]
-        "3":
-            jt: []
-        "4":
-            jt: []
-        "5":
-            jt: ["3", "4"]
+        blocks:
+            '0':
+                type: basic
+            '1':
+                type: basic
+            '2':
+                type: basic
+            '3':
+                type: basic
+            '4':
+                type: basic
+            '5':
+                type: basic
+        edges:
+            '0': ['1', '2']
+            '1': ['5']
+            '2': ['5']
+            '3': []
+            '4': []
+            '5': ['3', '4']
+        backedges:
         """
         expected_scfg, _ = SCFG.from_yaml(expected)
         original_scfg.insert_block(
@@ -136,31 +190,48 @@ class TestInsertBlock(SCFGComparator):
 
     def test_dual_predecessor_and_dual_successor_with_additional_arcs(self):
         original = """
-        "0":
-            jt: ["1", "2"]
-        "1":
-            jt: ["3"]
-        "2":
-            jt: ["1", "4"]
-        "3":
-            jt: ["0"]
-        "4":
-            jt: []
+        blocks:
+            '0':
+                type: basic
+            '1':
+                type: basic
+            '2':
+                type: basic
+            '3':
+                type: basic
+            '4':
+                type: basic
+        edges:
+            '0': ['1', '2']
+            '1': ['3']
+            '2': ['1', '4']
+            '3': ['0']
+            '4': []
+        backedges:
         """
         original_scfg, block_dict = SCFG.from_yaml(original)
         expected = """
-        "0":
-            jt: ["1", "2"]
-        "1":
-            jt: ["5"]
-        "2":
-            jt: ["1", "5"]
-        "3":
-            jt: ["0"]
-        "4":
-            jt: []
-        "5":
-            jt: ["3", "4"]
+        blocks:
+            '0':
+                type: basic
+            '1':
+                type: basic
+            '2':
+                type: basic
+            '3':
+                type: basic
+            '4':
+                type: basic
+            '5':
+                type: basic
+        edges:
+            '0': ['1', '2']
+            '1': ['5']
+            '2': ['1', '5']
+            '3': ['0']
+            '4': []
+            '5': ['3', '4']
+        backedges:
         """
         expected_scfg, expected_block_dict = SCFG.from_yaml(expected)
         original_scfg.insert_block(
@@ -182,23 +253,36 @@ class TestInsertBlock(SCFGComparator):
 class TestJoinReturns(SCFGComparator):
     def test_two_returns(self):
         original = """
-        "0":
-            jt: ["1", "2"]
-        "1":
-            jt: []
-        "2":
-            jt: []
+        blocks:
+            '0':
+                type: basic
+            '1':
+                type: basic
+            '2':
+                type: basic
+        edges:
+            '0': ['1', '2']
+            '1': []
+            '2': []
+        backedges:
         """
         original_scfg, block_dict = SCFG.from_yaml(original)
         expected = """
-        "0":
-            jt: ["1", "2"]
-        "1":
-            jt: ["3"]
-        "2":
-            jt: ["3"]
-        "3":
-            jt: []
+        blocks:
+            '0':
+                type: basic
+            '1':
+                type: basic
+            '2':
+                type: basic
+            '3':
+                type: basic
+        edges:
+            '0': ['1', '2']
+            '1': ['3']
+            '2': ['3']
+            '3': []
+        backedges:
         """
         expected_scfg, _ = SCFG.from_yaml(expected)
         original_scfg.join_returns()
@@ -208,17 +292,27 @@ class TestJoinReturns(SCFGComparator):
 class TestJoinTailsAndExits(SCFGComparator):
     def test_join_tails_and_exits_case_00(self):
         original = """
-        "0":
-            jt: ["1"]
-        "1":
-            jt: []
+        blocks:
+            '0':
+                type: basic
+            '1':
+                type: basic
+        edges:
+            '0': ['1']
+            '1': []
+        backedges:
         """
         original_scfg, block_dict = SCFG.from_yaml(original)
         expected = """
-        "0":
-            jt: ["1"]
-        "1":
-            jt: []
+        blocks:
+            '0':
+                type: basic
+            '1':
+                type: basic
+        edges:
+            '0': ['1']
+            '1': []
+        backedges:
         """
         expected_scfg, _ = SCFG.from_yaml(expected)
 
@@ -234,27 +328,42 @@ class TestJoinTailsAndExits(SCFGComparator):
 
     def test_join_tails_and_exits_case_01(self):
         original = """
-        "0":
-            jt: ["1", "2"]
-        "1":
-            jt: ["3"]
-        "2":
-            jt: ["3"]
-        "3":
-            jt: []
+        blocks:
+            '0':
+                type: basic
+            '1':
+                type: basic
+            '2':
+                type: basic
+            '3':
+                type: basic
+        edges:
+            '0': ['1', '2']
+            '1': ['3']
+            '2': ['3']
+            '3': []
+        backedges:
         """
         original_scfg, block_dict = SCFG.from_yaml(original)
         expected = """
-        "0":
-            jt: ["4"]
-        "1":
-            jt: ["3"]
-        "2":
-            jt: ["3"]
-        "3":
-            jt: []
-        "4":
-            jt: ["1", "2"]
+        blocks:
+            '0':
+                type: basic
+            '1':
+                type: basic
+            '2':
+                type: basic
+            '3':
+                type: basic
+            '4':
+                type: basic
+        edges:
+            '0': ['4']
+            '1': ['3']
+            '2': ['3']
+            '3': []
+            '4': ['1', '2']
+        backedges:
         """
         expected_scfg, _ = SCFG.from_yaml(expected)
 
@@ -273,27 +382,42 @@ class TestJoinTailsAndExits(SCFGComparator):
 
     def test_join_tails_and_exits_case_02_01(self):
         original = """
-        "0":
-            jt: ["1", "2"]
-        "1":
-            jt: ["3"]
-        "2":
-            jt: ["3"]
-        "3":
-            jt: []
+        blocks:
+            '0':
+                type: basic
+            '1':
+                type: basic
+            '2':
+                type: basic
+            '3':
+                type: basic
+        edges:
+            '0': ['1', '2']
+            '1': ['3']
+            '2': ['3']
+            '3': []
+        backedges:
         """
         original_scfg, block_dict = SCFG.from_yaml(original)
         expected = """
-        "0":
-            jt: ["1", "2"]
-        "1":
-            jt: ["4"]
-        "2":
-            jt: ["4"]
-        "3":
-            jt: []
-        "4":
-            jt: ["3"]
+        blocks:
+            '0':
+                type: basic
+            '1':
+                type: basic
+            '2':
+                type: basic
+            '3':
+                type: basic
+            '4':
+                type: basic
+        edges:
+            '0': ['1', '2']
+            '1': ['4']
+            '2': ['4']
+            '3': []
+            '4': ['3']
+        backedges:
         """
         expected_scfg, _ = SCFG.from_yaml(expected)
 
@@ -312,27 +436,42 @@ class TestJoinTailsAndExits(SCFGComparator):
 
     def test_join_tails_and_exits_case_02_02(self):
         original = """
-        "0":
-            jt: ["1", "2"]
-        "1":
-            jt: ["3"]
-        "2":
-            jt: ["1", "3"]
-        "3":
-            jt: []
+        blocks:
+            '0':
+                type: basic
+            '1':
+                type: basic
+            '2':
+                type: basic
+            '3':
+                type: basic
+        edges:
+            '0': ['1', '2']
+            '1': ['3']
+            '2': ['1', '3']
+            '3': []
+        backedges:
         """
         original_scfg, block_dict = SCFG.from_yaml(original)
         expected = """
-        "0":
-            jt: ["1", "2"]
-        "1":
-            jt: ["4"]
-        "2":
-            jt: ["1", "4"]
-        "3":
-            jt: []
-        "4":
-            jt: ["3"]
+        blocks:
+            '0':
+                type: basic
+            '1':
+                type: basic
+            '2':
+                type: basic
+            '3':
+                type: basic
+            '4':
+                type: basic
+        edges:
+            '0': ['1', '2']
+            '1': ['4']
+            '2': ['1', '4']
+            '3': []
+            '4': ['3']
+        backedges:
         """
         expected_scfg, _ = SCFG.from_yaml(expected)
 
@@ -351,37 +490,57 @@ class TestJoinTailsAndExits(SCFGComparator):
 
     def test_join_tails_and_exits_case_03_01(self):
         original = """
-        "0":
-            jt: ["1", "2"]
-        "1":
-            jt: ["3"]
-        "2":
-            jt: ["4"]
-        "3":
-            jt: ["5"]
-        "4":
-            jt: ["5"]
-        "5":
-            jt: []
+        blocks:
+            '0':
+                type: basic
+            '1':
+                type: basic
+            '2':
+                type: basic
+            '3':
+                type: basic
+            '4':
+                type: basic
+            '5':
+                type: basic
+        edges:
+            '0': ['1', '2']
+            '1': ['3']
+            '2': ['4']
+            '3': ['5']
+            '4': ['5']
+            '5': []
+        backedges:
         """
         original_scfg, block_dict = SCFG.from_yaml(original)
         expected = """
-        "0":
-            jt: ["1", "2"]
-        "1":
-            jt: ["6"]
-        "2":
-            jt: ["6"]
-        "3":
-            jt: ["5"]
-        "4":
-            jt: ["5"]
-        "5":
-            jt: []
-        "6":
-            jt: ["7"]
-        "7":
-            jt: ["3", "4"]
+        blocks:
+            '0':
+                type: basic
+            '1':
+                type: basic
+            '2':
+                type: basic
+            '3':
+                type: basic
+            '4':
+                type: basic
+            '5':
+                type: basic
+            '6':
+                type: basic
+            '7':
+                type: basic
+        edges:
+            '0': ['1', '2']
+            '1': ['6']
+            '2': ['6']
+            '3': ['5']
+            '4': ['5']
+            '5': []
+            '6': ['7']
+            '7': ['3', '4']
+        backedges:
         """
         expected_scfg, _ = SCFG.from_yaml(expected)
 
@@ -402,37 +561,57 @@ class TestJoinTailsAndExits(SCFGComparator):
 
     def test_join_tails_and_exits_case_03_02(self):
         original = """
-        "0":
-            jt: ["1", "2"]
-        "1":
-            jt: ["3"]
-        "2":
-            jt: ["1", "4"]
-        "3":
-            jt: ["5"]
-        "4":
-            jt: ["5"]
-        "5":
-            jt: []
+        blocks:
+            '0':
+                type: basic
+            '1':
+                type: basic
+            '2':
+                type: basic
+            '3':
+                type: basic
+            '4':
+                type: basic
+            '5':
+                type: basic
+        edges:
+            '0': ['1', '2']
+            '1': ['3']
+            '2': ['1', '4']
+            '3': ['5']
+            '4': ['5']
+            '5': []
+        backedges:
         """
         original_scfg, block_dict = SCFG.from_yaml(original)
         expected = """
-        "0":
-            jt: ["1", "2"]
-        "1":
-            jt: ["6"]
-        "2":
-            jt: ["1", "6"]
-        "3":
-            jt: ["5"]
-        "4":
-            jt: ["5"]
-        "5":
-            jt: []
-        "6":
-            jt: ["7"]
-        "7":
-            jt: ["3", "4"]
+        blocks:
+            '0':
+                type: basic
+            '1':
+                type: basic
+            '2':
+                type: basic
+            '3':
+                type: basic
+            '4':
+                type: basic
+            '5':
+                type: basic
+            '6':
+                type: basic
+            '7':
+                type: basic
+        edges:
+            '0': ['1', '2']
+            '1': ['6']
+            '2': ['1', '6']
+            '3': ['5']
+            '4': ['5']
+            '5': []
+            '6': ['7']
+            '7': ['3', '4']
+        backedges:
         """
         expected_scfg, _ = SCFG.from_yaml(expected)
         tails = (block_dict["1"], block_dict["2"])
@@ -455,21 +634,33 @@ class TestLoopRestructure(SCFGComparator):
     def test_no_op_mono(self):
         """Loop consists of a single Block."""
         original = """
-        "0":
-            jt: ["1"]
-        "1":
-            jt: ["1", "2"]
-        "2":
-            jt: []
+        blocks:
+            '0':
+                type: basic
+            '1':
+                type: basic
+            '2':
+                type: basic
+        edges:
+            '0': ['1']
+            '1': ['1', '2']
+            '2': []
+        backedges:
         """
         expected = """
-        "0":
-            jt: ["1"]
-        "1":
-            jt: ["1", "2"]
-            be: ["1"]
-        "2":
-            jt: []
+        blocks:
+            '0':
+                type: basic
+            '1':
+                type: basic
+            '2':
+                type: basic
+        edges:
+            '0': ['1']
+            '1': ['1', '2']
+            '2': []
+        backedges:
+            '1': ['1']
         """
         original_scfg, block_dict = SCFG.from_yaml(original)
         expected_scfg, _ = SCFG.from_yaml(expected)
@@ -479,25 +670,39 @@ class TestLoopRestructure(SCFGComparator):
     def test_no_op(self):
         """Loop consists of two blocks, but it's in form."""
         original = """
-        "0":
-            jt: ["1"]
-        "1":
-            jt: ["2"]
-        "2":
-            jt: ["1", "3"]
-        "3":
-            jt: []
+        blocks:
+            '0':
+                type: basic
+            '1':
+                type: basic
+            '2':
+                type: basic
+            '3':
+                type: basic
+        edges:
+            '0': ['1']
+            '1': ['2']
+            '2': ['1', '3']
+            '3': []
+        backedges:
         """
         expected = """
-        "0":
-            jt: ["1"]
-        "1":
-            jt: ["2"]
-        "2":
-            jt: ["1", "3"]
-            be: ["1"]
-        "3":
-            jt: []
+        blocks:
+            '0':
+                type: basic
+            '1':
+                type: basic
+            '2':
+                type: basic
+            '3':
+                type: basic
+        edges:
+            '0': ['1']
+            '1': ['2']
+            '2': ['1', '3']
+            '3': []
+        backedges:
+            '2': ['1']
         """
         original_scfg, block_dict = SCFG.from_yaml(original)
         expected_scfg, _ = SCFG.from_yaml(expected)
@@ -512,31 +717,48 @@ class TestLoopRestructure(SCFGComparator):
         This is the situation with the standard Python for loop.
         """
         original = """
-        "0":
-            jt: ["1"]
-        "1":
-            jt: ["2", "3"]
-        "2":
-            jt: ["1"]
-        "3":
-            jt: []
+        blocks:
+            '0':
+                type: basic
+            '1':
+                type: basic
+            '2':
+                type: basic
+            '3':
+                type: basic
+        edges:
+            '0': ['1']
+            '1': ['2', '3']
+            '2': ['1']
+            '3': []
+        backedges:
         """
         expected = """
-        "0":
-            jt: ["1"]
-        "1":
-            jt: ["2", "5"]
-        "2":
-            jt: ["6"]
-        "3":
-            jt: []
-        "4":
-            jt: ["1", "3"]
-            be: ["1"]
-        "5":
-            jt: ["4"]
-        "6":
-            jt: ["4"]
+        blocks:
+            '0':
+                type: basic
+            '1':
+                type: basic
+            '2':
+                type: basic
+            '3':
+                type: basic
+            '4':
+                type: basic
+            '5':
+                type: basic
+            '6':
+                type: basic
+        edges:
+            '0': ['1']
+            '1': ['2', '5']
+            '2': ['6']
+            '3': []
+            '4': ['1', '3']
+            '5': ['4']
+            '6': ['4']
+        backedges:
+            '4': ['1']
         """
         original_scfg, block_dict = SCFG.from_yaml(original)
         expected_scfg, _ = SCFG.from_yaml(expected)
@@ -547,33 +769,51 @@ class TestLoopRestructure(SCFGComparator):
 
     def test_multi_back_edge_with_backedge_from_header(self):
         original = """
-        "0":
-            jt: ["1"]
-        "1":
-            jt: ["1", "2"]
-        "2":
-            jt: ["1", "3"]
-        "3":
-            jt: []
+        blocks:
+            '0':
+                type: basic
+            '1':
+                type: basic
+            '2':
+                type: basic
+            '3':
+                type: basic
+        edges:
+            '0': ['1']
+            '1': ['1', '2']
+            '2': ['1', '3']
+            '3': []
+        backedges:
         """
         expected = """
-        "0":
-            jt: ["1"]
-        "1":
-            jt: ["5", "2"]
-        "2":
-            jt: ["6", "7"]
-        "3":
-            jt: []
-        "4":
-            jt: ["1", "3"]
-            be: ["1"]
-        "5":
-            jt: ["4"]
-        "6":
-            jt: ["4"]
-        "7":
-            jt: ["4"]
+        blocks:
+            '0':
+                type: basic
+            '1':
+                type: basic
+            '2':
+                type: basic
+            '3':
+                type: basic
+            '4':
+                type: basic
+            '5':
+                type: basic
+            '6':
+                type: basic
+            '7':
+                type: basic
+        edges:
+            '0': ['1']
+            '1': ['5', '2']
+            '2': ['6', '7']
+            '3': []
+            '4': ['1', '3']
+            '5': ['4']
+            '6': ['4']
+            '7': ['4']
+        backedges:
+            '4': ['1']
         """
         original_scfg, block_dict = SCFG.from_yaml(original)
         expected_scfg, _ = SCFG.from_yaml(expected)
@@ -589,37 +829,57 @@ class TestLoopRestructure(SCFGComparator):
 
         """
         original = """
-        "0":
-            jt: ["1"]
-        "1":
-            jt: ["2"]
-        "2":
-            jt: ["3", "4"]
-        "3":
-            jt: ["1", "4"]
-        "4":
-            jt: []
+        blocks:
+            '0':
+                type: basic
+            '1':
+                type: basic
+            '2':
+                type: basic
+            '3':
+                type: basic
+            '4':
+                type: basic
+        edges:
+            '0': ['1']
+            '1': ['2']
+            '2': ['3', '4']
+            '3': ['1', '4']
+            '4': []
+        backedges:
         """
         expected = """
-        "0":
-            jt: ["1"]
-        "1":
-            jt: ["2"]
-        "2":
-            jt: ["3", "6"]
-        "3":
-            jt: ["7", "8"]
-        "4":
-            jt: []
-        "5":
-            jt: ["1", "4"]
-            be: ["1"]
-        "6":
-            jt: ["5"]
-        "7":
-            jt: ["5"]
-        "8":
-            jt: ["5"]
+        blocks:
+            '0':
+                type: basic
+            '1':
+                type: basic
+            '2':
+                type: basic
+            '3':
+                type: basic
+            '4':
+                type: basic
+            '5':
+                type: basic
+            '6':
+                type: basic
+            '7':
+                type: basic
+            '8':
+                type: basic
+        edges:
+            '0': ['1']
+            '1': ['2']
+            '2': ['3', '6']
+            '3': ['7', '8']
+            '4': []
+            '5': ['1', '4']
+            '6': ['5']
+            '7': ['5']
+            '8': ['5']
+        backedges:
+            '5': ['1']
         """
         original_scfg, block_dict = SCFG.from_yaml(original)
         expected_scfg, _ = SCFG.from_yaml(expected)
@@ -633,47 +893,72 @@ class TestLoopRestructure(SCFGComparator):
         """This is like the example from Bahman2015 fig. 3 --
         but with one exiting block removed."""
         original = """
-        "0":
-            jt: ["1", "2"]
-        "1":
-            jt: ["3"]
-        "2":
-            jt: ["4"]
-        "3":
-            jt: ["2", "5"]
-        "4":
-            jt: ["1"]
-        "5":
-            jt: []
+        blocks:
+            '0':
+                type: basic
+            '1':
+                type: basic
+            '2':
+                type: basic
+            '3':
+                type: basic
+            '4':
+                type: basic
+            '5':
+                type: basic
+        edges:
+            '0': ['1', '2']
+            '1': ['3']
+            '2': ['4']
+            '3': ['2', '5']
+            '4': ['1']
+            '5': []
+        backedges:
         """
         expected = """
-        "0":
-            jt: ["7", "8"]
-        "1":
-            jt: ["3"]
-        "2":
-            jt: ["4"]
-        "3":
-            jt: ["10", "11"]
-        "4":
-            jt: ["12"]
-        "5":
-            jt: []
-        "6":
-            jt: ["1", "2"]
-        "7":
-            jt: ["6"]
-        "8":
-            jt: ["6"]
-        "9":
-            jt: ["5", "6"]
-            be: ["6"]
-        "10":
-            jt: ["9"]
-        "11":
-            jt: ["9"]
-        "12":
-            jt: ["9"]
+        blocks:
+            '0':
+                type: basic
+            '1':
+                type: basic
+            '2':
+                type: basic
+            '3':
+                type: basic
+            '4':
+                type: basic
+            '5':
+                type: basic
+            '6':
+                type: basic
+            '7':
+                type: basic
+            '8':
+                type: basic
+            '9':
+                type: basic
+            '10':
+                type: basic
+            '11':
+                type: basic
+            '12':
+                type: basic
+        edges:
+            '0': ['7', '8']
+            '1': ['3']
+            '2': ['4']
+            '3': ['10', '11']
+            '4': ['12']
+            '5': []
+            '6': ['1', '2']
+            '7': ['6']
+            '8': ['6']
+            '9': ['5', '6']
+            '10': ['9']
+            '11': ['9']
+            '12': ['9']
+        backedges:
+            '9': ['6']
         """
         original_scfg, block_dict = SCFG.from_yaml(original)
         expected_scfg, _ = SCFG.from_yaml(expected)
@@ -698,59 +983,90 @@ class TestLoopRestructure(SCFGComparator):
 
         """
         original = """
-        "0":
-            jt: ["1", "2"]
-        "1":
-            jt: ["3"]
-        "2":
-            jt: ["4"]
-        "3":
-            jt: ["2", "5"]
-        "4":
-            jt: ["1", "6"]
-        "5":
-            jt: ["7"]
-        "6":
-            jt: ["7"]
-        "7":
-            jt: []
+        blocks:
+            '0':
+                type: basic
+            '1':
+                type: basic
+            '2':
+                type: basic
+            '3':
+                type: basic
+            '4':
+                type: basic
+            '5':
+                type: basic
+            '6':
+                type: basic
+            '7':
+                type: basic
+        edges:
+            '0': ['1', '2']
+            '1': ['3']
+            '2': ['4']
+            '3': ['2', '5']
+            '4': ['1', '6']
+            '5': ['7']
+            '6': ['7']
+            '7': []
+        backedges:
         """
         expected = """
-        "0":
-            jt: ["10", "9"]
-        "1":
-            jt: ["3"]
-        "2":
-            jt: ["4"]
-        "3":
-            jt: ["13", "14"]
-        "4":
-            jt: ["15", "16"]
-        "5":
-            jt: ["7"]
-        "6":
-            jt: ["7"]
-        "7":
-            jt: []
-        "8":
-            jt: ["1", "2"]
-        "9":
-            jt: ["8"]
-        "10":
-            jt: ["8"]
-        "11":
-            jt: ["12", "8"]
-            be: ["8"]
-        "12":
-            jt: ["5", "6"]
-        "13":
-            jt: ["11"]
-        "14":
-            jt: ["11"]
-        "15":
-            jt: ["11"]
-        "16":
-            jt: ["11"]
+        blocks:
+            '0':
+                type: basic
+            '1':
+                type: basic
+            '2':
+                type: basic
+            '3':
+                type: basic
+            '4':
+                type: basic
+            '5':
+                type: basic
+            '6':
+                type: basic
+            '7':
+                type: basic
+            '8':
+                type: basic
+            '9':
+                type: basic
+            '10':
+                type: basic
+            '11':
+                type: basic
+            '12':
+                type: basic
+            '13':
+                type: basic
+            '14':
+                type: basic
+            '15':
+                type: basic
+            '16':
+                type: basic
+        edges:
+            '0': ['10', '9']
+            '1': ['3']
+            '2': ['4']
+            '3': ['13', '14']
+            '4': ['15', '16']
+            '5': ['7']
+            '6': ['7']
+            '7': []
+            '8': ['1', '2']
+            '9': ['8']
+            '10': ['8']
+            '11': ['12', '8']
+            '12': ['5', '6']
+            '13': ['11']
+            '14': ['11']
+            '15': ['11']
+            '16': ['11']
+        backedges:
+            '11': ['8']
         """
         original_scfg, block_dict = SCFG.from_yaml(original)
         expected_scfg, _ = SCFG.from_yaml(expected)

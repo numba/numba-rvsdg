@@ -17,43 +17,71 @@ class TestSCFGConversion(SCFGComparator):
         # Case # 1: Acyclic graph, no back-edges
         cases = [
             """
-            "0":
-                jt: ["1", "2"]
-            "1":
-                jt: ["3"]
-            "2":
-                jt: ["4"]
-            "3":
-                jt: ["4"]
-            "4":
-                jt: []""",
+            blocks:
+                '0':
+                    type: basic
+                '1':
+                    type: basic
+                '2':
+                    type: basic
+                '3':
+                    type: basic
+                '4':
+                    type: basic
+            edges:
+                '0': ['1', '2']
+                '1': ['3']
+                '2': ['4']
+                '3': ['4']
+                '4': []
+            backedges:
+            """,
             # Case # 2: Cyclic graph, no back edges
             """
-            "0":
-                jt: ["1", "2"]
-            "1":
-                jt: ["5"]
-            "2":
-                jt: ["1", "5"]
-            "3":
-                jt: ["0"]
-            "4":
-                jt: []
-            "5":
-                jt: ["3", "4"]""",
+            blocks:
+                '0':
+                    type: basic
+                '1':
+                    type: basic
+                '2':
+                    type: basic
+                '3':
+                    type: basic
+                '4':
+                    type: basic
+                '5':
+                    type: basic
+            edges:
+                '0': ['1', '2']
+                '1': ['5']
+                '2': ['1', '5']
+                '3': ['1']
+                '4': []
+                '5': ['3', '4']
+            backedges:
+            """,
             # Case # 3: Graph with backedges
             """
-            "0":
-                jt: ["1"]
-            "1":
-                jt: ["2", "3"]
-            "2":
-                jt: ["4"]
-            "3":
-                jt: []
-            "4":
-                jt: ["2", "3"]
-                be: ["2"]""",
+            blocks:
+                '0':
+                    type: basic
+                '1':
+                    type: basic
+                '2':
+                    type: basic
+                '3':
+                    type: basic
+                '4':
+                    type: basic
+            edges:
+                '0': ['1']
+                '1': ['2', '3']
+                '2': ['4']
+                '3': []
+                '4': ['2', '3']
+            backedges:
+                '4': ['2']
+            """,
         ]
 
         for case in cases:
@@ -65,28 +93,59 @@ class TestSCFGConversion(SCFGComparator):
         # Case # 1: Acyclic graph, no back-edges
         cases = [
             {
-                "0": {"jt": ["1", "2"]},
-                "1": {"jt": ["3"]},
-                "2": {"jt": ["4"]},
-                "3": {"jt": ["4"]},
-                "4": {"jt": []},
+                "blocks": {
+                    "0": {"type": "basic"},
+                    "1": {"type": "basic"},
+                    "2": {"type": "basic"},
+                    "3": {"type": "basic"},
+                    "4": {"type": "basic"},
+                },
+                "edges": {
+                    "0": ["1", "2"],
+                    "1": ["3"],
+                    "2": ["4"],
+                    "3": ["4"],
+                    "4": [],
+                },
+                "backedges": {},
             },
             # Case # 2: Cyclic graph, no back edges
             {
-                "0": {"jt": ["1", "2"]},
-                "1": {"jt": ["5"]},
-                "2": {"jt": ["1", "5"]},
-                "3": {"jt": ["0"]},
-                "4": {"jt": []},
-                "5": {"jt": ["3", "4"]},
+                "blocks": {
+                    "0": {"type": "basic"},
+                    "1": {"type": "basic"},
+                    "2": {"type": "basic"},
+                    "3": {"type": "basic"},
+                    "4": {"type": "basic"},
+                    "5": {"type": "basic"},
+                },
+                "edges": {
+                    "0": ["1", "2"],
+                    "1": ["5"],
+                    "2": ["1", "5"],
+                    "3": ["0"],
+                    "4": [],
+                    "5": ["3", "4"],
+                },
+                "backedges": {},
             },
             # Case # 3: Graph with backedges
             {
-                "0": {"jt": ["1"]},
-                "1": {"jt": ["2", "3"]},
-                "2": {"jt": ["4"]},
-                "3": {"jt": []},
-                "4": {"jt": ["2", "3"], "be": ["2"]},
+                "blocks": {
+                    "0": {"type": "basic"},
+                    "1": {"type": "basic"},
+                    "2": {"type": "basic"},
+                    "3": {"type": "basic"},
+                    "4": {"type": "basic"},
+                },
+                "edges": {
+                    "0": ["1"],
+                    "1": ["2", "3"],
+                    "2": ["4"],
+                    "3": [],
+                    "4": ["2", "3"],
+                },
+                "backedges": {"4": ["2"]},
             },
         ]
 
@@ -106,10 +165,15 @@ class TestSCFGIterator(SCFGComparator):
         ]
         scfg, _ = SCFG.from_yaml(
             """
-        "0":
-            jt: ["1"]
-        "1":
-            jt: []
+        blocks:
+            'basic_block_0':
+                type: basic
+            'basic_block_1':
+                type: basic
+        edges:
+            'basic_block_0': ['basic_block_1']
+            'basic_block_1': []
+        backedges:
         """
         )
         received = list(scfg)
