@@ -1,7 +1,7 @@
 import dis
 import yaml
-from textwrap import dedent
 from typing import (
+    Any,
     Set,
     Tuple,
     Dict,
@@ -13,7 +13,6 @@ from typing import (
     Sized,
 )
 from textwrap import indent
-from typing import Set, Tuple, Dict, List, Iterator
 from dataclasses import dataclass, field
 from collections import deque
 
@@ -682,9 +681,7 @@ class SCFG(Sized):
         # close if more than one is found
         if len(return_nodes) > 1:
             return_solo_name = self.name_gen.new_block_name(SYNTH_RETURN)
-            self.insert_SyntheticReturn(
-                return_solo_name, return_nodes, tuple()
-            )
+            self.insert_SyntheticReturn(return_solo_name, return_nodes, [])
 
     def join_tails_and_exits(
         self, tails: List[str], exits: List[str]
@@ -753,7 +750,7 @@ class SCFG(Sized):
         """
         return {inst.offset: inst for inst in bc}
 
-    def view(self, name: str = None):
+    def view(self, name: Optional[str] = None) -> None:
         """View the current SCFG as a external PDF file.
 
         This method internally creates a SCFGRenderer corresponding to
@@ -802,7 +799,9 @@ class SCFG(Sized):
         return SCFGIO.from_yaml(yaml_string)
 
     @staticmethod
-    def from_dict(graph_dict: dict):
+    def from_dict(
+        graph_dict: Dict[str, Dict[str, List[str]]]
+    ) -> Tuple["SCFG", Dict[str, str]]:
         """Static method that creates an SCFG object from a dictionary
         representation.
 
@@ -834,7 +833,7 @@ class SCFG(Sized):
         """
         return SCFGIO.from_dict(graph_dict)
 
-    def to_yaml(self):
+    def to_yaml(self) -> str:
         """Converts the SCFG object to a YAML string representation.
 
         The method returns a YAML string representing the control
@@ -856,7 +855,7 @@ class SCFG(Sized):
         """
         return SCFGIO.to_yaml(self)
 
-    def to_dict(self):
+    def to_dict(self) -> Dict[str, Dict[str, Any]]:
         """Converts the SCFG object to a dictionary representation.
 
         This method returns a dictionary representing the control flow
@@ -885,7 +884,7 @@ class SCFGIO:
     """
 
     @staticmethod
-    def from_yaml(yaml_string: str):
+    def from_yaml(yaml_string: str) -> Tuple["SCFG", Dict[str, str]]:
         """Static helper method that creates an SCFG object from a YAML
         representation.
 
@@ -913,7 +912,7 @@ class SCFGIO:
 
     @staticmethod
     def from_dict(
-        graph_dict: Dict[str, Dict[str, List[str]]]
+        graph_dict: Dict[str, Dict[str, Any]]
     ) -> "Tuple[SCFG, Dict[str, str]]":
         """Static method that creates an SCFG object from a dictionary
         representation.
@@ -954,12 +953,12 @@ class SCFGIO:
 
     @staticmethod
     def make_scfg(
-        graph_dict,
-        curr_heads: set,
-        block_ref_dict,
-        name_gen,
-        exiting: str = None,
-    ):
+        graph_dict: Dict[str, Dict[str, Any]],
+        curr_heads: Set[str],
+        block_ref_dict: Dict[str, str],
+        name_gen: NameGenerator,
+        exiting: Optional[str] = None,
+    ) -> "SCFG":
         """Helper method for building a single 'level' of the hierarchical
         structure in an `SCFG` graph at a time. Recursively calls itself
         to build the entire graph.
@@ -1035,7 +1034,7 @@ class SCFGIO:
         return scfg
 
     @staticmethod
-    def to_yaml(scfg):
+    def to_yaml(scfg: "SCFG") -> str:
         """Helper method to convert the SCFG object to a YAML
         string representation.
 
@@ -1080,7 +1079,7 @@ class SCFGIO:
         return ys
 
     @staticmethod
-    def to_dict(scfg):
+    def to_dict(scfg: "SCFG") -> Dict[str, Dict[str, Any]]:
         """Helper method to convert the SCFG object to a dictionary
         representation.
 
@@ -1099,9 +1098,10 @@ class SCFGIO:
         graph_dict: Dict[Dict[...]]
             A dictionary representing the SCFG.
         """
-        blocks, edges, backedges = {}, {}, {}
+        blocks: Dict[str, Any] = {}
+        edges, backedges = {}, {}
 
-        def reverse_lookup(value: type):
+        def reverse_lookup(value: type) -> str:
             for k, v in block_type_names.items():
                 if v == value:
                     return k
@@ -1109,7 +1109,7 @@ class SCFGIO:
                 raise TypeError("Block type not found.")
 
         seen = set()
-        q = set()
+        q: Set[Tuple[str, BasicBlock]] = set()
         # Order of elements doesn't matter since they're going to
         # be sorted at the end.
         q.update(scfg.graph.items())
@@ -1123,6 +1123,8 @@ class SCFGIO:
             block_type = reverse_lookup(type(value))
             blocks[key] = {"type": block_type}
             if isinstance(value, RegionBlock):
+                assert value.subregion is not None
+                assert value.parent_region is not None
                 q.update(value.subregion.graph.items())
                 blocks[key]["kind"] = value.kind
                 blocks[key]["contains"] = sorted(
@@ -1147,7 +1149,7 @@ class SCFGIO:
         return graph_dict
 
     @staticmethod
-    def find_outer_graph(graph_dict: dict):
+    def find_outer_graph(graph_dict: Dict[str, Dict[str, Any]]) -> Set[str]:
         """Helper method to find the outermost graph components
         of an `SCFG` object. (i.e. Components that aren't
         contained in any other region)
@@ -1174,8 +1176,12 @@ class SCFGIO:
 
     @staticmethod
     def extract_block_info(
-        blocks, current_name, block_ref_dict, edges, backedges
-    ):
+        blocks: Dict[str, Dict[str, Any]],
+        current_name: str,
+        block_ref_dict: Dict[str, str],
+        edges: Dict[str, List[str]],
+        backedges: Dict[str, List[str]],
+    ) -> Tuple[Dict[str, Any], str, Tuple[str, ...], Tuple[str, ...]]:
         """Helper method to extract information from various components of
         an `SCFG` graph.
 
