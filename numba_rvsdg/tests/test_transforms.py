@@ -1,3 +1,5 @@
+# mypy: ignore-errors
+
 from unittest import main
 
 from numba_rvsdg.core.datastructures.scfg import SCFG

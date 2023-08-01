@@ -1,3 +1,5 @@
+# mypy: ignore-errors
+
 """
 Defines a mock assembly with a minimal operation semantic for testing
 control flow transformation.
@@ -6,7 +8,7 @@ control flow transformation.
 
 from dataclasses import dataclass
 from enum import IntEnum
-from typing import IO
+from typing import IO, List, Tuple
 import random
 
 
@@ -57,22 +59,22 @@ class Inst:
 
 
 @dataclass(frozen=True)
-class PrintOperands:
+class PrintOperands(Operands):
     text: str
 
 
 @dataclass(frozen=True)
-class GotoOperands:
+class GotoOperands(Operands):
     jump_target: int
 
 
 @dataclass(frozen=True)
-class CtrOperands:
+class CtrOperands(Operands):
     counter: int
 
 
 @dataclass(frozen=True)
-class BrCtrOperands:
+class BrCtrOperands(Operands):
     true_target: int
     false_target: int
 
@@ -84,7 +86,7 @@ def parse(asm: str) -> list[Inst]:
     """
     # pass 1: scan for labels
     labelmap: dict[str, int] = {}
-    todos = []
+    todos: List[Tuple[str, List[str]]] = []
     for line in asm.splitlines():
         line = line.strip()
         if not line:

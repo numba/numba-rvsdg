@@ -39,5 +39,8 @@ repos:
     hooks:
       - id: mypy
         additional_dependencies:
+        - types-pyyaml
         - types-filelock
         - types-setuptools
+        entry: mypy
+

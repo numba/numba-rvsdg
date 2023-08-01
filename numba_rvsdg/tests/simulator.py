@@ -1,3 +1,5 @@
+# mypy: ignore-errors
+
 from collections import ChainMap
 from dis import Instruction
 from numba_rvsdg.core.datastructures.byte_flow import ByteFlow

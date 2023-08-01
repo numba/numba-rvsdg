@@ -1,3 +1,5 @@
+# mypy: ignore-errors
+
 from io import StringIO
 import random
 import textwrap

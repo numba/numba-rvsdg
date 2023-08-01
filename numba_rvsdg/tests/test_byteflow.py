@@ -1,5 +1,5 @@
+# mypy: ignore-errors
 from dis import Bytecode, Instruction, Positions
-
 import unittest
 from numba_rvsdg.core.datastructures.basic_block import PythonBytecodeBlock
 from numba_rvsdg.core.datastructures.byte_flow import ByteFlow

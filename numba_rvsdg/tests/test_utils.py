@@ -1,3 +1,5 @@
+# mypy: ignore-errors
+
 from unittest import TestCase
 import yaml
 
@@ -78,14 +80,14 @@ class SCFGComparator(TestCase):
                 stack.append(be1)
 
     def assertYAMLEqual(
-        self, first_yaml: SCFG, second_yaml: SCFG, head_map: dict
+        self, first_yaml: str, second_yaml: str, head_map: dict
     ):
         self.assertDictEqual(
             yaml.safe_load(first_yaml), yaml.safe_load(second_yaml), head_map
         )
 
-    def assertDictEqual(
-        self, first_yaml: str, second_yaml: str, head_map: dict
+    def assertDictEqual(  # type: ignore
+        self, first_yaml: dict, second_yaml: dict, head_map: dict
     ):
         block_mapping = head_map
         stack = list(block_mapping.keys())
@@ -96,7 +98,7 @@ class SCFGComparator(TestCase):
         seen = set()
 
         while stack:
-            node_name: BasicBlock = stack.pop()
+            node_name = stack.pop()
             if node_name in seen:
                 continue
             seen.add(node_name)

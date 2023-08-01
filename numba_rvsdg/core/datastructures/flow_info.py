@@ -1,6 +1,6 @@
 import dis
 
-from typing import Set, Tuple, Dict, Sequence
+from typing import Set, Tuple, Dict, Sequence, Optional
 from dataclasses import dataclass, field
 
 from numba_rvsdg.core.datastructures.basic_block import PythonBytecodeBlock
@@ -36,7 +36,7 @@ class FlowInfo:
 
     last_offset: int = field(default=0)
 
-    def _add_jump_inst(self, offset: int, targets: Sequence[int]):
+    def _add_jump_inst(self, offset: int, targets: Sequence[int]) -> None:
         """Internal method to add a jump instruction to the FlowInfo.
 
         This method adds the target offsets of the jump instruction
@@ -93,7 +93,9 @@ class FlowInfo:
         flowinfo.last_offset = inst.offset
         return flowinfo
 
-    def build_basicblocks(self: "FlowInfo", end_offset=None) -> "SCFG":
+    def build_basicblocks(
+        self: "FlowInfo", end_offset: Optional[int] = None
+    ) -> "SCFG":
         """Builds a graph of basic blocks based on the flow information.
 
         It creates a structured control flow graph (SCFG) object, assigns

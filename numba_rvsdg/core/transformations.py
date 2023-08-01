@@ -1,10 +1,11 @@
 from collections import defaultdict
-from typing import Set, Dict, List
+from typing import Set, Dict, List, Tuple, Optional, Mapping, Iterator
 
 from numba_rvsdg.core.datastructures.scfg import SCFG
 from numba_rvsdg.core.datastructures.basic_block import (
     BasicBlock,
     SyntheticAssignment,
+    SyntheticBranch,
     SyntheticExitingLatch,
     SyntheticExitBranch,
     RegionBlock,
@@ -14,7 +15,7 @@ from numba_rvsdg.core.datastructures import block_names
 from numba_rvsdg.core.utils import _logger
 
 
-def loop_restructure_helper(scfg: SCFG, loop: Set[str]):
+def loop_restructure_helper(scfg: SCFG, loop: Set[str]) -> None:
     """Loop Restructuring
 
     Applies the algorithm LOOP RESTRUCTURING from section 4.1 of Bahmann2015.
@@ -37,14 +38,15 @@ def loop_restructure_helper(scfg: SCFG, loop: Set[str]):
 
     # If there are multiple headers, insert assignment and control blocks,
     # such that only a single loop header remains.
+    loop_head = None
     if len(headers) > 1:
         headers_were_unified = True
         solo_head_name = scfg.name_gen.new_block_name(block_names.SYNTH_HEAD)
         scfg.insert_block_and_control_blocks(solo_head_name, entries, headers)
         loop.add(solo_head_name)
-        loop_head: str = solo_head_name
+        loop_head = solo_head_name
     else:
-        loop_head: str = next(iter(headers))
+        loop_head = next(iter(headers))
     # If there is only a single exiting latch (an exiting block that also has a
     # backedge to the loop header) we can exit early, since the condition for
     # SCFG is fullfilled.
@@ -79,7 +81,9 @@ def loop_restructure_helper(scfg: SCFG, loop: Set[str]):
     # If there were multiple headers, we must re-use the variable that was used
     # for looping as the exit variable
     if headers_were_unified:
-        exit_variable = scfg[solo_head_name].variable
+        bb_branch = scfg[solo_head_name]
+        assert isinstance(bb_branch, SyntheticBranch)
+        exit_variable = bb_branch.variable
     else:
         exit_variable = scfg.name_gen.new_var_name("exit")
     # This variable denotes the backedge
@@ -96,18 +100,20 @@ def loop_restructure_helper(scfg: SCFG, loop: Set[str]):
             i: j for i, j in enumerate((loop_head, next(iter(exit_blocks))))
         }
     if headers_were_unified:
-        header_value_table = scfg[solo_head_name].branch_value_table
+        bb_branch = scfg[solo_head_name]
+        assert isinstance(bb_branch, SyntheticBranch)
+        header_value_table = bb_branch.branch_value_table
     else:
         header_value_table = {}
 
     # This does a dictionary reverse lookup, to determine the key for a given
     # value.
-    def reverse_lookup(d, value):
+    def reverse_lookup(d: Mapping[int, str], value: str) -> int:
         for k, v in d.items():
             if v == value:
                 return k
         else:
-            return "UNUSED"
+            return -1
 
     # Now that everything is in place, we can start to insert blocks, depending
     # on what is needed
@@ -233,10 +239,11 @@ def loop_restructure_helper(scfg: SCFG, loop: Set[str]):
         scfg.add_block(synth_exit_block)
 
 
-def restructure_loop(parent_region: RegionBlock):
+def restructure_loop(parent_region: RegionBlock) -> None:
     """Inplace restructuring of the given graph to extract loops using
     strongly-connected components
     """
+    assert parent_region.subregion is not None
     scfg = parent_region.subregion
     # obtain a List of Sets of names, where all names in each set are strongly
     # connected, i.e. all reachable from one another by traversing the subset
@@ -276,15 +283,18 @@ def find_head_blocks(scfg: SCFG, begin: str) -> Set[str]:
     return head_region_blocks
 
 
-def find_branch_regions(scfg: SCFG, begin: str, end: str) -> Set[str]:
+def find_branch_regions(
+    scfg: SCFG, begin: str, end: str
+) -> List[Optional[Tuple[str, Set[str]]]]:
     # identify branch regions
     doms = _doms(scfg)
-    branch_regions = []
+    branch_regions: List[Optional[Tuple[str, Set[str]]]] = []
     jump_targets = scfg.graph[begin].jump_targets
     for bra_start in jump_targets:
         for jt in jump_targets:
             if jt != bra_start and scfg.is_reachable_dfs(jt, bra_start):
-                branch_regions.append(tuple())
+                # placeholder for empty branch region
+                branch_regions.append(None)
                 break
         else:
             sub_keys: Set[str] = set()
@@ -298,22 +308,17 @@ def find_branch_regions(scfg: SCFG, begin: str, end: str) -> Set[str]:
     return branch_regions
 
 
-def _find_branch_regions(scfg: SCFG, begin: str, end: str) -> Set[str]:
-    # identify branch regions
-    branch_regions = []
-    for bra_start in scfg[begin].jump_targets:
-        region = []
-        region.append(bra_start)
-    return branch_regions
-
-
 def find_tail_blocks(
-    scfg: SCFG, begin: Set[str], head_region_blocks, branch_regions
-):
+    scfg: SCFG,
+    begin: str,
+    head_region_blocks: Set[str],
+    branch_regions: List[Optional[Tuple[str, Set[str]]]],
+) -> Set[str]:
     tail_subregion = {b for b in scfg.graph.keys()}
     tail_subregion.difference_update(head_region_blocks)
     for reg in branch_regions:
-        if not reg:
+        if reg is None:
+            # empty branch region
             continue
         b, sub = reg
         tail_subregion.discard(b)
@@ -326,9 +331,10 @@ def find_tail_blocks(
 
 def update_exiting(
     region_block: RegionBlock, new_region_header: str, new_region_name: str
-):
+) -> RegionBlock:
     # Recursively updates the exiting blocks of a regionblock
     region_exiting = region_block.exiting
+    assert region_block.subregion is not None
     region_exiting_block: BasicBlock = region_block.subregion.graph.pop(
         region_exiting
     )
@@ -355,8 +361,11 @@ def update_exiting(
 
 
 def extract_region(
-    scfg: SCFG, region_blocks, region_kind, parent_region: RegionBlock
-):
+    scfg: SCFG,
+    region_blocks: Set[str],
+    region_kind: str,
+    parent_region: RegionBlock,
+) -> None:
     headers, entries = scfg.find_headers_and_entries(region_blocks)
     exiting_blocks, exit_blocks = scfg.find_exiting_and_exits(region_blocks)
     assert len(headers) == 1
@@ -424,12 +433,14 @@ def extract_region(
         parent_region.replace_exiting(region_name)
     # For every region block inside the newly created region,
     # update the parent region
+    assert region.subregion is not None
     for k, v in region.subregion.graph.items():
         if isinstance(v, RegionBlock):
             object.__setattr__(v, "parent_region", region)
 
 
-def restructure_branch(parent_region: RegionBlock):
+def restructure_branch(parent_region: RegionBlock) -> None:
+    assert parent_region.subregion is not None
     scfg: SCFG = parent_region.subregion
     print("restructure_branch", scfg.graph)
     doms = _doms(scfg)
@@ -485,7 +496,7 @@ def restructure_branch(parent_region: RegionBlock):
                 block_names.SYNTH_FILL
             )
             scfg.insert_SyntheticFill(
-                synthetic_branch_block_name, (begin,), tail_headers
+                synthetic_branch_block_name, [begin], tail_headers
             )
 
     # Recompute regions.
@@ -507,7 +518,7 @@ def restructure_branch(parent_region: RegionBlock):
 
 def _iter_branch_regions(
     scfg: SCFG, immdoms: Dict[str, str], postimmdoms: Dict[str, str]
-):
+) -> Iterator[Tuple[str, str]]:
     for begin, node in scfg.concealed_region_view.items():
         if len(node.jump_targets) > 1:
             # found branch
@@ -537,7 +548,7 @@ def _imm_doms(doms: Dict[str, Set[str]]) -> Dict[str, str]:
     return out
 
 
-def _doms(scfg: SCFG):
+def _doms(scfg: SCFG) -> Dict[str, Set[str]]:
     # compute dom
     entries = set()
     preds_table = defaultdict(set)
@@ -559,7 +570,7 @@ def _doms(scfg: SCFG):
     )
 
 
-def _post_doms(scfg: SCFG):
+def _post_doms(scfg: SCFG) -> Dict[str, Set[str]]:
     # compute post dom
     entries = set()
     for k, v in scfg.graph.items():
@@ -582,7 +593,12 @@ def _post_doms(scfg: SCFG):
     )
 
 
-def _find_dominators_internal(entries, nodes, preds_table, succs_table):
+def _find_dominators_internal(
+    entries: Set[str],
+    nodes: List[str],
+    preds_table: Dict[str, Set[str]],
+    succs_table: Dict[str, Set[str]],
+) -> Dict[str, Set[str]]:
     # From NUMBA
     # See theoretical description in
     # http://en.wikipedia.org/wiki/Dominator_%28graph_theory%29
@@ -623,7 +639,7 @@ def _find_dominators_internal(entries, nodes, preds_table, succs_table):
         preds = preds_table[n]
         if preds:
             new_doms |= functools.reduce(
-                set.intersection, [doms[p] for p in preds]
+                set.intersection, [doms[p] for p in preds]  # type: ignore
             )
         if new_doms != doms[n]:
             assert len(new_doms) < len(doms[n])
