@@ -1075,7 +1075,7 @@ class SCFGIO:
         return ys
 
     @staticmethod
-    def to_dict(scfg: "SCFG") -> Dict[str, Dict[str, BasicBlock]]:
+    def to_dict(scfg: "SCFG") -> Dict[str, Dict[str, Any]]:
         """Helper method to convert the SCFG object to a dictionary
         representation.
 
@@ -1109,7 +1109,8 @@ class SCFGIO:
         # Order of elements doesn't matter since they're going to
         # be sorted at the end.
         graph_dict = {}
-        q.update(set(scfg.graph.keys()))
+        all_keys: set[str] = set(scfg.graph.keys())
+        q.update(all_keys)
         graph_dict.update(scfg.graph)
 
         while q:
@@ -1119,18 +1120,20 @@ class SCFGIO:
                 continue
             seen.add(key)
 
-            block_type = reverse_lookup(type(value))
+            block_type: str = reverse_lookup(type(value))
             blocks[key] = {"type": block_type}
             if isinstance(value, RegionBlock):
-                q.update(value.subregion.graph.keys())
-                graph_dict.update(value.subregion.graph)
+                inner_graph = value.subregion.graph  # type: ignore
+                q.update(inner_graph.keys())
+                graph_dict.update(inner_graph)
                 blocks[key]["kind"] = value.kind
                 blocks[key]["contains"] = sorted(
-                    [idx.name for idx in value.subregion.graph.values()]
+                    [idx.name for idx in inner_graph.values()]
                 )
                 blocks[key]["header"] = value.header
                 blocks[key]["exiting"] = value.exiting
-                blocks[key]["parent_region"] = value.parent_region.name
+                parent_name = value.parent_region.name  # type: ignore
+                blocks[key]["parent_region"] = parent_name
             elif isinstance(value, SyntheticBranch):
                 blocks[key]["branch_value_table"] = value.branch_value_table
                 blocks[key]["variable"] = value.variable
@@ -1142,9 +1145,13 @@ class SCFGIO:
             edges[key] = sorted([i for i in value._jump_targets])
             backedges[key] = sorted([i for i in value.backedges])
 
-        graph_dict = {"blocks": blocks, "edges": edges, "backedges": backedges}
+        graph_dict = {
+            "blocks": blocks,  # type: ignore
+            "edges": edges,  # type: ignore
+            "backedges": backedges,  # type: ignore
+        }
 
-        return graph_dict
+        return graph_dict  # type: ignore
 
     @staticmethod
     def find_outer_graph(graph_dict: Dict[str, Dict[str, Any]]) -> Set[str]:
@@ -1179,7 +1186,7 @@ class SCFGIO:
         block_ref_dict: Dict[str, str],
         edges: Dict[str, List[str]],
         backedges: Dict[str, List[str]],
-    ) -> Tuple[Dict[str, Any], str, Tuple[str, ...], Tuple[str, ...]]:
+    ) -> Tuple[Dict[str, Any], str, list[str], list[str]]:
         """Helper method to extract information from various components of
         an `SCFG` graph.
 

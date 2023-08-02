@@ -327,7 +327,8 @@ def update_exiting(
 ) -> None:
     # Recursively updates the exiting blocks of a regionblock
     region_exiting = region_block.exiting
-    region_exiting_block: BasicBlock = region_block.subregion.graph[
+    region_exiting_block: BasicBlock
+    region_exiting_block = region_block.subregion.graph[  # type: ignore
         region_exiting
     ]
     jt = list(region_exiting_block._jump_targets)
