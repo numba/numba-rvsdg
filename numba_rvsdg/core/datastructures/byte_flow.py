@@ -1,5 +1,4 @@
 import dis
-from copy import deepcopy
 from dataclasses import dataclass
 from typing import Generator, Callable
 
@@ -61,90 +60,51 @@ class ByteFlow:
         scfg = flowinfo.build_basicblocks()
         return ByteFlow(bc=bc, scfg=scfg)
 
-    def _join_returns(self) -> "ByteFlow":
+    def _join_returns(self) -> None:
         """Joins the return blocks within the corresponding SCFG.
 
-        This method creates a deep copy of the SCFG and performs
-        operation to join return blocks within the control flow.
-        It returns a new ByteFlow object with the updated SCFG.
-
-        Returns
-        -------
-        byteflow: ByteFlow
-            The new ByteFlow object with updated SCFG.
+        This method performs operation to join return blocks within
+        the control flow.
         """
-        scfg = deepcopy(self.scfg)
-        scfg.join_returns()
-        return ByteFlow(bc=self.bc, scfg=scfg)
+        self.scfg.join_returns()
 
-    def _restructure_loop(self) -> "ByteFlow":
+    def _restructure_loop(self) -> None:
         """Restructures the loops within the corresponding SCFG.
 
-        Creates a deep copy of the SCFG and performs the operation to
-        restructure loop constructs within the control flow using
-        the algorithm LOOP RESTRUCTURING from section 4.1 of Bahmann2015.
+        Performs the operation to restructure loop constructs within
+        the control flow using the algorithm LOOP RESTRUCTURING from
+        section 4.1 of Bahmann2015.
         It applies the restructuring operation to both the main SCFG
-        and any subregions within it. It returns a new ByteFlow object
-        with the updated SCFG.
-
-        Returns
-        -------
-        byteflow: ByteFlow
-            The new ByteFlow object with updated SCFG.
+        and any subregions within it.
         """
-        scfg = deepcopy(self.scfg)
-        restructure_loop(scfg.region)
-        for region in _iter_subregions(scfg):
+        restructure_loop(self.scfg.region)
+        for region in _iter_subregions(self.scfg):
             restructure_loop(region)
-        return ByteFlow(bc=self.bc, scfg=scfg)
 
-    def _restructure_branch(self) -> "ByteFlow":
+    def _restructure_branch(self) -> None:
         """Restructures the branches within the corresponding SCFG.
 
-        Creates a deep copy of the SCFG and performs the operation to
-        restructure branch constructs within the control flow. It applies
-        the restructuring operation to both the main SCFG and any
-        subregions within it. It returns a new ByteFlow object with
-        the updated SCFG.
-
-        Returns
-        -------
-        byteflow: ByteFlow
-            The new ByteFlow object with updated SCFG.
+        This method applies restructuring branch operation to both
+        the main SCFG and any subregions within it.
         """
-        scfg = deepcopy(self.scfg)
-        restructure_branch(scfg.region)
-        for region in _iter_subregions(scfg):
+        restructure_branch(self.scfg.region)
+        for region in _iter_subregions(self.scfg):
             restructure_branch(region)
-        return ByteFlow(bc=self.bc, scfg=scfg)
 
-    def restructure(self) -> "ByteFlow":
+    def restructure(self) -> None:
         """Applies join_returns, restructure_loop and restructure_branch
         in the respective order on the SCFG.
 
-        Creates a deep copy of the SCFG and applies a series of
-        restructuring operations to it. The operations include
-        joining return blocks, restructuring loop constructs, and
-        restructuring branch constructs. It returns a new ByteFlow
-        object with the updated SCFG.
-
-        Returns
-        -------
-        byteflow: ByteFlow
-            The new ByteFlow object with updated SCFG.
+        Applies a series of restructuring operations to given SCFG.
+        The operations include joining return blocks, restructuring
+        loop constructs, and restructuring branch constructs.
         """
-        scfg = deepcopy(self.scfg)
         # close
-        scfg.join_returns()
+        self._join_returns()
         # handle loop
-        restructure_loop(scfg.region)
-        for region in _iter_subregions(scfg):
-            restructure_loop(region)
+        self._restructure_loop()
         # handle branch
-        restructure_branch(scfg.region)
-        for region in _iter_subregions(scfg):
-            restructure_branch(region)
-        return ByteFlow(bc=self.bc, scfg=scfg)
+        self._restructure_branch()
 
 
 def _iter_subregions(scfg: SCFG) -> Generator[RegionBlock, SCFG, None]:

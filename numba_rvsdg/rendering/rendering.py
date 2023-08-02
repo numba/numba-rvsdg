@@ -365,14 +365,14 @@ def render_flow(flow: ByteFlow) -> None:
     """
     ByteFlowRenderer().render_byteflow(flow).view("before")
 
-    cflow = flow._join_returns()
-    ByteFlowRenderer().render_byteflow(cflow).view("closed")
+    flow._join_returns()
+    ByteFlowRenderer().render_byteflow(flow).view("closed")
 
-    lflow = cflow._restructure_loop()
-    ByteFlowRenderer().render_byteflow(lflow).view("loop restructured")
+    flow._restructure_loop()
+    ByteFlowRenderer().render_byteflow(flow).view("loop restructured")
 
-    bflow = lflow._restructure_branch()
-    ByteFlowRenderer().render_byteflow(bflow).view("branch restructured")
+    flow._restructure_branch()
+    ByteFlowRenderer().render_byteflow(flow).view("branch restructured")
 
 
 def render_scfg(scfg: SCFG) -> None:
