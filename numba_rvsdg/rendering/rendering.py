@@ -1,4 +1,4 @@
-import logging
+# import logging
 from numba_rvsdg.core.datastructures.basic_block import (
     BasicBlock,
     RegionBlock,
@@ -50,8 +50,10 @@ class BaseRenderer:
             self.render_basic_block(digraph, name, block)
         elif type(block) == RegionBlock:
             self.render_region_block(digraph, name, block)
+        elif isinstance(block, BasicBlock):
+            self.render_basic_block(digraph, name, block)
         else:
-            raise Exception("unreachable")
+            raise Exception(f"unreachable: {type(block)}")
 
     def render_edges(self, scfg: SCFG):
         """Function that renders the edges in an SCFG.
@@ -169,8 +171,7 @@ class ByteFlowRenderer(BaseRenderer):
         digraph.node(str(name), shape="rect", label=body)
 
     def render_byteflow(self, byteflow: ByteFlow):
-        """Renders the provided `ByteFlow` object.
-        """
+        """Renders the provided `ByteFlow` object."""
         self.bcmap_from_bytecode(byteflow.bc)
         # render nodes
         for name, block in byteflow.scfg.graph.items():
@@ -292,7 +293,7 @@ class SCFGRenderer(BaseRenderer):
         self.g.view(name)
 
 
-logging.basicConfig(level=logging.DEBUG)
+# logging.basicConfig(level=logging.DEBUG)
 
 
 def render_func(func):

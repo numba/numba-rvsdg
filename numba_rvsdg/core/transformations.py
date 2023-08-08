@@ -431,7 +431,7 @@ def extract_region(
 
 def restructure_branch(parent_region: RegionBlock):
     scfg: SCFG = parent_region.subregion
-    print("restructure_branch", scfg.graph)
+    # print("restructure_branch", scfg.graph)
     doms = _doms(scfg)
     postdoms = _post_doms(scfg)
     postimmdoms = _imm_doms(postdoms)
