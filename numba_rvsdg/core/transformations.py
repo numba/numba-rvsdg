@@ -11,7 +11,7 @@ from numba_rvsdg.core.datastructures.basic_block import (
 )
 from numba_rvsdg.core.datastructures import block_names
 
-from numba_rvsdg.core.utils import _logger
+# from numba_rvsdg.core.utils import _logger
 
 
 def loop_restructure_helper(scfg: SCFG, loop: Set[str]):
@@ -250,9 +250,11 @@ def restructure_loop(parent_region: RegionBlock):
         or next(iter(nodes)) in scfg[next(iter(nodes))].jump_targets
     ]
 
-    _logger.debug(
-        "restructure_loop found %d loops in %s", len(loops), scfg.graph.keys()
-    )
+    # _logger.debug(
+    #     "restructure_loop found %d loops in %s",
+    #     len(loops),
+    #     scfg.graph.keys()
+    # )
     # rotate and extract loop
     for loop in loops:
         loop_restructure_helper(scfg, loop)

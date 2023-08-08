@@ -5,7 +5,8 @@ from dataclasses import dataclass
 from numba_rvsdg.core.datastructures.scfg import SCFG
 from numba_rvsdg.core.datastructures.basic_block import RegionBlock
 from numba_rvsdg.core.datastructures.flow_info import FlowInfo
-from numba_rvsdg.core.utils import _logger, _LogWrap
+
+# from numba_rvsdg.core.utils import _logger, _LogWrap
 
 from numba_rvsdg.core.transformations import (
     restructure_loop,
@@ -54,7 +55,7 @@ class ByteFlow:
             The resulting ByteFlow object.
         """
         bc = dis.Bytecode(code)
-        _logger.debug("Bytecode\n%s", _LogWrap(lambda: bc.dis()))
+        # _logger.debug("Bytecode\n%s", _LogWrap(lambda: bc.dis()))
 
         flowinfo = FlowInfo.from_bytecode(bc)
         scfg = flowinfo.build_basicblocks()
