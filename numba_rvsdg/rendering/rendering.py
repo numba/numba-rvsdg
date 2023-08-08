@@ -1,4 +1,4 @@
-import logging
+#import logging
 from abc import abstractmethod
 from numba_rvsdg.core.datastructures.basic_block import (
     BasicBlock,
@@ -79,7 +79,7 @@ class BaseRenderer:
         elif isinstance(block, SyntheticBlock):
             self.render_basic_block(digraph, name, block)
         else:
-            raise Exception("unreachable")
+            raise Exception(f"unreachable: {type(block)}")
 
     def render_edges(self, scfg: SCFG) -> None:
         """Function that renders the edges in an SCFG.
@@ -323,7 +323,7 @@ class SCFGRenderer(BaseRenderer):
         self.g.view(name)
 
 
-logging.basicConfig(level=logging.DEBUG)
+# logging.basicConfig(level=logging.DEBUG)
 
 
 def render_func(func) -> None:  # type: ignore
