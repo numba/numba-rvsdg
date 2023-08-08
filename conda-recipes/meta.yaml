@@ -3,7 +3,7 @@
 package:
   name: numba_rvsdg
   # GIT_DESCRIBE_TAG may not be set
-  version: {{ "%s%s" % (environ.get('GIT_DESCRIBE_TAG', '').lstrip('v'), VERSION_SUFFIX) }}
+  version: {{ "%s%s" % (environ.get('GIT_DESCRIBE_TAG', ''), VERSION_SUFFIX) }}
 
 source:
   # Using the local source tree helps test building without pushing changes
@@ -29,5 +29,5 @@ test:
 
 about:
   home: https://github.com/numba/numba_rvsdg
-  license: New BSD License
+  license: Simplified BSD License
   summary: TBD
