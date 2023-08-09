@@ -10,12 +10,16 @@ source:
   path: ../
 
 build:
-  number: {{ environ.get('GIT_DESCRIBE_NUMBER', 0) }}
-  
+  noarch: python
+  script: {{ PYTHON }} -m pip install . -vv
+  number: 0
+  string: {{ GIT_BUILD_STR }}
+
 requirements:
-  build:
-    - python
+  host:
+    - python >=3.11
     - setuptools
+    - pip
   run:
     - python >=3.11
     - python-graphviz
@@ -28,6 +32,7 @@ test:
     - pytest --pyargs numba_rvsdg
 
 about:
+  summary: Numba Compatible RVSDG utilities
   home: https://github.com/numba/numba_rvsdg
   license: Simplified BSD License
-  summary: TBD
+  license_file: LICENSE
