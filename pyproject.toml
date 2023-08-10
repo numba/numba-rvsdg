@@ -22,8 +22,8 @@ dependencies = [
     "pyyaml",
 ]
 
-[tool.setuptools]
-packages = ["numba_rvsdg"]
+[tool.setuptools.packages]
+find = {}
 
 [project.optional-dependencies]
 dev = [
