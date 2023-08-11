@@ -6,7 +6,7 @@ Version 0.0.3 - 2023-08-11
 ==========================
 
 This is a minimal maintenance update to support inclusion of ``numba-rvsdg`` as
-an optional dependeny in Numba 0.58.
+an optional dependency in Numba 0.58.
 
 Pull-Requests:
 
