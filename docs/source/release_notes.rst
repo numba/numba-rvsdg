@@ -2,7 +2,7 @@
 Release Notes
 =============
 
-Version 0.0.3 - 2023-08-11
+Version 0.0.4 - 2023-08-11
 ==========================
 
 This is a minimal maintenance update to support inclusion of ``numba-rvsdg`` as
@@ -21,6 +21,11 @@ Authors:
 * `kc611 <https://github.com/kc611>`_
 * `sklam <https://github.com/sklam>`_
 * `esc <https://github.com/esc>`_
+
+Version 0.0.3 - 2023-08-11
+==========================
+
+* RELEASE FAILED
 
 Version 0.0.2 - 2023-06-22
 ==========================
