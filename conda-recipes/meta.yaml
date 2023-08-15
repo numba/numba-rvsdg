@@ -1,7 +1,7 @@
 {% set VERSION_SUFFIX = "" %} # debug version suffix, appended to the version
 
 package:
-  name: numba_rvsdg
+  name: numba-rvsdg
   # GIT_DESCRIBE_TAG may not be set
   version: {{ "%s%s" % (environ.get('GIT_DESCRIBE_TAG', ''), VERSION_SUFFIX) }}
 
@@ -33,6 +33,6 @@ test:
 
 about:
   summary: Numba Compatible RVSDG utilities
-  home: https://github.com/numba/numba_rvsdg
+  home: https://github.com/numba/numba-rvsdg
   license: Simplified BSD License
   license_file: LICENSE

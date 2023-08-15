@@ -2,6 +2,21 @@
 Release Notes
 =============
 
+Version 0.0.5 - 2023-08-11
+==========================
+
+This is a maintenance release to fix the name of the conda package such that it
+matches the name of the PyPi project: `numba-rvsdg`.
+
+Pull-Requests:
+
+* PR `#103 <https://github.com/numba/numba-rvsdg/pull/103>`_: numba_rvsdg -> numba-rvsdg (`esc <https://github.com/esc>`_)
+* PR `#104 <https://github.com/numba/numba-rvsdg/pull/104>`_: fix regex when detecting tags (`esc <https://github.com/esc>`_)
+
+Authors:
+
+* `esc <https://github.com/esc>`_
+
 Version 0.0.4 - 2023-08-11
 ==========================
 
