@@ -527,7 +527,7 @@ class SCFG(Sized):
         # TODO: needs a diagram and documentaion
         # initialize new block
         new_block = block_type(
-            name=new_name, _jump_targets=list(successors), backedges=[]
+            name=new_name, _jump_targets=successors, backedges=[]
         )
         # add block to self
         self.add_block(new_block)
@@ -656,7 +656,7 @@ class SCFG(Sized):
         # initialize new block, which will hold the branching table
         new_block = SyntheticHead(
             name=new_name,
-            _jump_targets=list(successors),
+            _jump_targets=successors,
             backedges=[],
             variable=branch_variable,
             branch_value_table=branch_value_table,

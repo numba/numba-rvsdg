@@ -91,7 +91,7 @@ class BasicBlock:
             self.backedges.append(target)
 
     def replace_jump_targets(self, jump_targets: list[str]) -> None:
-        """Replaces jump targets of this block by the given tuple.
+        """Replaces jump targets of this block by the given list.
 
         This method replaces the jump targets of the current BasicBlock.
         The provided jump targets must be in the same order as their
@@ -103,14 +103,14 @@ class BasicBlock:
 
         Parameters
         ----------
-        jump_targets: Tuple
-            The new jump target tuple. Must be ordered.
+        jump_targets: List
+            The new jump target list. Must be ordered.
         """
         self._jump_targets.clear()
         self._jump_targets.extend(jump_targets)
 
     def replace_backedges(self, backedges: list[str]) -> None:
-        """Replaces back edges of this block by the given tuple.
+        """Replaces back edges of this block by the given list.
 
         This method replaces the back edges of the current BasicBlock.
         The provided back edges must be in the same order as their
@@ -118,8 +118,8 @@ class BasicBlock:
 
         Parameters
         ----------
-        backedges: Tuple
-            The new back edges tuple. Must be ordered.
+        backedges: List
+            The new back edges list. Must be ordered.
         """
         self.backedges.clear()
         self.backedges.extend(backedges)
@@ -256,7 +256,7 @@ class SyntheticBranch(SyntheticBlock):
     branch_value_table: Dict[int, str] = field(default_factory=lambda: {})
 
     def replace_jump_targets(self, jump_targets: list[str]) -> None:
-        """Replaces jump targets of this block by the given tuple.
+        """Replaces jump targets of this block by the given list.
 
         This method replaces the jump targets of  the current BasicBlock.
         The provided jump targets must be in the same order as their
@@ -269,8 +269,8 @@ class SyntheticBranch(SyntheticBlock):
 
         Parameters
         ----------
-        jump_targets: Tuple
-            The new jump target tuple. Must be ordered.
+        jump_targets: List
+            The new jump target list. Must be ordered.
         """
 
         old_branch_value_table = self.branch_value_table.copy()
