@@ -524,6 +524,11 @@ class SCFG(Sized):
         block_type: SyntheticBlock
             The type/class of the newly created block.
         """
+        # To prevent spurious mutations in successsors and predecessors
+        # since they are a part of the graph.
+        successors = successors.copy()
+        predecessors = predecessors.copy()
+
         # TODO: needs a diagram and documentaion
         # initialize new block
         new_block = block_type(
