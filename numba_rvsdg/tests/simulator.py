@@ -10,6 +10,9 @@ from numba_rvsdg.core.datastructures.basic_block import (
 )
 
 import builtins
+import sys
+
+PYVERSION = sys.version_info[:2]
 
 
 class Simulator:
@@ -327,8 +330,11 @@ class Simulator:
         try:
             ind = next(tos)
         except StopIteration:
-            self.stack.pop()
             self.branch = True
+            if PYVERSION <= (3, 11):
+                self.stack.pop()
+            else:
+                self.stack.append(None)
         else:
             self.branch = False
             self.stack.append(ind)
@@ -427,3 +433,11 @@ class Simulator:
     def op_POP_JUMP_BACKWARD_IF_NONE(self, inst):
         self.branch = self.stack[-1] is None
         self.stack.pop()
+
+    def op_END_FOR(self, inst):
+        self.stack.pop()
+        self.stack.pop()
+
+    def op_COPY(self, inst):
+        assert inst.argval > 0
+        self.stack.append(self.stack[-inst.argval])
