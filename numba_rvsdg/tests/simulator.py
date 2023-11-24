@@ -331,10 +331,12 @@ class Simulator:
             ind = next(tos)
         except StopIteration:
             self.branch = True
-            if PYVERSION <= (3, 11):
+            if PYVERSION in ((3, 11),):
                 self.stack.pop()
-            else:
+            elif PYVERSION in ((3, 12),):
                 self.stack.append(None)
+            else:
+                raise NotImplementedError(PYVERSION)
         else:
             self.branch = False
             self.stack.append(ind)
