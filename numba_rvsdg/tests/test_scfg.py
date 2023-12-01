@@ -162,7 +162,7 @@ class TestSCFGIterator(SCFGComparator):
         block_0 = name_gen.new_block_name(block_names.BASIC)
         block_1 = name_gen.new_block_name(block_names.BASIC)
         expected = [
-            (block_0, BasicBlock(name=block_0, _jump_targets=(block_1,))),
+            (block_0, BasicBlock(name=block_0, _jump_targets=[block_1])),
             (block_1, BasicBlock(name=block_1)),
         ]
         scfg, _ = SCFG.from_yaml(
@@ -194,17 +194,14 @@ class TestConcealedRegionView(TestCase):
 
     def test_concealed_region_view_iter(self):
         flow = ByteFlow.from_bytecode(self.foo)
-        restructured = flow._restructure_loop()
+        flow._restructure_loop()
         expected = [
             ("python_bytecode_block_0", PythonBytecodeBlock),
             ("loop_region_0", RegionBlock),
             ("python_bytecode_block_3", PythonBytecodeBlock),
         ]
         received = list(
-            (
-                (k, type(v))
-                for k, v in restructured.scfg.concealed_region_view.items()
-            )
+            ((k, type(v)) for k, v in flow.scfg.concealed_region_view.items())
         )
         self.assertEqual(expected, received)
 

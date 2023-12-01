@@ -442,7 +442,7 @@ class TestBahmannFigures(SCFGComparator):
         flow = FlowInfo.from_bytecode(bc)
         scfg = flow.build_basicblocks()
         byteflow = ByteFlow(bc=bc, scfg=scfg)
-        byteflow = byteflow.restructure()
+        byteflow.restructure()
 
         x, _ = SCFG.from_yaml(fig_3_yaml)
         self.assertSCFGEqual(x, byteflow.scfg)
@@ -475,7 +475,7 @@ class TestBahmannFigures(SCFGComparator):
         flow = FlowInfo.from_bytecode(bc)
         scfg = flow.build_basicblocks()
         byteflow = ByteFlow(bc=bc, scfg=scfg)
-        byteflow = byteflow.restructure()
+        byteflow.restructure()
 
         x, _ = SCFG.from_yaml(fig_4_yaml)
         self.assertSCFGEqual(x, byteflow.scfg)

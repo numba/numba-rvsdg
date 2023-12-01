@@ -4,29 +4,6 @@ from numba_rvsdg.core.datastructures.byte_flow import ByteFlow
 from numba_rvsdg.tests.simulator import Simulator
 import unittest
 
-#    flow = ByteFlow.from_bytecode(foo)
-#    #pprint(flow.scfg)
-#    flow = flow.restructure()
-#    #pprint(flow.scfg)
-#    # pprint(rtsflow.scfg)
-#    ByteFlowRenderer().render_byteflow(flow).view()
-#    print(dis(foo))
-#
-#    sim = Simulator(flow, foo.__globals__)
-#    ret = sim.run(dict(x=1))
-#    assert ret == foo(x=1)
-#
-#    #sim = Simulator(flow, foo.__globals__)
-#    #ret = sim.run(dict(x=100))
-#    #assert ret == foo(x=100)
-
-# You can use the following snipppet to visually debug the restructured
-# byteflow:
-#
-#    ByteFlowRenderer().render_byteflow(flow).view()
-#
-#
-
 
 class SimulatorTest(unittest.TestCase):
     def _run(self, func, flow, kwargs):
@@ -44,7 +21,7 @@ class SimulatorTest(unittest.TestCase):
             return c
 
         flow = ByteFlow.from_bytecode(foo)
-        flow = flow.restructure()
+        flow.restructure()
 
         # if case
         self._run(foo, flow, {"x": 1})
@@ -59,7 +36,7 @@ class SimulatorTest(unittest.TestCase):
             return c
 
         flow = ByteFlow.from_bytecode(foo)
-        flow = flow.restructure()
+        flow.restructure()
 
         # loop bypass case
         self._run(foo, flow, {"x": 0})
@@ -78,7 +55,7 @@ class SimulatorTest(unittest.TestCase):
             return c
 
         flow = ByteFlow.from_bytecode(foo)
-        flow = flow.restructure()
+        flow.restructure()
 
         # loop bypass case
         self._run(foo, flow, {"x": 0})
@@ -97,7 +74,7 @@ class SimulatorTest(unittest.TestCase):
             return c
 
         flow = ByteFlow.from_bytecode(foo)
-        flow = flow.restructure()
+        flow.restructure()
 
         # loop bypass case
         self._run(foo, flow, {"x": 0})
@@ -121,7 +98,7 @@ class SimulatorTest(unittest.TestCase):
             return c
 
         flow = ByteFlow.from_bytecode(foo)
-        flow = flow.restructure()
+        flow.restructure()
 
         # no loop
         self._run(foo, flow, {"x": 0})
@@ -145,7 +122,7 @@ class SimulatorTest(unittest.TestCase):
             return c
 
         flow = ByteFlow.from_bytecode(foo)
-        flow = flow.restructure()
+        flow.restructure()
 
         # loop bypass
         self._run(foo, flow, {"x": 0})
@@ -161,7 +138,7 @@ class SimulatorTest(unittest.TestCase):
             return (x > 0 and x < 10) or (y > 0 and y < 10)
 
         flow = ByteFlow.from_bytecode(foo)
-        flow = flow.restructure()
+        flow.restructure()
 
         self._run(foo, flow, {"x": 5, "y": 5})
 
@@ -175,7 +152,7 @@ class SimulatorTest(unittest.TestCase):
             return c
 
         flow = ByteFlow.from_bytecode(foo)
-        flow = flow.restructure()
+        flow.restructure()
 
         # no looping
         self._run(foo, flow, {"s": 0, "e": 0})

@@ -114,16 +114,16 @@ class TestPythonBytecodeBlock(unittest.TestCase):
             name=name_gen.new_block_name(block_names.PYTHON_BYTECODE),
             begin=0,
             end=8,
-            _jump_targets=(),
-            backedges=(),
+            _jump_targets=[],
+            backedges=[],
         )
         self.assertEqual(block.name, "python_bytecode_block_0")
         self.assertEqual(block.begin, 0)
         self.assertEqual(block.end, 8)
         self.assertFalse(block.fallthrough)
         self.assertTrue(block.is_exiting)
-        self.assertEqual(block.jump_targets, ())
-        self.assertEqual(block.backedges, ())
+        self.assertEqual(block.jump_targets, [])
+        self.assertEqual(block.backedges, [])
 
     def test_is_jump_target(self):
         name_gen = NameGenerator()
@@ -131,12 +131,12 @@ class TestPythonBytecodeBlock(unittest.TestCase):
             name=name_gen.new_block_name(block_names.PYTHON_BYTECODE),
             begin=0,
             end=8,
-            _jump_targets=(
+            _jump_targets=[
                 name_gen.new_block_name(block_names.PYTHON_BYTECODE),
-            ),
-            backedges=(),
+            ],
+            backedges=[],
         )
-        self.assertEqual(block.jump_targets, ("python_bytecode_block_1",))
+        self.assertEqual(block.jump_targets, ["python_bytecode_block_1"])
         self.assertFalse(block.is_exiting)
 
     def test_get_instructions(self):
@@ -145,8 +145,8 @@ class TestPythonBytecodeBlock(unittest.TestCase):
             name=name_gen.new_block_name(block_names.PYTHON_BYTECODE),
             begin=0,
             end=8,
-            _jump_targets=(),
-            backedges=(),
+            _jump_targets=[],
+            backedges=[],
         )
         expected = [
             Instruction(
@@ -242,8 +242,8 @@ class TestFlowInfo(unittest.TestCase):
                     name=new_name,
                     begin=0,
                     end=10,
-                    _jump_targets=(),
-                    backedges=(),
+                    _jump_targets=[],
+                    backedges=[],
                 )
             }
         )
@@ -266,8 +266,8 @@ class TestByteFlow(unittest.TestCase):
                     name=new_name,
                     begin=0,
                     end=10,
-                    _jump_targets=(),
-                    backedges=(),
+                    _jump_targets=[],
+                    backedges=[],
                 )
             }
         )

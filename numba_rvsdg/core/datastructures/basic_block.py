@@ -1,6 +1,6 @@
 import dis
-from typing import Tuple, Dict, List, Optional
-from dataclasses import dataclass, replace, field
+from typing import Dict, List, Optional
+from dataclasses import dataclass, field
 
 from numba_rvsdg.core.utils import _next_inst_offset
 from numba_rvsdg.core.datastructures import block_names
@@ -26,9 +26,12 @@ class BasicBlock:
 
     name: str
 
-    _jump_targets: Tuple[str, ...] = tuple()
+    _jump_targets: list[str] = field(default_factory=list)
+    backedges: list[str] = field(default_factory=list)
 
-    backedges: Tuple[str, ...] = tuple()
+    def __post_init__(self) -> None:
+        assert isinstance(self._jump_targets, list)
+        assert isinstance(self.backedges, list)
 
     @property
     def is_exiting(self) -> bool:
@@ -58,7 +61,7 @@ class BasicBlock:
         return len(self._jump_targets) == 1
 
     @property
-    def jump_targets(self) -> Tuple[str, ...]:
+    def jump_targets(self) -> list[str]:
         """Retrieves the jump targets for this block,
         excluding any jump targets that are also backedges.
 
@@ -73,31 +76,22 @@ class BasicBlock:
         for j in self._jump_targets:
             if j not in self.backedges:
                 acc.append(j)
-        return tuple(acc)
+        return acc
 
-    def declare_backedge(self, target: str) -> "BasicBlock":
+    def declare_backedge(self, target: str) -> None:
         """Declare one of the jump targets as a backedge of this block.
 
         Parameters
         ----------
         target: str
             The jump target that is to be declared as a backedge.
-
-        Returns
-        -------
-        basic_block: BasicBlock
-            The resulting block.
-
         """
         if target in self.jump_targets:
             assert not self.backedges
-            return replace(self, backedges=(target,))
-        return self
+            self.backedges.append(target)
 
-    def replace_jump_targets(
-        self, jump_targets: Tuple[str, ...]
-    ) -> "BasicBlock":
-        """Replaces jump targets of this block by the given tuple.
+    def replace_jump_targets(self, jump_targets: list[str]) -> None:
+        """Replaces jump targets of this block by the given list.
 
         This method replaces the jump targets of the current BasicBlock.
         The provided jump targets must be in the same order as their
@@ -109,19 +103,14 @@ class BasicBlock:
 
         Parameters
         ----------
-        jump_targets: Tuple
-            The new jump target tuple. Must be ordered.
-
-        Returns
-        -------
-        basic_block: BasicBlock
-            The resulting BasicBlock.
-
+        jump_targets: List
+            The new jump target list. Must be ordered.
         """
-        return replace(self, _jump_targets=jump_targets)
+        self._jump_targets.clear()
+        self._jump_targets.extend(jump_targets)
 
-    def replace_backedges(self, backedges: Tuple[str, ...]) -> "BasicBlock":
-        """Replaces back edges of this block by the given tuple.
+    def replace_backedges(self, backedges: list[str]) -> None:
+        """Replaces back edges of this block by the given list.
 
         This method replaces the back edges of the current BasicBlock.
         The provided back edges must be in the same order as their
@@ -129,16 +118,11 @@ class BasicBlock:
 
         Parameters
         ----------
-        backedges: Tuple
-            The new back edges tuple. Must be ordered.
-
-        Returns
-        -------
-        basic_block: BasicBlock
-            The resulting BasicBlock.
-
+        backedges: List
+            The new back edges list. Must be ordered.
         """
-        return replace(self, backedges=backedges)
+        self.backedges.clear()
+        self.backedges.extend(backedges)
 
 
 @dataclass(frozen=True)
@@ -271,10 +255,8 @@ class SyntheticBranch(SyntheticBlock):
     variable: str = ""
     branch_value_table: Dict[int, str] = field(default_factory=lambda: {})
 
-    def replace_jump_targets(
-        self, jump_targets: Tuple[str, ...]
-    ) -> "BasicBlock":
-        """Replaces jump targets of this block by the given tuple.
+    def replace_jump_targets(self, jump_targets: list[str]) -> None:
+        """Replaces jump targets of this block by the given list.
 
         This method replaces the jump targets of  the current BasicBlock.
         The provided jump targets must be in the same order as their
@@ -287,18 +269,12 @@ class SyntheticBranch(SyntheticBlock):
 
         Parameters
         ----------
-        jump_targets: Tuple
-            The new jump target tuple. Must be ordered.
-
-        Returns
-        -------
-        basic_block: BasicBlock
-            The resulting BasicBlock.
-
+        jump_targets: List
+            The new jump target list. Must be ordered.
         """
 
-        old_branch_value_table = self.branch_value_table
-        new_branch_value_table = {}
+        old_branch_value_table = self.branch_value_table.copy()
+        self.branch_value_table.clear()
         for target in self._jump_targets:
             if target not in jump_targets:
                 # ASSUMPTION: only one jump_target is being updated
@@ -307,18 +283,15 @@ class SyntheticBranch(SyntheticBlock):
                 new_target = next(iter(diff))
                 for k, v in old_branch_value_table.items():
                     if v == target:
-                        new_branch_value_table[k] = new_target
+                        self.branch_value_table[k] = new_target
             else:
                 # copy all old values
                 for k, v in old_branch_value_table.items():
                     if v == target:
-                        new_branch_value_table[k] = v
+                        self.branch_value_table[k] = v
 
-        return replace(
-            self,
-            _jump_targets=jump_targets,
-            branch_value_table=new_branch_value_table,
-        )
+        self._jump_targets.clear()
+        self._jump_targets.extend(jump_targets)
 
 
 @dataclass(frozen=True)
