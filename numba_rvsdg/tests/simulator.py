@@ -12,6 +12,7 @@ from numba_rvsdg.core.utils import PYVERSION
 
 import builtins
 
+
 class Simulator:
     """SCFG simulator.
 
@@ -434,6 +435,7 @@ class Simulator:
         self.stack.pop()
 
     if PYVERSION in ((3, 12),):
+
         def op_END_FOR(self, inst):
             self.stack.pop()
             self.stack.pop()
