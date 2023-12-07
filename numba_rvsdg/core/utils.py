@@ -1,7 +1,9 @@
 import logging
+import sys
 
 _logger = logging.getLogger(__name__)
 
+PYVERSION = sys.version_info[:2]
 
 class _LogWrap:
     def __init__(self, fn):  # type: ignore

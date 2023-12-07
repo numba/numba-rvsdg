@@ -8,12 +8,9 @@ from numba_rvsdg.core.datastructures.basic_block import (
     RegionBlock,
     SyntheticBlock,
 )
+from numba_rvsdg.core.utils import PYVERSION
 
 import builtins
-import sys
-
-PYVERSION = sys.version_info[:2]
-
 
 class Simulator:
     """SCFG simulator.
