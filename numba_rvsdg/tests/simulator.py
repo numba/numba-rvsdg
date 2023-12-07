@@ -436,9 +436,10 @@ class Simulator:
         self.branch = self.stack[-1] is None
         self.stack.pop()
 
-    def op_END_FOR(self, inst):
-        self.stack.pop()
-        self.stack.pop()
+    if PYVERSION in ((3, 12),):
+        def op_END_FOR(self, inst):
+            self.stack.pop()
+            self.stack.pop()
 
     def op_COPY(self, inst):
         assert inst.argval > 0
