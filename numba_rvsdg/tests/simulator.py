@@ -440,6 +440,11 @@ class Simulator:
             self.stack.pop()
             self.stack.pop()
 
+    else:
+
+        def op_END_FOR(self, inst):
+            raise NotImplementedError(PYVERSION)
+
     def op_COPY(self, inst):
         assert inst.argval > 0
         self.stack.append(self.stack[-inst.argval])
