@@ -10,6 +10,7 @@ from typing import (
     Optional,
     Generator,
     Mapping,
+    MutableMapping,
     Sized,
 )
 from textwrap import indent
@@ -164,7 +165,7 @@ class SCFG(Sized):
         regions, and variables.
     """
 
-    graph: Dict[str, BasicBlock] = field(default_factory=dict)
+    graph: MutableMapping[str, BasicBlock] = field(default_factory=dict)
 
     name_gen: NameGenerator = field(
         default_factory=NameGenerator, compare=False
@@ -238,7 +239,11 @@ class SCFG(Sized):
             over the given view.
         """
         # initialise housekeeping datastructures
-        to_visit, seen = [self.find_head()], []
+        try:
+            to_visit = [self.find_head()]
+            seen: list[str] = []
+        except KeyError:
+            to_visit, seen = ["0"], []
         while to_visit:
             # get the next name on the list
             name = to_visit.pop(0)
@@ -811,6 +816,10 @@ class SCFG(Sized):
         from numba_rvsdg.rendering.rendering import SCFGRenderer
 
         SCFGRenderer(self).view(name)
+
+    def render(self) -> None:
+        """Alias for view()."""
+        self.view()
 
     @staticmethod
     def from_yaml(yaml_string: str) -> "Tuple[SCFG, Dict[str, str]]":
