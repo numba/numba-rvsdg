@@ -1,9 +1,11 @@
+import ast
 import logging
 from abc import abstractmethod
 from numba_rvsdg.core.datastructures.basic_block import (
     BasicBlock,
     RegionBlock,
     PythonBytecodeBlock,
+    PythonASTBlock,
     SyntheticAssignment,
     SyntheticBranch,
     SyntheticBlock,
@@ -70,6 +72,8 @@ class BaseRenderer:
             self.render_basic_block(digraph, name, block)
         if type(block) == PythonBytecodeBlock:
             self.render_basic_block(digraph, name, block)
+        if type(block) == PythonASTBlock:
+            self.render_python_ast_block(digraph, name, block)
         elif type(block) == SyntheticAssignment:
             self.render_control_variable_block(digraph, name, block)
         elif isinstance(block, SyntheticBranch):
@@ -272,6 +276,22 @@ class SCFGRenderer(BaseRenderer):
 
         digraph.node(str(name), shape="rect", label=body)
 
+    def render_python_ast_block(
+        self, digraph: "Digraph", name: str, block: BasicBlock
+    ) -> None:
+        code = "\l".join((ast.unparse(n) for n in block.get_tree()))
+        body = (
+            name
+            + "\n\n"
+            + code
+            + "\l\ljump targets: "
+            + str(block.jump_targets)
+            + "\lback edges: "
+            + str(block.backedges)
+        )
+
+        digraph.node(str(name), shape="rect", label=body)
+
     def render_control_variable_block(
         self, digraph: "Digraph", name: str, block: SyntheticAssignment
     ) -> None:
@@ -310,6 +330,14 @@ class SCFGRenderer(BaseRenderer):
         else:
             raise Exception("Unknown name type: " + name)
         digraph.node(str(name), shape="rect", label=body)
+
+    def render_scfg(self) -> "Digraph":
+        """Renders the provided SCFG object."""
+        for name, block in self.scfg.graph.items():
+            self.render_block(self.g, name, block)
+        self.render_edges(self.scfg)
+        return self.g
+
 
     def view(self, name: Optional[str] = None) -> None:
         """Method used to view the current SCFG as an external graphviz
@@ -386,4 +414,4 @@ def render_scfg(scfg: SCFG) -> None:
         The structured control flow graph (SCFG) to be rendered.
     """
     # is this function used??
-    ByteFlowRenderer().render_scfg(scfg).view("scfg")  # type: ignore
+    SCFGRenderer(scfg).view("scfg")  # type: ignore

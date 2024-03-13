@@ -200,6 +200,30 @@ class PythonBytecodeBlock(BasicBlock):
 
 
 @dataclass(frozen=True)
+class PythonASTBlock(BasicBlock):
+    """The PythonASTBlock class is a subclass of the BasicBlock that
+    represents basic blocks with Python AST.
+
+    Attributes
+    ----------
+    begin: int
+        The starting line.
+
+    end: int
+        The ending line.
+    """
+
+    begin: int = -1
+
+    end: int = -1
+
+    tree: List = field(default_factory=lambda: [])
+
+    def get_tree(self) -> None:
+        return self.tree
+
+
+@dataclass(frozen=True)
 class SyntheticBlock(BasicBlock):
     """The SyntheticBlock represents a artificially added block in a
     structured control flow graph (SCFG).
