@@ -125,14 +125,18 @@ def acc():
         r = r + 1
     return r
 
-
 def branch01(a: int, b:int) -> None:
+    if x < 10:
+        return 1
+    return 2
+
+def branch02(a: int, b:int) -> None:
     if x < 10:
         return 1
     else:
         return 2
 
-def branch02(a: int, b:int) -> None:
+def branch03(a: int, b:int) -> None:
     x = a + b
     if x < 10:
         return 1
@@ -142,8 +146,7 @@ def branch02(a: int, b:int) -> None:
         else:
             return 3
 
-
-def branch03(a: int, b:int) -> None:
+def branch04(a: int, b:int) -> None:
     x = a + b
     if x < 10:
         if x < 2:
@@ -156,7 +159,7 @@ def branch03(a: int, b:int) -> None:
         else:
             return 4
 
-def branch04(a: int, b:int) -> None:
+def branch05(a: int, b:int) -> None:
     if x < 10:
         return 1
     y = b + 2
@@ -165,7 +168,7 @@ def branch04(a: int, b:int) -> None:
     return 0
 
 
-h = ASTHandler(branch03)
+h = ASTHandler(branch04)
 s = h.process()
 #breakpoint()
 from numba_rvsdg.rendering.rendering import render_scfg
