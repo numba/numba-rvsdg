@@ -74,12 +74,18 @@ class ASTHandler:
 
     def new_block(self, index: int) -> None:
         """Create a new block. """
-        self.blocks[str(index)] = PythonASTBlock(
-            name=str(index),
-            tree=self.current_block)
+        if isinstance(self.current_block[-1], ast.Return):
+            self.blocks[str(index)] = PythonASTBlock(
+                name=str(index),
+                tree=self.current_block)
+        else:
+            self.blocks[str(index)] = PythonASTBlock(
+                name=str(index),
+                _jump_targets=((str(self.block_index-1,))),
+                tree=self.current_block)
         self.current_block = []
 
-    def new_branch_block(self, index) -> tuple[int, int]:
+    def new_branch_block(self, index: int) -> tuple[int, int]:
         """Create a new block. """
         self.blocks[str(index)] = PythonASTBlock(
             name=str(index),
@@ -89,6 +95,18 @@ class ASTHandler:
         self.current_block = []
         return_value = (self.block_index, self.block_index + 1)
         self.block_index += 2
+        return return_value
+
+    def new_branch_block_empty_else(self, index:int) -> tuple[int, int]:
+        """Create a new block. """
+        self.blocks[str(index)] = PythonASTBlock(
+            name=str(index),
+            _jump_targets=(str(self.block_index),
+                           str(self.block_index + 1)),
+            tree=self.current_block)
+        self.current_block = []
+        return_value = (self.block_index, self.block_index + 1)
+        self.block_index += 1
         return return_value
 
     def handle_function_def(self, node: ast.FunctionDef) -> None:
@@ -106,6 +124,14 @@ class ASTHandler:
     def handle_return(self, node: ast.Return) -> None:
         """Handle a return statement. """
         self.current_block.append(node)
+        if (len(self.queue) >= 1
+                and isinstance(self.queue[0], str)
+                and self.queue[0].startswith("ENDIF")):
+            index = int(self.queue.popleft()[5:])
+        else:
+            index = self.block_index
+            self.block_index += 1
+        self.new_block(index)
 
     def handle_for(self, node: ast.For) -> None:
         """Handle a for loop. """
@@ -124,7 +150,10 @@ class ASTHandler:
         else:
             index = self.block_index
             self.block_index += 1
-        t,f = self.new_branch_block(index)
+        if not node.orelse:
+            t,f = self.new_branch_block_empty_else(index)
+        else:
+            t,f = self.new_branch_block(index)
         self.queue.extend(node.body)
         self.queue.append(f"ENDIF{t}")
         if node.orelse:
@@ -145,43 +174,68 @@ def branch01(a: int, b:int) -> None:
 
 def branch02(a: int, b:int) -> None:
     if x < 10:
-        return 1
-    else:
-        return 2
+        y = a + b
+    z = a - b
 
 def branch03(a: int, b:int) -> None:
-    x = a + b
     if x < 10:
-        return 1
+        y = a -b
     else:
-        if x < 5:
-            return 2
-        else:
-            return 3
+        y = b -c
+    return y
 
-def branch04(a: int, b:int) -> None:
-    x = a + b
+def branch04(x:int, y:int, a: int, b:int) -> None:
     if x < 10:
-        if x < 2:
-            return 1
+        if y < 5:
+            y = a - b
         else:
-            return 2
+            y = 2 * a
     else:
-        if x < 5:
-            return 3
+        if y < 5:
+            y = b - a
         else:
-            return 4
+            y = 2 * b
+    return y
 
-def branch05(a: int, b:int) -> None:
-    if x < 10:
-        return 1
-    y = b + 2
-    if y < 5:
-        return 2
-    return 0
+#def branch02(a: int, b:int) -> None:
+#    if x < 10:
+#        return 1
+#    else:
+#        return 2
+#
+#def branch03(a: int, b:int) -> None:
+#    x = a + b
+#    if x < 10:
+#        return 1
+#    else:
+#        if x < 5:
+#            return 2
+#        else:
+#            return 3
+#
+#def branch04(a: int, b:int) -> None:
+#    x = a + b
+#    if x < 10:
+#        if x < 2:
+#            return 1
+#        else:
+#            return 2
+#    else:
+#        if x < 5:
+#            return 3
+#        else:
+#            return 4
+#
+#def branch05(a: int, b:int) -> None:
+#    if x < 10:
+#        return 1
+#    y = b + 2
+#    if y < 5:
+#        return 2
+#    return 0
 
 
-h = ASTHandler(branch04)
+h = ASTHandler(branch03)
 s = h.process()
 #breakpoint()
 from numba_rvsdg.rendering.rendering import render_scfg
