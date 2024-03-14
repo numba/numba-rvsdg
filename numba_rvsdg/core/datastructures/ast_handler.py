@@ -104,14 +104,10 @@ class ASTHandler:
     def handle_if(self, node: ast.If) -> None:
         """Handle an if statement. """
         self.current_block.append(node.test)
-        if len(self.queue) >= 1:
-            index = self.queue.popleft()
-            if isinstance(index, str) and index.startswith("ENDIF"):
-                index = int(index[5:])
-            else:
-                self.queue.appendleft(index)
-                index = self.block_index
-                self.block_index += 1
+        if (len(self.queue) >= 1
+                and isinstance(self.queue[0], str)
+                and self.queue[0].startswith("ENDIF")):
+            index = int(self.queue.popleft()[5:])
         else:
             index = self.block_index
             self.block_index += 1
