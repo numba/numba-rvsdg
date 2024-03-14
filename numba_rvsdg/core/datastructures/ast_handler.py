@@ -25,12 +25,25 @@ class ASTHandler:
 
     def process(self) -> SCFG:
         """Create an SCFG from a Python function. """
+        # convert source code into AST
         tree = ast.parse(inspect.getsource(self.code))
+        # initialize queue
         self.queue = deque(tree.body)
+        # check that this is a function def
+        assert isinstance(self.queue[0], ast.FunctionDef)
+        # expand the function def
+        self.handle_function_def(self.queue.popleft())
+        # insert final return None if no return at end of
+        if not isinstance(self.queue[-1], ast.Return):
+            self.queue.append(ast.Return(None))
+        # iterate over program
         while self.queue:
             print(self.queue, self.blocks, self.current_block, self.block_index)
             #breakpoint()
             self.handle_ast_node(self.queue.popleft())
+        #else:
+        #    if self.current_block:
+        #        self.new_block(index=self.block_index)
 
         return SCFG(graph=self.blocks)
 
