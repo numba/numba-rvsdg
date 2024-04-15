@@ -524,17 +524,22 @@ class SCFG(Sized):
         block_type: SyntheticBlock
             The type/class of the newly created block.
         """
+        # To prevent spurious mutations in successsors and predecessors
+        # since they are a part of the graph.
+        successors = successors.copy()
+        predecessors = predecessors.copy()
+
         # TODO: needs a diagram and documentaion
         # initialize new block
         new_block = block_type(
-            name=new_name, _jump_targets=tuple(successors), backedges=tuple()
+            name=new_name, _jump_targets=successors, backedges=[]
         )
         # add block to self
         self.add_block(new_block)
         # Replace any arcs from any of predecessors to any of successors with
         # an arc through the inserted block instead.
         for name in predecessors:
-            block = self.graph.pop(name)
+            block = self.graph[name]
             jt = list(block.jump_targets)
             if successors:
                 for s in successors:
@@ -545,7 +550,7 @@ class SCFG(Sized):
                             jt.pop(jt.index(s))
             else:
                 jt.append(new_name)
-            self.add_block(block.replace_jump_targets(jump_targets=tuple(jt)))
+            block.replace_jump_targets(jump_targets=jt)
 
     def insert_SyntheticExit(
         self,
@@ -639,8 +644,8 @@ class SCFG(Sized):
                 variable_assignment[branch_variable] = branch_variable_value
                 synth_assign_block = SyntheticAssignment(
                     name=synth_assign,
-                    _jump_targets=(new_name,),
-                    backedges=(),
+                    _jump_targets=[new_name],
+                    backedges=[],
                     variable_assignment=variable_assignment,
                 )
                 # add block
@@ -652,16 +657,12 @@ class SCFG(Sized):
                 # replace previous successor with synth_assign
                 jt[jt.index(s)] = synth_assign
             # finally, replace the jump_targets
-            self.add_block(
-                self.graph.pop(name).replace_jump_targets(
-                    jump_targets=tuple(jt)
-                )
-            )
+            self.graph[name].replace_jump_targets(jump_targets=jt)
         # initialize new block, which will hold the branching table
         new_block = SyntheticHead(
             name=new_name,
-            _jump_targets=tuple(successors),
-            backedges=tuple(),
+            _jump_targets=successors,
+            backedges=[],
             variable=branch_variable,
             branch_value_table=branch_value_table,
         )
@@ -1109,30 +1110,35 @@ class SCFGIO:
                 raise TypeError("Block type not found.")
 
         seen = set()
-        q: Set[Tuple[str, BasicBlock]] = set()
+        q: Set[str] = set()
         # Order of elements doesn't matter since they're going to
         # be sorted at the end.
-        q.update(scfg.graph.items())
+        graph_dict = {}
+        all_keys: set[str] = set(scfg.graph.keys())
+        q.update(all_keys)
+        graph_dict.update(scfg.graph)
 
         while q:
-            key, value = q.pop()
+            key = q.pop()
+            value = scfg.graph[key]
             if key in seen:
                 continue
             seen.add(key)
 
-            block_type = reverse_lookup(type(value))
+            block_type: str = reverse_lookup(type(value))
             blocks[key] = {"type": block_type}
             if isinstance(value, RegionBlock):
-                assert value.subregion is not None
-                assert value.parent_region is not None
-                q.update(value.subregion.graph.items())
+                inner_graph = value.subregion.graph  # type: ignore
+                q.update(inner_graph.keys())
+                graph_dict.update(inner_graph)
                 blocks[key]["kind"] = value.kind
                 blocks[key]["contains"] = sorted(
-                    [idx.name for idx in value.subregion.graph.values()]
+                    [idx.name for idx in inner_graph.values()]
                 )
                 blocks[key]["header"] = value.header
                 blocks[key]["exiting"] = value.exiting
-                blocks[key]["parent_region"] = value.parent_region.name
+                parent_name = value.parent_region.name  # type: ignore
+                blocks[key]["parent_region"] = parent_name
             elif isinstance(value, SyntheticBranch):
                 blocks[key]["branch_value_table"] = value.branch_value_table
                 blocks[key]["variable"] = value.variable
@@ -1144,9 +1150,13 @@ class SCFGIO:
             edges[key] = sorted([i for i in value._jump_targets])
             backedges[key] = sorted([i for i in value.backedges])
 
-        graph_dict = {"blocks": blocks, "edges": edges, "backedges": backedges}
+        graph_dict = {
+            "blocks": blocks,  # type: ignore
+            "edges": edges,  # type: ignore
+            "backedges": backedges,  # type: ignore
+        }
 
-        return graph_dict
+        return graph_dict  # type: ignore
 
     @staticmethod
     def find_outer_graph(graph_dict: Dict[str, Dict[str, Any]]) -> Set[str]:
@@ -1181,7 +1191,7 @@ class SCFGIO:
         block_ref_dict: Dict[str, str],
         edges: Dict[str, List[str]],
         backedges: Dict[str, List[str]],
-    ) -> Tuple[Dict[str, Any], str, Tuple[str, ...], Tuple[str, ...]]:
+    ) -> Tuple[Dict[str, Any], str, list[str], list[str]]:
         """Helper method to extract information from various components of
         an `SCFG` graph.
 
@@ -1211,14 +1221,14 @@ class SCFGIO:
             List of backedges of the requested block.
         """
         block_info = blocks[current_name].copy()
-        block_edges = tuple(block_ref_dict[idx] for idx in edges[current_name])
+        block_edges = [block_ref_dict[idx] for idx in edges[current_name]]
 
         if backedges.get(current_name):
-            block_backedges = tuple(
+            block_backedges = [
                 block_ref_dict[idx] for idx in backedges[current_name]
-            )
+            ]
         else:
-            block_backedges = ()
+            block_backedges = []
 
         block_type = block_info.pop("type")
 

@@ -126,19 +126,19 @@ class FlowInfo:
 
         for begin, end in zip(offsets, [*offsets[1:], end_offset]):
             name = names[begin]
-            targets: Tuple[str, ...]
+            targets: list[str]
             term_offset = _prev_inst_offset(end)
             if term_offset not in self.jump_insts:
                 # implicit jump
-                targets = (names[end],)
+                targets = [names[end]]
             else:
-                targets = tuple(names[o] for o in self.jump_insts[term_offset])
+                targets = [names[o] for o in self.jump_insts[term_offset]]
             block = PythonBytecodeBlock(
                 name=name,
                 begin=begin,
                 end=end,
                 _jump_targets=targets,
-                backedges=(),
+                backedges=[],
             )
             scfg.add_block(block)
         return scfg

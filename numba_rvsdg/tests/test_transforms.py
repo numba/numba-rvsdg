@@ -40,7 +40,7 @@ class TestInsertBlock(SCFGComparator):
         expected_scfg, _ = SCFG.from_yaml(expected)
         new_name = original_scfg.name_gen.new_block_name(block_names.BASIC)
         original_scfg.insert_block(
-            new_name, (block_dict["0"],), (block_dict["1"],), BasicBlock
+            new_name, [block_dict["0"]], [block_dict["1"]], BasicBlock
         )
         self.assertSCFGEqual(expected_scfg, original_scfg)
 
@@ -81,8 +81,8 @@ class TestInsertBlock(SCFGComparator):
         new_name = original_scfg.name_gen.new_block_name(block_names.BASIC)
         original_scfg.insert_block(
             new_name,
-            (block_dict["0"], block_dict["1"]),
-            (block_dict["2"],),
+            [block_dict["0"], block_dict["1"]],
+            [block_dict["2"]],
             BasicBlock,
         )
         self.assertSCFGEqual(
@@ -130,8 +130,8 @@ class TestInsertBlock(SCFGComparator):
         expected_scfg, _ = SCFG.from_yaml(expected)
         original_scfg.insert_block(
             original_scfg.name_gen.new_block_name(block_names.BASIC),
-            (block_dict["0"],),
-            (block_dict["1"], block_dict["2"]),
+            [block_dict["0"]],
+            [block_dict["1"], block_dict["2"]],
             BasicBlock,
         )
         self.assertSCFGEqual(expected_scfg, original_scfg)
@@ -184,8 +184,8 @@ class TestInsertBlock(SCFGComparator):
         expected_scfg, _ = SCFG.from_yaml(expected)
         original_scfg.insert_block(
             original_scfg.name_gen.new_block_name(block_names.BASIC),
-            (block_dict["1"], block_dict["2"]),
-            (block_dict["3"], block_dict["4"]),
+            [block_dict["1"], block_dict["2"]],
+            [block_dict["3"], block_dict["4"]],
             BasicBlock,
         )
         self.assertSCFGEqual(expected_scfg, original_scfg)
@@ -238,8 +238,8 @@ class TestInsertBlock(SCFGComparator):
         expected_scfg, expected_block_dict = SCFG.from_yaml(expected)
         original_scfg.insert_block(
             original_scfg.name_gen.new_block_name(block_names.BASIC),
-            (block_dict["1"], block_dict["2"]),
-            (block_dict["3"], block_dict["4"]),
+            [block_dict["1"], block_dict["2"]],
+            [block_dict["3"], block_dict["4"]],
             BasicBlock,
         )
         self.assertSCFGEqual(
@@ -318,8 +318,8 @@ class TestJoinTailsAndExits(SCFGComparator):
         """
         expected_scfg, _ = SCFG.from_yaml(expected)
 
-        tails = (block_dict["0"],)
-        exits = (block_dict["1"],)
+        tails = [block_dict["0"]]
+        exits = [block_dict["1"]]
         solo_tail_name, solo_exit_name = original_scfg.join_tails_and_exits(
             tails, exits
         )
@@ -369,8 +369,8 @@ class TestJoinTailsAndExits(SCFGComparator):
         """
         expected_scfg, _ = SCFG.from_yaml(expected)
 
-        tails = (block_dict["0"],)
-        exits = (block_dict["1"], block_dict["2"])
+        tails = [block_dict["0"]]
+        exits = [block_dict["1"], block_dict["2"]]
         solo_tail_name, solo_exit_name = original_scfg.join_tails_and_exits(
             tails, exits
         )
@@ -423,8 +423,8 @@ class TestJoinTailsAndExits(SCFGComparator):
         """
         expected_scfg, _ = SCFG.from_yaml(expected)
 
-        tails = (block_dict["1"], block_dict["2"])
-        exits = (block_dict["3"],)
+        tails = [block_dict["1"], block_dict["2"]]
+        exits = [block_dict["3"]]
         solo_tail_name, solo_exit_name = original_scfg.join_tails_and_exits(
             tails, exits
         )
@@ -477,8 +477,8 @@ class TestJoinTailsAndExits(SCFGComparator):
         """
         expected_scfg, _ = SCFG.from_yaml(expected)
 
-        tails = (block_dict["1"], block_dict["2"])
-        exits = (block_dict["3"],)
+        tails = [block_dict["1"], block_dict["2"]]
+        exits = [block_dict["3"]]
 
         solo_tail_name, solo_exit_name = original_scfg.join_tails_and_exits(
             tails, exits
@@ -546,8 +546,8 @@ class TestJoinTailsAndExits(SCFGComparator):
         """
         expected_scfg, _ = SCFG.from_yaml(expected)
 
-        tails = (block_dict["1"], block_dict["2"])
-        exits = (block_dict["3"], block_dict["4"])
+        tails = [block_dict["1"], block_dict["2"]]
+        exits = [block_dict["3"], block_dict["4"]]
         solo_tail_name, solo_exit_name = original_scfg.join_tails_and_exits(
             tails, exits
         )
@@ -616,8 +616,8 @@ class TestJoinTailsAndExits(SCFGComparator):
         backedges:
         """
         expected_scfg, _ = SCFG.from_yaml(expected)
-        tails = (block_dict["1"], block_dict["2"])
-        exits = (block_dict["3"], block_dict["4"])
+        tails = [block_dict["1"], block_dict["2"]]
+        exits = [block_dict["3"], block_dict["4"]]
         solo_tail_name, solo_exit_name = original_scfg.join_tails_and_exits(
             tails, exits
         )
