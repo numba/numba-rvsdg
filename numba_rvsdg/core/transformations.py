@@ -145,9 +145,11 @@ def loop_restructure_helper(scfg: SCFG, loop: Set[str]) -> None:
                         )
                     variable_assignment[backedge_variable] = reverse_lookup(
                         backedge_value_table,
-                        synth_exit
-                        if needs_synth_exit
-                        else next(iter(exit_blocks)),
+                        (
+                            synth_exit
+                            if needs_synth_exit
+                            else next(iter(exit_blocks))
+                        ),
                     )
                     # Create the actual control variable block
                     synth_assign_block = SyntheticAssignment(

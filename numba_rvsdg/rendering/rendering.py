@@ -66,15 +66,15 @@ class BaseRenderer:
             The BasicBlock to be rendered.
 
         """
-        if type(block) == BasicBlock:
+        if type(block) == BasicBlock:  # noqa: E721
             self.render_basic_block(digraph, name, block)
-        if type(block) == PythonBytecodeBlock:
+        if type(block) == PythonBytecodeBlock:  # noqa: E721
             self.render_basic_block(digraph, name, block)
-        elif type(block) == SyntheticAssignment:
+        elif type(block) == SyntheticAssignment:  # noqa: E721
             self.render_control_variable_block(digraph, name, block)
         elif isinstance(block, SyntheticBranch):
             self.render_branching_block(digraph, name, block)
-        elif type(block) == RegionBlock:
+        elif type(block) == RegionBlock:  # noqa: E721
             self.render_region_block(digraph, name, block)
         elif isinstance(block, SyntheticBlock):
             self.render_basic_block(digraph, name, block)

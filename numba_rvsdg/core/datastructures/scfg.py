@@ -259,7 +259,7 @@ class SCFG(Sized):
             yield (name, block)
             # If this is a region, recursively yield everything from that
             # specific region.
-            if type(block) == RegionBlock:
+            if type(block) == RegionBlock:  # noqa: E721
                 assert block.subregion is not None
                 yield from block.subregion
             # finally add any jump_targets to the list of names to visit
@@ -1372,7 +1372,7 @@ class ConcealedRegionView(AbstractGraphView):
                 continue
 
             # populate the to_vist
-            if type(block) == RegionBlock:
+            if type(block) == RegionBlock:  # noqa: E721
                 # If this is a region, continue on to the exiting block, i.e.
                 # the region is presented a single fall-through block to the
                 # consumer of this iterator.
