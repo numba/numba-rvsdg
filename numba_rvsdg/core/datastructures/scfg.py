@@ -39,6 +39,7 @@ from numba_rvsdg.core.datastructures.block_names import (
 )
 
 
+
 @dataclass(frozen=True)
 class NameGenerator:
     """Unique Name Generator.
@@ -672,7 +673,8 @@ class SCFG(Sized):
         """Close the CFG.
 
         A closed CFG is a CFG with a unique entry and exit node that have no
-        predescessors and no successors respectively.
+        predescessors and no successors respectively. Transformation is applied
+        in-place.
         """
         # for all nodes that contain a return
         return_nodes = [
@@ -682,6 +684,51 @@ class SCFG(Sized):
         if len(return_nodes) > 1:
             return_solo_name = self.name_gen.new_block_name(SYNTH_RETURN)
             self.insert_SyntheticReturn(return_solo_name, return_nodes, [])
+
+    def iter_subregions(self) -> Generator[RegionBlock, "SCFG", None]:
+        """ Iterate over all subregions of this CFG. """
+        for node in self.graph.values():
+            if isinstance(node, RegionBlock):
+                yield node
+                assert node.subregion is not None
+                yield from node.subregion.iter_subregions()
+
+    def restructure_loop(self) -> None:
+        """ Apply LOOP RESTRUCTURING transform.
+
+        Performs the operation to restructure loop constructs using the
+        algorithm LOOP RESTRUCTURING from section 4.1 of Bahmann2015.  It
+        applies an in-place restructuring operation to both the main SCFG and
+        any subregions within it.
+
+        """
+        # Avoid cyclic imports
+        from numba_rvsdg.core.transformations import restructure_loop
+
+        restructure_loop(self.region)
+        for region in self.iter_subregions():
+            restructure_loop(region)
+
+    def restructure_branch(self) -> None:
+        """Apply BRANCH RESTRUCTURING transform.
+
+        Performs the operation to restructure branch constructs using the
+        algorithm BRANCH RESTRUCTURING from section 4.2 of Bahmann2015.  It
+        applies an in-place restructuring operation to both the main SCFG and
+        any subregions within it.
+
+        """
+        # Avoid cyclic imports
+        from numba_rvsdg.core.transformations import restructure_branch
+
+        restructure_branch(self.region)
+        for region in self.iter_subregions():
+            restructure_branch(region)
+
+    def restructure(self) -> None:
+        self.join_returns()
+        self.restructure_loop()
+        self.restructure_branch()
 
     def join_tails_and_exits(
         self, tails: List[str], exits: List[str]

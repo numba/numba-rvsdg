@@ -54,7 +54,7 @@ def make_flow(func):
 
 def test_scc():
     f = make_flow(scc)
-    f.restructure()
+    f.scfg.restructure()
 
 
 if __name__ == "__main__":
