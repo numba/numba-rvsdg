@@ -39,7 +39,6 @@ from numba_rvsdg.core.datastructures.block_names import (
 )
 
 
-
 @dataclass(frozen=True)
 class NameGenerator:
     """Unique Name Generator.
@@ -686,7 +685,7 @@ class SCFG(Sized):
             self.insert_SyntheticReturn(return_solo_name, return_nodes, [])
 
     def iter_subregions(self) -> Generator[RegionBlock, "SCFG", None]:
-        """ Iterate over all subregions of this CFG. """
+        """Iterate over all subregions of this CFG."""
         for node in self.graph.values():
             if isinstance(node, RegionBlock):
                 yield node
@@ -694,7 +693,7 @@ class SCFG(Sized):
                 yield from node.subregion.iter_subregions()
 
     def restructure_loop(self) -> None:
-        """ Apply LOOP RESTRUCTURING transform.
+        """Apply LOOP RESTRUCTURING transform.
 
         Performs the operation to restructure loop constructs using the
         algorithm LOOP RESTRUCTURING from section 4.1 of Bahmann2015.  It
