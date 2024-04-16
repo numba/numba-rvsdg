@@ -1,6 +1,5 @@
 # mypy: ignore-errors
 
-from numba_rvsdg.core.datastructures.byte_flow import ByteFlow
 from numba_rvsdg.core.datastructures.flow_info import FlowInfo
 from numba_rvsdg.core.datastructures.scfg import SCFG
 from numba_rvsdg.tests.test_utils import SCFGComparator
@@ -441,11 +440,10 @@ class TestBahmannFigures(SCFGComparator):
         ]
         flow = FlowInfo.from_bytecode(bc)
         scfg = flow.build_basicblocks()
-        byteflow = ByteFlow(bc=bc, scfg=scfg)
-        byteflow = byteflow.restructure()
+        scfg.restructure()
 
         x, _ = SCFG.from_yaml(fig_3_yaml)
-        self.assertSCFGEqual(x, byteflow.scfg)
+        self.assertSCFGEqual(x, scfg)
 
     def test_figure_4(self):
         # Figure 4 of the paper
@@ -474,8 +472,7 @@ class TestBahmannFigures(SCFGComparator):
         ]
         flow = FlowInfo.from_bytecode(bc)
         scfg = flow.build_basicblocks()
-        byteflow = ByteFlow(bc=bc, scfg=scfg)
-        byteflow = byteflow.restructure()
+        scfg.restructure()
 
         x, _ = SCFG.from_yaml(fig_4_yaml)
-        self.assertSCFGEqual(x, byteflow.scfg)
+        self.assertSCFGEqual(x, scfg)
