@@ -141,7 +141,7 @@ class ASTCFG(dict[str, WritableASTBlock]):
                 # Empty blocks can only have a single jump target.
                 it = block.jump_targets[0]
                 # Iterate over the blocks looking for blocks that point to the
-                # removed block.
+                # removed block. Then rewire the jump_targets accordingly.
                 for b in list(self.values()):
                     if len(b.jump_targets) == 0:
                         continue
@@ -220,7 +220,7 @@ class AST2SCFGTransformer:
         """Transform Python function stored as self.code."""
         # Convert source code into AST.
         tree = ast.parse(textwrap.dedent(inspect.getsource(self.code))).body
-        # Assert that the code handed in was a function, we can only convert
+        # Assert that the code handed in was a function, we can only transform
         # functions.
         assert isinstance(tree[0], ast.FunctionDef)
         # Run recursive code generation.
