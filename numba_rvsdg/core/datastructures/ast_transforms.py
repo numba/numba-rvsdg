@@ -70,8 +70,10 @@ class WritableASTBlock:
         """
         if self.is_continue():
             self.set_jump_targets(head_index)
+            self.instructions.pop()
         elif self.is_break():
             self.set_jump_targets(exit_index)
+            self.instructions.pop()
         elif self.is_return():
             pass
         else:

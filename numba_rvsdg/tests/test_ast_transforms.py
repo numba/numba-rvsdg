@@ -498,7 +498,7 @@ class TestAST2SCFGTransformer(TestCase):
             },
             "2": {
                 "instructions": ["x += 1", "x % 2 == 0"],
-                "jump_targets": ["4", "5"],
+                "jump_targets": ["1", "5"],
                 "name": "2",
             },
             "3": {
@@ -506,20 +506,10 @@ class TestAST2SCFGTransformer(TestCase):
                 "jump_targets": [],
                 "name": "3",
             },
-            "4": {
-                "instructions": ["continue"],
-                "jump_targets": ["1"],
-                "name": "4",
-            },
             "5": {
                 "instructions": ["x == 9"],
-                "jump_targets": ["7", "8"],
+                "jump_targets": ["3", "8"],
                 "name": "5",
-            },
-            "7": {
-                "instructions": ["break"],
-                "jump_targets": ["3"],
-                "name": "7",
             },
             "8": {
                 "instructions": ["x += 1"],
@@ -527,7 +517,7 @@ class TestAST2SCFGTransformer(TestCase):
                 "name": "8",
             },
         }
-        self.compare(function, expected, empty={"6", "9"})
+        self.compare(function, expected, empty={"4", "6", "7", "9"})
 
     def test_simple_for(self):
         def function() -> int:
@@ -695,21 +685,16 @@ class TestAST2SCFGTransformer(TestCase):
             },
             "6": {
                 "instructions": ["i == b"],
-                "jump_targets": ["8", "9"],
+                "jump_targets": ["8", "1"],
                 "name": "6",
             },
             "8": {
-                "instructions": ["i = 4", "break"],
+                "instructions": ["i = 4"],
                 "jump_targets": ["4"],
                 "name": "8",
             },
-            "9": {
-                "instructions": ["continue"],
-                "jump_targets": ["1"],
-                "name": "9",
-            },
         }
-        self.compare(function, expected, unreachable={"7", "10"})
+        self.compare(function, expected, unreachable={"7", "10"}, empty={"9"})
 
     def test_for_with_nested_else_return_break_and_continue(self):
         def function(a: int, b: int, c: int, d: int, e: int, f: int) -> int:
@@ -758,7 +743,7 @@ class TestAST2SCFGTransformer(TestCase):
                 "name": "1",
             },
             "11": {
-                "instructions": ["i = 5", "continue"],
+                "instructions": ["i = 5"],
                 "jump_targets": ["1"],
                 "name": "11",
             },
@@ -783,7 +768,7 @@ class TestAST2SCFGTransformer(TestCase):
                 "name": "17",
             },
             "19": {
-                "instructions": ["i = 4", "break"],
+                "instructions": ["i = 4"],
                 "jump_targets": ["1"],
                 "name": "19",
             },
@@ -798,7 +783,7 @@ class TestAST2SCFGTransformer(TestCase):
                 "name": "20",
             },
             "22": {
-                "instructions": ["i = 5", "continue"],
+                "instructions": ["i = 5"],
                 "jump_targets": ["12"],
                 "name": "22",
             },
@@ -828,7 +813,7 @@ class TestAST2SCFGTransformer(TestCase):
                 "name": "6",
             },
             "8": {
-                "instructions": ["i = 4", "break"],
+                "instructions": ["i = 4"],
                 "jump_targets": ["4"],
                 "name": "8",
             },
