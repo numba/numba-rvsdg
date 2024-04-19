@@ -1,14 +1,11 @@
 import ast
 import inspect
-from typing import Callable
+from typing import Callable, Any, MutableMapping
 import textwrap
 from dataclasses import dataclass
 
-from typing import Any, MutableMapping
-
 from numba_rvsdg.core.datastructures.scfg import SCFG
 from numba_rvsdg.core.datastructures.basic_block import PythonASTBlock
-from numba_rvsdg.rendering.rendering import render_scfg
 
 
 class WritableASTBlock:
@@ -577,7 +574,7 @@ class AST2SCFGTransformer:
         intermediary results.
 
         """
-        render_scfg(self.blocks.to_SCFG())
+        self.blocks.to_SCFG().render()
 
 
 def AST2SCFG(code: Callable[..., Any]) -> SCFG:
