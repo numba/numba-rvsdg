@@ -16,9 +16,9 @@ class TestAST2SCFGTransformer(TestCase):
     ):
         transformer = AST2SCFGTransformer(function)
         astcfg = transformer.transform_to_ASTCFG()
-        self.assertEqual(astcfg.to_dict(), expected)
-        self.assertEqual({i.name for i in astcfg.unreachable}, unreachable)
-        self.assertEqual({i.name for i in astcfg.empty}, empty)
+        self.assertEqual(expected, astcfg.to_dict())
+        self.assertEqual(unreachable, {i.name for i in astcfg.unreachable})
+        self.assertEqual(empty, {i.name for i in astcfg.empty})
 
     def test_solo_return(self):
         def function() -> int:
