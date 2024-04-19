@@ -77,6 +77,13 @@ class WritableASTBlock:
         else:
             self.set_jump_targets(default_index)
 
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "name": self.name,
+            "instructions": [ast.unparse(n) for n in self.instructions],
+            "jump_targets": self.jump_targets,
+        }
+
     def __repr__(self) -> str:
         return (
             f"WritableASTBlock({self.name}, "
@@ -100,14 +107,7 @@ class ASTCFG(dict[str, WritableASTBlock]):
 
     def to_dict(self) -> dict[str, dict[str, object]]:
         """Convert ASTCFG to simple dict based data structure."""
-        return {
-            k: {
-                "name": v.name,
-                "instructions": [ast.unparse(n) for n in v.instructions],
-                "jump_targets": v.jump_targets,
-            }
-            for (k, v) in self.items()
-        }
+        return {k: v.to_dict() for (k, v) in self.items()}
 
     def to_SCFG(self) -> SCFG:
         """Convert ASTCFG to SCFG"""
