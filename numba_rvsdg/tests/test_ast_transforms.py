@@ -20,6 +20,9 @@ class TestAST2SCFGTransformer(TestCase):
         self.assertEqual(unreachable, {i.name for i in astcfg.unreachable})
         self.assertEqual(empty, {i.name for i in astcfg.empty})
 
+    def setUp(self):
+        self.maxDiff = None
+
     def test_solo_return(self):
         def function() -> int:
             return 1
@@ -695,6 +698,65 @@ class TestAST2SCFGTransformer(TestCase):
             },
         }
         self.compare(function, expected, unreachable={"7", "10"}, empty={"9"})
+
+    def test_for_with_if_in_else(self):
+        def function(a: int):
+            c = 0
+            for i in range(10):
+                c += i
+            else:
+                if a:
+                    r = c
+                else:
+                    r = -1 * c
+            return r
+
+        expected = {
+            "0": {
+                "instructions": [
+                    "c = 0",
+                    "__iterator_1__ = iter(range(10))",
+                    "i = None",
+                ],
+                "jump_targets": ["1"],
+                "name": "0",
+            },
+            "1": {
+                "instructions": [
+                    "__iter_last_1__ = i",
+                    "i = next(__iterator_1__, '__sentinel__')",
+                    "i != '__sentinel__'",
+                ],
+                "jump_targets": ["2", "3"],
+                "name": "1",
+            },
+            "2": {
+                "instructions": ["c += i"],
+                "jump_targets": ["1"],
+                "name": "2",
+            },
+            "3": {
+                "instructions": ["i = __iter_last_1__", "a"],
+                "jump_targets": ["5", "6"],
+                "name": "3",
+            },
+            "4": {
+                "instructions": ["return r"],
+                "jump_targets": [],
+                "name": "4",
+            },
+            "5": {
+                "instructions": ["r = c"],
+                "jump_targets": ["4"],
+                "name": "5",
+            },
+            "6": {
+                "instructions": ["r = -1 * c"],
+                "jump_targets": ["4"],
+                "name": "6",
+            },
+        }
+        self.compare(function, expected, empty={"7"})
 
     def test_for_with_nested_else_return_break_and_continue(self):
         def function(a: int, b: int, c: int, d: int, e: int, f: int) -> int:

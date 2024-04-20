@@ -564,7 +564,6 @@ class AST2SCFGTransformer:
 
         # Create else block.
         self.add_block(else_index)
-        self.current_block.set_jump_targets(exit_index)
 
         # Emit orelse instructions. Needs to be prefixed with an assignment
         # such that the for loop target can escape the scope of the loop.
@@ -574,9 +573,14 @@ class AST2SCFGTransformer:
         """
         )
         self.codegen(ast.parse(else_code).body)
+
+        # Recurs into the body of the else-branch.
         self.codegen(node.orelse)
 
-        # Create exit block.
+        # Set jump_target of current block, whatever it may be.
+        self.current_block.set_jump_targets(exit_index)
+
+        # Create exit block and leave open for modification
         self.add_block(exit_index)
 
     def render(self) -> None:
