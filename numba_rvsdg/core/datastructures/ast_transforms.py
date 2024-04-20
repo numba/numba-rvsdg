@@ -305,7 +305,9 @@ class AST2SCFGTransformer:
         # After recursion, current_block may need a jump target.
         self.seal_block(enif_index)
 
-        # Create a new block and leave 'open' for the end-if statements.
+        # Create a new block and assign it to the be the current_block, this
+        # will hold the end-if statements if any exist. We leave 'open' for
+        # modification.
         self.add_block(enif_index)
 
     def handle_while(self, node: ast.While) -> None:
@@ -313,7 +315,8 @@ class AST2SCFGTransformer:
         # If the current block already has instructions, we need a new block as
         # header. Otherwise just re-use the current_block. This happens
         # when the previous statement was an if-statement with an empty
-        # endif_block, for example.
+        # endif_block, for example. This is possible because the Python
+        # while-loop does not need to modify it's preheader.
         if self.current_block.instructions:
             # Preallocate header, body and exiting indices.
             head_index = self.block_index
@@ -321,7 +324,6 @@ class AST2SCFGTransformer:
             exit_index = self.block_index + 2
             self.block_index += 3
 
-            # Point whatever the current block to header block
             self.current_block.set_jump_targets(head_index)
             # And create new header block
             self.add_block(head_index)
@@ -356,7 +358,7 @@ class AST2SCFGTransformer:
             loop_indices.head == head_index and loop_indices.exit == exit_index
         )
 
-        # Create exit block and leave 'open'.
+        # Create exit block and leave open for modifictaion.
         self.add_block(exit_index)
 
     def handle_for(self, node: ast.For) -> None:
@@ -366,9 +368,11 @@ class AST2SCFGTransformer:
         equivalent Python statements, since the semantics of the statement can
         not be represented in the control flow graph (CFG) formalism of blocks
         with directed edges. We note that the for-loop in Python is effectively
-        syntactic sugar for a generalised c-style while-loop. This while-loop
-        can now be represented using the blocks and directed edges of the CFG
-        formalism. This docstring explains the decomposition.
+        syntactic sugar for a generalised c-style while-loop. To our advantage,
+        this while-loop can indeed be represented using the blocks and directed
+        edges of the CFG formalism and allows us to transform the Python
+        for-loop construct. This docstring explains the decomposition
+        from for- into while-loop.
 
         Remember that the for-loop has a target variable that will be assigned,
         an iterator to iterate over, a loop body and an else clause. The AST
@@ -376,7 +380,8 @@ class AST2SCFGTransformer:
 
             ast.For(target, iter, body, orelse, type_comment)
 
-        Remember also that Python for-loops can have an else branch:
+        Remember also that Python for-loops can have an else-branch, that is
+        executed upon regular loop conclusion.
 
         def function(a: int) -> None
             c = 0
@@ -384,22 +389,25 @@ class AST2SCFGTransformer:
                 c += i
                 if i == a:
                     i = 420  # set i arbitrarily
-                    break    # break from loop, bypass else: clause
+                    break    # early exit, break from loop, bypass else-branch
             else:
-                c += 1       # execute if we never hit break on loop conclusion
+                c += 1       # loop conclusion, i.e. we have not hit the  break
         return c, i
 
-        So, effectively, to decompose the for loop, we need to setup the
-        iterator by calling 'iter(iter)' and assign it, initialize the 'target
-        variable and then check if the iterator has a next value. If it does,
-        we need to enter the body and then check the iterator again and again
-        and again.. until there are no items left, at which point we execute
-        the else clause.
+        So, effectively, to decompose the for-loop, we need to setup the
+        iterator by calling 'iter(iter)' and assign it to a variable,
+        initialize the target variable to be None and then check if the
+        iterator has a next value. If it does, we need to assign that value to
+        the target variable, enter the body and then check the iterator again
+        and again and again.. until there are no items left, at which point we
+        execute the else-branch.
 
         The Python for-loop usually waits for the iterator to raise a
         StopIteration exception to determine when the iteration has concluded.
-        However, it is possible to use the next() method with a second argument
-        to avoid exception handling here:
+        However, it is possible to use the 'next()' method with a second
+        argument to avoid exception handling here. We do this so we don't need
+        to rely on being able to transform exceptions as part of this
+        transformer.
 
             i = next(iter, "__sentinel__")
             if i != "__sentinel__":
@@ -417,8 +425,8 @@ class AST2SCFGTransformer:
             >>>
 
         So, to summarize: we want to decompose a Python for loop into a while
-        loop with some assignments. The target iteration variable must escape
-        the scope.
+        loop with some assignments and he target variable must escape the
+        scope.
 
         Consider again the following function:
 
@@ -447,18 +455,18 @@ class AST2SCFGTransformer:
                     c += i                    # add to accumulator
                     if i == a:                # check for early exit
                         i = 420               # set i to some wild value
-                        break                 # break from while True
+                        break                 # early exit break while True
                 else:                         # for-else clause
          *          i == __iter_last_1__      # restore value of i
                     c += 1                    # execute code in for-else clause
-                    break                     # break from while True
-            return c
+                    break                     # regular exit break while True
+            return c, i
 
         The above is actually a full Python source reconstruction. In the
-        implementation below, it is only necessary to write some of the special
-        assignments (marked above with a *-prefix) into the blocks of the CFG.
-        All of the control-flow inside the function will be represented by the
-        directed edges of the CFG.
+        implementation below, it is only necessary to emit some of the special
+        assignments (marked above with a *-prefix above) into the blocks of the
+        CFG.  All of the control-flow inside the function will be represented
+        by the directed edges of the CFG.
 
         The first two assignments are for the pre-header:
 
@@ -479,13 +487,14 @@ class AST2SCFGTransformer:
         We modify the pre-header, the header and the else blocks with
         appropriate Python statements in the following implementation. The
         Python code is injected by generating Python source using f-strings and
-        then using the 'unparse()' function of the 'ast' module to 'codegen'
-        the required 'ast.AST' objects into the blocks of the CFG.
+        then using the 'unparse()' function of the 'ast' module to then use the
+        'codegen' method of this transformer to emit the required 'ast.AST'
+        objects into the blocks of the CFG.
 
         Lastly the important thing to observe is that we can not ignore the
         else clause, since this must contain the reset of the variable i, which
-        will have been set to '__sentinel__'. This reset is requires such that
-        i can escape the scope of the for-loop.
+        will have been set to '__sentinel__'. This reset is required such that
+        the target variable 'i' will escape the scope of the for-loop.
 
         """
         # Preallocate indices for header, body, else, and exiting blocks.
@@ -498,8 +507,9 @@ class AST2SCFGTransformer:
         # Assign the components of the for-loop to variables. These variables
         # are versioned using the index of the loop header so that scopes can
         # be nested. While this is strictly required for the 'iter_setup' it is
-        # technically optional for the 'last_target_value' we version it too so
-        # that the two can easily be matched when visually inspecting the CFG.
+        # technically optional for the 'last_target_value'... But, we version
+        # it too so that the two can easily be matched when visually inspecting
+        # the CFG.
         target = ast.unparse(node.target)
         iter_setup = ast.unparse(node.iter)
         iter_assign = f"__iterator_{head_index}__"
@@ -514,7 +524,7 @@ class AST2SCFGTransformer:
         )
         self.codegen(ast.parse(preheader_code).body)
 
-        # Point whatever the current block to header block.
+        # Point the current_block to header block.
         self.current_block.set_jump_targets(head_index)
         # And create new header block.
         self.add_block(head_index)
