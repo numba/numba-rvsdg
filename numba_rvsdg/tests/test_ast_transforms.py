@@ -781,11 +781,11 @@ class TestAST2SCFGTransformer(TestCase):
                         break  # This break decides, if True skip continue.
                 else:
                     c *= 5
-                    continue   # Causes break below to be skipped.
+                    continue  # Causes break below to be skipped.
                 c *= 7
-                break          # Causes the else below to be skipped
+                break  # Causes the else below to be skipped
             else:
-                c *= 9         # Not breaking in inner loop leads here
+                c *= 9  # Not breaking in inner loop leads here
             return c
 
         self.assertEqual(function(True), 3 * 7)
