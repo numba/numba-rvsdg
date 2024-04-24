@@ -70,10 +70,8 @@ class WritableASTBlock:
         """
         if self.is_continue():
             self.set_jump_targets(head_index)
-            self.instructions.pop()
         elif self.is_break():
             self.set_jump_targets(exit_index)
-            self.instructions.pop()
         elif self.is_return():
             pass
         else:
@@ -89,7 +87,7 @@ class WritableASTBlock:
     def __repr__(self) -> str:
         return (
             f"WritableASTBlock({self.name}, "
-            "{self.instructions}, {self.jump_targets})"
+            f"{self.instructions}, {self.jump_targets})"
         )
 
 
@@ -133,6 +131,20 @@ class ASTCFG(dict[str, WritableASTBlock]):
                 unreachable.add(self.pop(block))
         self.unreachable = unreachable
         return unreachable
+
+    def prune_noops(self) -> set[type[ast.AST]]:
+        """Prune no-op instructions from the CFG."""
+        noops = set()
+        exclude = (ast.Pass, ast.Continue, ast.Break)
+        for block in self.values():
+            block.instructions = [
+                i for i in block.instructions if not isinstance(i, exclude)
+            ]
+            noops.update(
+                [i for i in block.instructions if isinstance(i, exclude)]
+            )
+        self.noops = noops
+        return noops  # type: ignore
 
     def prune_empty(self) -> set[WritableASTBlock]:
         """Prune empty blocks from the CFG."""
@@ -230,6 +242,7 @@ class AST2SCFGTransformer:
         # Prune if requested.
         if self.prune:
             _ = self.blocks.prune_unreachable()
+            _ = self.blocks.prune_noops()
             _ = self.blocks.prune_empty()
 
     def codegen(self, tree: list[type[ast.AST]] | list[ast.stmt]) -> None:
@@ -257,6 +270,7 @@ class AST2SCFGTransformer:
                 ast.Return,
                 ast.Break,
                 ast.Continue,
+                ast.Pass,
             ),
         ):
             self.current_block.instructions.append(node)

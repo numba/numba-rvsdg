@@ -49,6 +49,19 @@ class TestAST2SCFGTransformer(TestCase):
         }
         self.compare(function, expected)
 
+    def test_solo_pass(self):
+        def function() -> None:
+            pass
+
+        expected = {
+            "0": {
+                "instructions": ["return"],
+                "jump_targets": [],
+                "name": "0",
+            }
+        }
+        self.compare(function, expected)
+
     def test_assign_return(self):
         def function() -> int:
             x = 1
