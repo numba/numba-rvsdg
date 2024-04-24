@@ -578,7 +578,7 @@ class AST2SCFGTransformer:
         self.codegen(node.orelse)
 
         # Set jump_target of current block, whatever it may be.
-        self.current_block.set_jump_targets(exit_index)
+        self.seal_block(exit_index)
 
         # Create exit block and leave open for modification
         self.add_block(exit_index)
