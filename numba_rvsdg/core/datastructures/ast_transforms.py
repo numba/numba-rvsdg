@@ -186,6 +186,7 @@ class AST2SCFGTransformer:
     form of a Python Abstract Syntax Tree (AST) into CFG/SCFG.
 
     """
+
     # Prune noop statements and unreachable/empty blocks from the CFG.
     prune: bool
     # The code to be transformed.
