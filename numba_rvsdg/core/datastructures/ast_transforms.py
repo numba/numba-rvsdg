@@ -231,7 +231,7 @@ class AST2SCFGTransformer:
         elif callable(code):
             tree = ast.parse(textwrap.dedent(inspect.getsource(code))).body
         else:
-            msg = "Type: '{type(self.cod}}' is not implemented."
+            msg = "Type: '{type(self.code}}' is not implemented."
             raise NotImplementedError(msg)
         return tree  # type: ignore
 
