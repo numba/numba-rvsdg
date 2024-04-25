@@ -186,21 +186,28 @@ class AST2SCFGTransformer:
     form of a Python Abstract Syntax Tree (AST) into CFG/SCFG.
 
     """
+    # Prune noop statements and unreachable/empty blocks from the CFG.
+    prune: bool
+    # The code to be transformed.
+    code: Callable[..., Any]
+    # Monotonically increasing block index, starts at 1.
+    block_index: int
+    # The current block being modified
+    current_block: WritableASTBlock
+    # Dict mapping block indices as strings to WritableASTBlocks.
+    # (This is the data structure to hold the CFG.)
+    blocks: ASTCFG
+    # Stack for header and exiting block of current loop.
+    loop_stack: list[LoopIndices]
 
     def __init__(self, code: Callable[..., Any], prune: bool = True) -> None:
-        # Prune empty and unreachable blocks from the CFG.
-        self.prune: bool = prune
-        # Save the code for transformation.
-        self.code: Callable[..., Any] = code
-        # Monotonically increasing block index, 0 is reserved for genesis.
-        self.block_index: int = 1
-        # Dict mapping block indices as strings to WritableASTBlocks.
-        # (This is the data structure to hold the CFG.)
-        self.blocks: ASTCFG = ASTCFG()
+        self.prune = prune
+        self.code = code
+        self.block_index: int = 1  # 0 is reserved for genesis block
+        self.blocks = ASTCFG()
         # Initialize first (genesis) block, assume it's named zero.
         # (This also initializes the self.current_block attribute.)
         self.add_block(0)
-        # Stack for header and exiting block of current loop.
         self.loop_stack: list[LoopIndices] = []
 
     def transform_to_ASTCFG(self) -> ASTCFG:
