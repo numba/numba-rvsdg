@@ -16,6 +16,10 @@ class WritableASTBlock:
 
     """
 
+    name: str
+    instructions: list[ast.AST]
+    jump_targets: list[str]
+
     def __init__(
         self,
         name: str,
@@ -94,6 +98,10 @@ class WritableASTBlock:
 class ASTCFG(dict[str, WritableASTBlock]):
     """A CFG consisting of WritableASTBlocks."""
 
+    unreachable: set[WritableASTBlock]
+    empty: set[WritableASTBlock]
+    noops: set[type[ast.AST]]
+
     def convert_blocks(self) -> MutableMapping[str, Any]:
         """Convert WritableASTBlocks to PythonASTBlocks."""
         return {
@@ -143,7 +151,7 @@ class ASTCFG(dict[str, WritableASTBlock]):
             noops.update(
                 [i for i in block.instructions if isinstance(i, exclude)]
             )
-        self.noops = noops
+        self.noops = noops  # type: ignore
         return noops  # type: ignore
 
     def prune_empty(self) -> set[WritableASTBlock]:
