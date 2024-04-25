@@ -199,6 +199,7 @@ class AST2SCFGTransformer:
     prune: bool
     # The code to be transformed.
     code: str | Callable[..., Any]
+    tree: list[type[ast.AST]]
     # Monotonically increasing block index, starts at 1.
     block_index: int
     # The current block being modified
@@ -222,7 +223,9 @@ class AST2SCFGTransformer:
         self.add_block(0)
         self.loop_stack: list[LoopIndices] = []
 
-    def unparse_code(self, code: str | Callable[..., Any]) -> list[ast.AST]:
+    def unparse_code(
+        self, code: str | Callable[..., Any]
+    ) -> list[type[ast.AST]]:
         # Convert source code into AST.
         if isinstance(self.code, str):
             tree = ast.parse(self.code).body
