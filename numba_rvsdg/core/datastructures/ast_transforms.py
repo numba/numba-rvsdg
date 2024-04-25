@@ -607,7 +607,7 @@ class AST2SCFGTransformer:
         # Recurs into the body of the else-branch.
         self.codegen(node.orelse)
 
-        # Set jump_target of current block, whatever it may be.
+        # Seal current block, whatever it may be.
         self.seal_block(exit_index)
 
         # Create exit block and leave open for modification
