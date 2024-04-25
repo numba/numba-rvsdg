@@ -324,7 +324,7 @@ class TestAST2SCFGTransformer(TestCase):
         }
         self.compare(function, expected, empty={"9", "6"})
 
-    def test_simple_loop(self):
+    def test_simple_while(self):
         def function() -> int:
             x = 0
             while x < 10:
@@ -353,9 +353,9 @@ class TestAST2SCFGTransformer(TestCase):
                 "name": "3",
             },
         }
-        self.compare(function, expected)
+        self.compare(function, expected, empty={"4"})
 
-    def test_nested_loop(self):
+    def test_nested_while(self):
         def function() -> tuple[int, int]:
             x, y = 0, 0
             while x < 10:
@@ -373,33 +373,34 @@ class TestAST2SCFGTransformer(TestCase):
             },
             "1": {
                 "instructions": ["x < 10"],
-                "jump_targets": ["2", "3"],
+                "jump_targets": ["5", "3"],
                 "name": "1",
-            },
-            "2": {
-                "instructions": ["y < 5"],
-                "jump_targets": ["4", "5"],
-                "name": "2",
             },
             "3": {
                 "instructions": ["return (x, y)"],
                 "jump_targets": [],
                 "name": "3",
             },
-            "4": {
-                "instructions": ["x += 1", "y += 1"],
-                "jump_targets": ["2"],
-                "name": "4",
-            },
             "5": {
-                "instructions": ["x += 1"],
-                "jump_targets": ["1"],
+                "instructions": ["y < 5"],
+                "jump_targets": ["6", "7"],
                 "name": "5",
             },
+            "6": {
+                "instructions": ["x += 1", "y += 1"],
+                "jump_targets": ["5"],
+                "name": "6",
+            },
+            "7": {
+                "instructions": ["x += 1"],
+                "jump_targets": ["1"],
+                "name": "7",
+            },
         }
-        self.compare(function, expected)
 
-    def test_if_in_loop(self):
+        self.compare(function, expected, empty={"2", "4", "8"})
+
+    def test_if_in_while(self):
         def function() -> int:
             x = 0
             while x < 10:
@@ -422,7 +423,7 @@ class TestAST2SCFGTransformer(TestCase):
             },
             "2": {
                 "instructions": ["x < 5"],
-                "jump_targets": ["4", "5"],
+                "jump_targets": ["5", "6"],
                 "name": "2",
             },
             "3": {
@@ -430,20 +431,20 @@ class TestAST2SCFGTransformer(TestCase):
                 "jump_targets": [],
                 "name": "3",
             },
-            "4": {
-                "instructions": ["x += 2"],
-                "jump_targets": ["1"],
-                "name": "4",
-            },
             "5": {
-                "instructions": ["x += 1"],
+                "instructions": ["x += 2"],
                 "jump_targets": ["1"],
                 "name": "5",
             },
+            "6": {
+                "instructions": ["x += 1"],
+                "jump_targets": ["1"],
+                "name": "6",
+            },
         }
-        self.compare(function, expected, empty={"6"})
+        self.compare(function, expected, empty={"4", "7"})
 
-    def test_loop_in_if(self):
+    def test_while_in_if(self):
         def function(a: bool) -> int:
             x = 0
             if a is True:
@@ -457,18 +458,8 @@ class TestAST2SCFGTransformer(TestCase):
         expected = {
             "0": {
                 "instructions": ["x = 0", "a is True"],
-                "jump_targets": ["1", "2"],
+                "jump_targets": ["4", "8"],
                 "name": "0",
-            },
-            "1": {
-                "instructions": ["x < 10"],
-                "jump_targets": ["4", "3"],
-                "name": "1",
-            },
-            "2": {
-                "instructions": ["x < 10"],
-                "jump_targets": ["6", "3"],
-                "name": "2",
             },
             "3": {
                 "instructions": ["return x"],
@@ -476,19 +467,31 @@ class TestAST2SCFGTransformer(TestCase):
                 "name": "3",
             },
             "4": {
-                "instructions": ["x += 2"],
-                "jump_targets": ["1"],
+                "instructions": ["x < 10"],
+                "jump_targets": ["5", "3"],
                 "name": "4",
             },
-            "6": {
+            "5": {
+                "instructions": ["x += 2"],
+                "jump_targets": ["4"],
+                "name": "5",
+            },
+            "8": {
+                "instructions": ["x < 10"],
+                "jump_targets": ["9", "3"],
+                "name": "8",
+            },
+            "9": {
                 "instructions": ["x += 1"],
-                "jump_targets": ["2"],
-                "name": "6",
+                "jump_targets": ["8"],
+                "name": "9",
             },
         }
-        self.compare(function, expected, empty={"5", "7"})
+        self.compare(
+            function, expected, empty={"1", "2", "6", "7", "10", "11"}
+        )
 
-    def test_loop_break_continue(self):
+    def test_while_break_continue(self):
         def function() -> int:
             x = 0
             while x < 10:
@@ -514,7 +517,7 @@ class TestAST2SCFGTransformer(TestCase):
             },
             "2": {
                 "instructions": ["x += 1", "x % 2 == 0"],
-                "jump_targets": ["1", "5"],
+                "jump_targets": ["1", "6"],
                 "name": "2",
             },
             "3": {
@@ -522,18 +525,56 @@ class TestAST2SCFGTransformer(TestCase):
                 "jump_targets": [],
                 "name": "3",
             },
-            "5": {
+            "6": {
                 "instructions": ["x == 9"],
-                "jump_targets": ["3", "8"],
-                "name": "5",
+                "jump_targets": ["3", "9"],
+                "name": "6",
             },
-            "8": {
+            "9": {
                 "instructions": ["x += 1"],
                 "jump_targets": ["1"],
-                "name": "8",
+                "name": "9",
             },
         }
-        self.compare(function, expected, empty={"4", "6", "7", "9"})
+        self.compare(function, expected, empty={"4", "5", "7", "8", "10"})
+
+    def test_while_else(self):
+        def function() -> int:
+            x = 0
+            while x < 10:
+                x += 1
+            else:
+                x += 1
+            return x
+
+        expected = {
+            "0": {
+                "instructions": ["x = 0"],
+                "jump_targets": ["1"],
+                "name": "0",
+            },
+            "1": {
+                "instructions": ["x < 10"],
+                "jump_targets": ["2", "4"],
+                "name": "1",
+            },
+            "2": {
+                "instructions": ["x += 1"],
+                "jump_targets": ["1"],
+                "name": "2",
+            },
+            "3": {
+                "instructions": ["return x"],
+                "jump_targets": [],
+                "name": "3",
+            },
+            "4": {
+                "instructions": ["x += 1"],
+                "jump_targets": ["3"],
+                "name": "4",
+            },
+        }
+        self.compare(function, expected)
 
     def test_simple_for(self):
         def function() -> int:
@@ -911,29 +952,24 @@ class TestAST2SCFGTransformer(TestCase):
                 "jump_targets": ["1"],
                 "name": "11",
             },
-            "12": {
-                "instructions": ["i < 10"],
-                "jump_targets": ["14", "1"],
-                "name": "12",
-            },
             "14": {
-                "instructions": ["i += 1", "i == d"],
-                "jump_targets": ["16", "17"],
+                "instructions": ["i < 10"],
+                "jump_targets": ["15", "1"],
                 "name": "14",
             },
-            "16": {
+            "15": {
+                "instructions": ["i += 1", "i == d"],
+                "jump_targets": ["18", "19"],
+                "name": "15",
+            },
+            "18": {
                 "instructions": ["i = 3", "return i"],
                 "jump_targets": [],
-                "name": "16",
-            },
-            "17": {
-                "instructions": ["i == e"],
-                "jump_targets": ["19", "20"],
-                "name": "17",
+                "name": "18",
             },
             "19": {
-                "instructions": ["i = 4"],
-                "jump_targets": ["1"],
+                "instructions": ["i == e"],
+                "jump_targets": ["21", "22"],
                 "name": "19",
             },
             "2": {
@@ -941,20 +977,25 @@ class TestAST2SCFGTransformer(TestCase):
                 "jump_targets": ["5", "6"],
                 "name": "2",
             },
-            "20": {
-                "instructions": ["i == f"],
-                "jump_targets": ["22", "23"],
-                "name": "20",
+            "21": {
+                "instructions": ["i = 4"],
+                "jump_targets": ["1"],
+                "name": "21",
             },
             "22": {
-                "instructions": ["i = 5"],
-                "jump_targets": ["12"],
+                "instructions": ["i == f"],
+                "jump_targets": ["24", "25"],
                 "name": "22",
             },
-            "23": {
+            "24": {
+                "instructions": ["i = 5"],
+                "jump_targets": ["14"],
+                "name": "24",
+            },
+            "25": {
                 "instructions": ["i += 1"],
-                "jump_targets": ["12"],
-                "name": "23",
+                "jump_targets": ["14"],
+                "name": "25",
             },
             "3": {
                 "instructions": ["i = __iter_last_1__"],
@@ -983,11 +1024,11 @@ class TestAST2SCFGTransformer(TestCase):
             },
             "9": {
                 "instructions": ["i == c"],
-                "jump_targets": ["11", "12"],
+                "jump_targets": ["11", "14"],
                 "name": "9",
             },
         }
-        empty = {"7", "10", "13", "15", "18", "21", "24"}
+        empty = {"7", "10", "12", "13", "16", "17", "20", "23", "26"}
         self.compare(function, expected, empty=empty)
 
 

@@ -347,27 +347,25 @@ class AST2SCFGTransformer:
         # when the previous statement was an if-statement with an empty
         # endif_block, for example. This is possible because the Python
         # while-loop does not need to modify it's preheader.
-        if self.current_block.instructions:
-            # Preallocate header, body and exiting indices.
-            head_index = self.block_index
-            body_index = self.block_index + 1
-            exit_index = self.block_index + 2
-            self.block_index += 3
 
-            self.current_block.set_jump_targets(head_index)
-            # And create new header block
-            self.add_block(head_index)
-        else:  # reuse existing current_block
-            # Preallocate body and exiting indices.
-            head_index = int(self.current_block.name)
-            body_index = self.block_index
-            exit_index = self.block_index + 1
-            self.block_index += 2
+        # Preallocate header, body, else and exiting indices.
+        # (Technically, we could re-use the current block as header if it is
+        # still empty. We elect to potentially leave a block empty instead,
+        # since there is a pass to prune empty blocks anyway.)
+        head_index = self.block_index
+        body_index = self.block_index + 1
+        exit_index = self.block_index + 2
+        else_index = self.block_index + 3
+        self.block_index += 4
+
+        self.current_block.set_jump_targets(head_index)
+        # And create new header block
+        self.add_block(head_index)
 
         # Emit comparison expression into header.
         self.current_block.instructions.append(node.test)
-        # Set the jump targets to be the body and the exiting latch.
-        self.current_block.set_jump_targets(body_index, exit_index)
+        # Set the jump targets to be the body and the else branch.
+        self.current_block.set_jump_targets(body_index, else_index)
 
         # Create body block.
         self.add_block(body_index)
@@ -387,6 +385,16 @@ class AST2SCFGTransformer:
         assert (
             loop_indices.head == head_index and loop_indices.exit == exit_index
         )
+
+        # Create else block.
+        self.add_block(else_index)
+
+        # Recurs into the body of the else-branch, again this may modify the
+        # current_block.
+        self.codegen(node.orelse)
+
+        # Seal current_block.
+        self.seal_block(exit_index)
 
         # Create exit block and leave open for modifictaion.
         self.add_block(exit_index)
