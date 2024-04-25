@@ -215,7 +215,7 @@ class AST2SCFGTransformer:
     ) -> None:
         self.prune = prune
         self.code = code
-        self.tree = self.unparse_code(code)
+        self.tree = AST2SCFGTransformer.unparse_code(code)
         self.block_index: int = 1  # 0 is reserved for genesis block
         self.blocks = ASTCFG()
         # Initialize first (genesis) block, assume it's named zero.
@@ -223,16 +223,13 @@ class AST2SCFGTransformer:
         self.add_block(0)
         self.loop_stack: list[LoopIndices] = []
 
-    def unparse_code(
-        self, code: str | Callable[..., Any]
-    ) -> list[type[ast.AST]]:
+    @staticmethod
+    def unparse_code(code: str | Callable[..., Any]) -> list[type[ast.AST]]:
         # Convert source code into AST.
-        if isinstance(self.code, str):
-            tree = ast.parse(self.code).body
-        elif callable(self.code):
-            tree = ast.parse(
-                textwrap.dedent(inspect.getsource(self.code))
-            ).body
+        if isinstance(code, str):
+            tree = ast.parse(code).body
+        elif callable(code):
+            tree = ast.parse(textwrap.dedent(inspect.getsource(code))).body
         else:
             msg = "Type: '{type(self.cod}}' is not implemented."
             raise NotImplementedError(msg)
