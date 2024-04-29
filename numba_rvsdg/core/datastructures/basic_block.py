@@ -1,4 +1,5 @@
 import dis
+import ast
 from typing import Tuple, Dict, List, Optional
 from dataclasses import dataclass, replace, field
 
@@ -197,6 +198,30 @@ class PythonBytecodeBlock(BasicBlock):
                 it = _next_inst_offset(it)
 
         return out
+
+
+@dataclass(frozen=True)
+class PythonASTBlock(BasicBlock):
+    """The PythonASTBlock class is a subclass of the BasicBlock that
+    represents basic blocks with Python AST.
+
+    Attributes
+    ----------
+    begin: int
+        The starting line.
+
+    end: int
+        The ending line.
+    """
+
+    begin: int = -1
+
+    end: int = -1
+
+    tree: List[ast.AST] = field(default_factory=lambda: [])
+
+    def get_tree(self) -> List[ast.AST]:
+        return self.tree
 
 
 @dataclass(frozen=True)
