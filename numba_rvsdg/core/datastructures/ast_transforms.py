@@ -198,7 +198,7 @@ class AST2SCFGTransformer:
     # Prune noop statements and unreachable/empty blocks from the CFG.
     prune: bool
     # The code to be transformed.
-    code: str | Callable[..., Any]
+    code: str | list[ast.FunctionDef] | Callable[..., Any]
     tree: list[type[ast.AST]]
     # Monotonically increasing block index, starts at 1.
     block_index: int
@@ -211,7 +211,9 @@ class AST2SCFGTransformer:
     loop_stack: list[LoopIndices]
 
     def __init__(
-        self, code: str | Callable[..., Any], prune: bool = True
+        self,
+        code: str | list[ast.FunctionDef] | Callable[..., Any],
+        prune: bool = True,
     ) -> None:
         self.prune = prune
         self.code = code
@@ -224,12 +226,20 @@ class AST2SCFGTransformer:
         self.loop_stack: list[LoopIndices] = []
 
     @staticmethod
-    def unparse_code(code: str | Callable[..., Any]) -> list[type[ast.AST]]:
+    def unparse_code(
+        code: str | list[ast.FunctionDef] | Callable[..., Any]
+    ) -> list[type[ast.AST]]:
         # Convert source code into AST.
         if isinstance(code, str):
             tree = ast.parse(code).body
         elif callable(code):
             tree = ast.parse(textwrap.dedent(inspect.getsource(code))).body
+        elif (
+            isinstance(code, list)
+            and len(code) > 0
+            and all([isinstance(i, ast.AST) for i in code])
+        ):
+            tree = code  # type: ignore
         else:
             msg = "Type: '{type(self.code}}' is not implemented."
             raise NotImplementedError(msg)
@@ -645,7 +655,7 @@ class AST2SCFGTransformer:
         self.blocks.to_SCFG().render()
 
 
-def AST2SCFG(code: str | Callable[..., Any]) -> SCFG:
+def AST2SCFG(code: str | list[ast.FunctionDef] | Callable[..., Any]) -> SCFG:
     """Transform Python function into an SCFG."""
     return AST2SCFGTransformer(code).transform_to_SCFG()
 
