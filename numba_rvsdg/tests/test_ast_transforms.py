@@ -56,11 +56,14 @@ class TestAST2SCFGTransformer(TestCase):
         self.compare(function, expected)
 
     def test_solo_return_from_AST(self):
-        function = ast.parse(textwrap.dedent(
-            """
+        function = ast.parse(
+            textwrap.dedent(
+                """
             def function() -> int:
                 return 1
-        """)).body
+        """
+            )
+        ).body
 
         expected = {
             "0": {
