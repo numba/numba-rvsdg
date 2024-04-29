@@ -1,4 +1,5 @@
 # mypy: ignore-errors
+import textwrap
 from typing import Callable, Any
 from unittest import main, TestCase
 
@@ -26,6 +27,21 @@ class TestAST2SCFGTransformer(TestCase):
     def test_solo_return(self):
         def function() -> int:
             return 1
+
+        expected = {
+            "0": {
+                "instructions": ["return 1"],
+                "jump_targets": [],
+                "name": "0",
+            }
+        }
+        self.compare(function, expected)
+
+    def test_solo_return_from_string(self):
+        function = textwrap.dedent("""
+            def function() -> int:
+                return 1
+        """)
 
         expected = {
             "0": {
