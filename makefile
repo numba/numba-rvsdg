@@ -14,4 +14,3 @@ conda-env:
 	conda create -n numba-rvsdg
 conda-install:
 	conda install python=3.12 python-graphviz pyyaml pytest sphinx sphinx_rtd_theme coverage pre-commit
-	pip install -U virtualenv  # needed newer virtualenv not avail. from anaconda.org at time of writing
