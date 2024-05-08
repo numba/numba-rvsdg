@@ -37,75 +37,10 @@ If you have `make` and `conda` available, a common workflow could be:
 ```
 $ make conda-env                        # setup conda environment
 $ conda activate numba-rvsdg            # activate it
-$ make                                  # "build" the project
-$ make test                             # run all tests
-$ make docs                             # build the docs
-$ open docs/build/html/index.html       # view the docs (OSX)
+$ make                                  # lint, build and test the project
 ```
 
 Feel free to look at the `makefile` for low-level commands.
-
-
-## overview
-
-The following files are included in this repository:
-
-```
-numba_rvsdg
-├── __init__.py
-├── core
-│   ├── datastructures
-│   │   ├── basic_block.py  # BasicBlock implementation
-│   │   ├── scfg.py         # SCFG implementation, maps names to blocks
-│   │   ├── byte_flow.py    # ByteFlow implementation, SCFG + bytecode
-│   │   ├── flow_info.py    # Converts program to ByteFlow
-│   ├── transformations.py  # Algorithms
-│   └── utils.py            # Miscellaneous utilities
-├── networkx_vendored
-│   └── scc.py              # Strongly Connected Componets (loop detection)
-├── rendering
-│   └── rendering.py        # Graphivz based rendering of SCFGs
-├── tests
-│   ├── simulator.py        # Simulator utility for running SCFGs
-│   ├── test_byteflow.py    # Testung ByteFlow and others
-│   ├── test_fig3.py        # Testing fig. 3 from Bahman2015
-│   ├── test_fig4.py        # Testing fig. 4 from Bahman2015
-│   ├── test_simulate.py    # Simulator based testing
-│   └── test_transforms.py  # Testing graph transformations
-└── utils
-```
-
-## example
-
-The following will process the given example function and display the four
-different stages. "initial" is the unprocessed bytecode as produced by
-cpython. "closed" is simply the closed variant of the initial CFG. "loop
-restructuring" is the loop-restructured version and "branch-restructured" is
-the final form which includes closing, loop-restructuring and
-branch-restructuring.
-
-
-```python
-# Example: for loop with branch and early exit
-
-from numba_rvsdg.rendering.rendering import render_func
-
-def foo(n):
-    c = 0
-    for i in range(n):
-        c += 1
-        if i == 100:
-            break
-    return c
-
-render_func(foo)
-
-```
-
-![initial](docs/images/initial.png "initial")
-![closed](docs/images/closed.png "closed")
-![loop-restructured](docs/images/loop_restructured.png "loop-restructured")
-![branch-restructured](docs/images/branch_restructured.png "branch-restructured")
 
 ## references
 
