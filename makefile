@@ -14,3 +14,5 @@ conda-env:
 	conda create -n numba-rvsdg
 conda-install:
 	conda install python=3.12 python-graphviz pyyaml pytest sphinx sphinx_rtd_theme coverage pre-commit
+clean:
+	git clean -dfX
