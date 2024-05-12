@@ -120,8 +120,10 @@ def loop_restructure_helper(scfg: SCFG, loop: Set[str]) -> None:
     # All new blocks are recorded for later insertion into the loop set
     new_blocks = set()
     doms = _doms(scfg)
-    # For every block in the loop:
-    for name in loop:
+    # The loop is a set of blocks, but order matters for reproducibility when
+    # assigning synth blocks and so we iterate over the sorted blocks since
+    # sets in Python are unorderd.
+    for name in sorted(loop):
         # If the block is an exiting block or a backedge block
         if name in exiting_blocks or name in backedge_blocks:
             # Copy the jump targets, these will be modified
@@ -377,8 +379,10 @@ def extract_region(
 
     # Generate a new region name
     region_name = scfg.name_gen.new_region_name(region_kind)
+    # Create the subregion, make sure that blocks are inserted in a predictable
+    # order by sorting the set of region blocks.
     head_subgraph = SCFG(
-        {name: scfg.graph[name] for name in region_blocks},
+        {name: scfg.graph[name] for name in sorted(region_blocks)},
         name_gen=scfg.name_gen,
     )
 

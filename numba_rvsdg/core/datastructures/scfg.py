@@ -1046,10 +1046,12 @@ class SCFGIO:
 
         scfg_graph = {}
         seen = set()
-        queue = curr_heads
+        # The queue must be a sorted FIFO to maintain reproducible insertion
+        # order for the SCFG.
+        queue = deque(sorted(curr_heads))
 
         while queue:
-            current_name = queue.pop()
+            current_name = queue.popleft()
             if current_name in seen:
                 continue
             seen.add(current_name)
@@ -1083,7 +1085,7 @@ class SCFGIO:
 
             scfg_graph[current_name] = block
             if current_name != exiting:
-                queue.update(edges[current_name])
+                queue.extend(edges[current_name])
 
         scfg = SCFG(scfg_graph, name_gen=name_gen)
         return scfg
