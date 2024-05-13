@@ -2,7 +2,7 @@
 
 Numba compatible RVSDG (Regionalized Value State Dependence Graph)  utilities.
 
-## about
+## About
 
 This repository contains Numba compatible utilities for working with RVSDGs
 (Regionalized Value State Dependency Graphs). RVSDGs are a type of
@@ -15,7 +15,7 @@ algorithms in Bahmann 2015, specifically those from section 4.1 and 4.2: namely
 Numba because they serve to clearly identify regions within the Python
 bytecode.
 
-## development
+## Development
 
 If you have `make` and `conda` available, a common setting up workflow could
 be:
@@ -31,13 +31,13 @@ Feel free to look at the
 [`makefile`](https://github.com/numba/numba-rvsdg/blob/main/makefile) for all
 development commands.
 
-## references
+## References
 
 * `Reismann2020` -- https://arxiv.org/pdf/1912.05036.pdf -- Describes the concept of RVSDGs
 * `Bahmann2015` -- https://dl.acm.org/doi/pdf/10.1145/2693261 -- Describes the transformation
   algorithms implemented
 
-## license
+## License
 
 Copyright (c) 2022, Anaconda, Inc.
 All rights reserved.
