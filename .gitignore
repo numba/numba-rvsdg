@@ -3,5 +3,8 @@ numba_rvsdg.egg-info
 .pytest_cache
 *__pycache__
 .coverage
-/build
-/docs/build
+build
+dist
+docs/build
+wheelhouse
+.DS_Store
