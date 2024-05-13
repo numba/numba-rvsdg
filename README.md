@@ -2,7 +2,7 @@
 
 Numba compatible RVSDG (Regionalized Value State Dependence Graph)  utilities.
 
-## about
+## About
 
 This repository contains Numba compatible utilities for working with RVSDGs
 (Regionalized Value State Dependency Graphs). RVSDGs are a type of
@@ -15,40 +15,29 @@ algorithms in Bahmann 2015, specifically those from section 4.1 and 4.2: namely
 Numba because they serve to clearly identify regions within the Python
 bytecode.
 
-## dependencies
+## Development
 
-* Python 3.11 or 3.12
-* make (optional, build tool)
-* graphviz
-* pyyaml
-* pytest (for testing)
-* sphinx (for docs)
-* sphinx_rt_theme (for docs)
-
-You can create a conda env using the following:
-
-```
-$ conda env create -n numba-rvsdg python=3.12 python-graphviz pyyaml pytest sphinx sphinx_rtd_theme
-$ conda activate numba-rvsdg
-```
-
-If you have `make` and `conda` available, a common workflow could be:
+If you have `make` and `conda` available, a common setting up workflow could
+be:
 
 ```
 $ make conda-env                        # setup conda environment
 $ conda activate numba-rvsdg            # activate it
+$ make conda-install                    # install dependencies
 $ make                                  # lint, build and test the project
 ```
 
-Feel free to look at the `makefile` for low-level commands.
+Feel free to look at the
+[`makefile`](https://github.com/numba/numba-rvsdg/blob/main/makefile) for all
+development commands.
 
-## references
+## References
 
 * `Reismann2020` -- https://arxiv.org/pdf/1912.05036.pdf -- Describes the concept of RVSDGs
 * `Bahmann2015` -- https://dl.acm.org/doi/pdf/10.1145/2693261 -- Describes the transformation
   algorithms implemented
 
-## license
+## License
 
 Copyright (c) 2022, Anaconda, Inc.
 All rights reserved.
