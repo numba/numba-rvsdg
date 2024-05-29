@@ -26,3 +26,9 @@ SCFG classes
 
 .. automodule:: numba_rvsdg.core.datastructures.scfg
     :members:
+
+AST Transforms
+==============
+
+.. automodule:: numba_rvsdg.core.datastructures.ast_transforms
+    :members:

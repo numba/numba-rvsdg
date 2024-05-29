@@ -438,23 +438,23 @@ class AST2SCFGTransformer:
 
         Remember that the for-loop has a target variable that will be assigned,
         an iterator to iterate over, a loop body and an else clause. The AST
-        node has the following signature:
+        node has the following signature::
 
             ast.For(target, iter, body, orelse, type_comment)
 
         Remember also that Python for-loops can have an else-branch, that is
-        executed upon regular loop conclusion.
+        executed upon regular loop conclusion::
 
-        def function(a: int) -> None
-            c = 0
-            for i in range(10):
-                c += i
-                if i == a:
-                    i = 420  # set i arbitrarily
-                    break    # early exit, break from loop, bypass else-branch
-            else:
-                c += 1       # loop conclusion, i.e. we have not hit the  break
-        return c, i
+            def function(a: int) -> None:
+                c = 0
+                for i in range(10):
+                    c += i
+                    if i == a:
+                        i = 420  # set i arbitrarily
+                        break    # early exit, break from loop, bypass else
+                else:
+                    c += 1       # loop conclusion, i.e. not hit break
+            return c, i
 
         So, effectively, to decompose the for-loop, we need to setup the
         iterator by calling 'iter(iter)' and assign it to a variable,
@@ -469,14 +469,14 @@ class AST2SCFGTransformer:
         However, it is possible to use the 'next()' method with a second
         argument to avoid exception handling here. We do this so we don't need
         to rely on being able to transform exceptions as part of this
-        transformer.
+        transformer::
 
             i = next(iter, "__sentinel__")
             if i != "__sentinel__":
                 ...
 
         Lastly, it is important to also remember that the target variable
-        escapes the scope of the for loop:
+        escapes the scope of the for loop::
 
             >>> for i in range(1):
             ...     print("hello loop")
@@ -490,73 +490,73 @@ class AST2SCFGTransformer:
         loop with some assignments and he target variable must escape the
         scope.
 
-        Consider again the following function:
+        Consider again the following function::
 
-        def function(a: int) -> None
-            c = 0
-            for i in range(10):
-                c += i
-                if i == a:
-                    i = 420
-                    break
-            else:
-                c += 1
-            return c, i
+            def function(a: int) -> None:
+                c = 0
+                for i in range(10):
+                    c += i
+                    if i == a:
+                        i = 420
+                        break
+                else:
+                    c += 1
+                return c, i
 
         This will be decomposed as the following construct that can be encoded
-        using the available block and edge primitives of the CFG.
+        using the available block and edge primitives of the CFG::
 
-        def function(a: int) -> None
-            c = 0
-         *  __iterator_1__ = iter(range(10))  # setup iterator
-         *  i = None                          # assign target, in this case i
-            while True:                       # loop until we break
-         *      __iter_last_1__ = i           # backup value of i
-         *      i = next(__iterator_1__, '__sentinel__')  # get next i
-         *      if i != '__sentinel__':       # regular iteration
-                    c += i                    # add to accumulator
-                    if i == a:                # check for early exit
-                        i = 420               # set i to some wild value
-                        break                 # early exit break while True
-                else:                         # for-else clause
-         *          i == __iter_last_1__      # restore value of i
-                    c += 1                    # execute code in for-else clause
-                    break                     # regular exit break while True
-            return c, i
+            def function(a: int) -> None:
+                c = 0
+                __iterator_1__ = iter(range(10))  ## setup iterator
+                i = None                          ## assign target, i
+                while True:                       # loop until we break
+                    __iter_last_1__ = i           ## backup value of i
+                    i = next(__iterator_1__, '__sentinel__')  # * get next i
+                    if i != '__sentinel__':       ## regular iteration
+                        c += i                    # add to accumulator
+                        if i == a:                # check for early exit
+                            i = 420               # set i to some wild value
+                            break                 # early exit break while True
+                    else:                         # for-else clause
+                        i == __iter_last_1__      ## restore value of i
+                        c += 1                    # execute code in for-else
+                        break                     # exit break while True
+                return c, i
 
         The above is actually a full Python source reconstruction. In the
         implementation below, it is only necessary to emit some of the special
-        assignments (marked above with a *-prefix above) into the blocks of the
+        assignments (marked above with a #-prefix above) into the blocks of the
         CFG.  All of the control-flow inside the function will be represented
         by the directed edges of the CFG.
 
         The first two assignments are for the pre-header:
 
-         *  __iterator_1__ = iter(range(10))  # setup iterator
-         *  i = None                          # assign target, in this case i
+         *  ``__iterator_1__ = iter(range(10))  ## setup iterator``
+         *  ``i = None                          ## assign target, i``
 
         The next three is for the header, the predicate determines the end of
         the loop.
 
-         *      __iter_last_1__ = i           # backup value of i
-         *      i = next(__iterator_1__, '__sentinel__')  # get next i
-         *      if i != '__sentinel__':       # regular iteration
+         *      ``__iter_last_1__ = i           ## backup value of i``
+         *      ``i = next(__iterator_1__, '__sentinel__')  # * get next i``
+         *      ``if i != '__sentinel__':       ## regular iteration``
 
          And lastly, one assignment in the for-else clause
 
-         *          i == __iter_last_1__      # restore value of i
+         *          ``i == __iter_last_1__      ## restore value of i``
 
         We modify the pre-header, the header and the else blocks with
         appropriate Python statements in the following implementation. The
         Python code is injected by generating Python source using f-strings and
-        then using the 'unparse()' function of the 'ast' module to then use the
-        'codegen' method of this transformer to emit the required 'ast.AST'
-        objects into the blocks of the CFG.
+        then using the ``unparse()`` function of the ``ast`` module to then use
+        the 'codegen' method of this transformer to emit the required
+        ``ast.AST`` objects into the blocks of the CFG.
 
         Lastly the important thing to observe is that we can not ignore the
         else clause, since this must contain the reset of the variable i, which
-        will have been set to '__sentinel__'. This reset is required such that
-        the target variable 'i' will escape the scope of the for-loop.
+        will have been set to ``__sentinel__``. This reset is required such
+        that the target variable ``i`` will escape the scope of the for-loop.
 
         """
         # Preallocate indices for header, body, else, and exiting blocks.
