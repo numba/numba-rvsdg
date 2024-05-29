@@ -759,8 +759,9 @@ class SCFG2ASTTransformer:
             elif block.kind == "branch":
                 rval = codegen_view()
             elif block.kind == "loop":
-                # A loop region gives rise to a Python while True loop. We
-                # recursively visit the body.
+                # A loop region gives rise to a Python while __loop_cont__
+                # loop. We recursively visit the body. The exiting latch will
+                # update __loop_continue__.
                 rval = [
                     ast.Assign(
                         [ast.Name("__loop_cont__")],
