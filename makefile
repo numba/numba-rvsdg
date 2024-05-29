@@ -4,7 +4,9 @@ all:
 build:
 	python -m pip install -vv -e .
 test:
-	coverage run -m pytest --pyargs numba_rvsdg
+	# Activate using the sys.monitoring implementation of coverage.
+	# Needs at least coverage veraion 7.4.0 to work.
+	COVERAGE_CORE=sysmon coverage run -m pytest --pyargs numba_rvsdg
 	coverage report
 lint:
 	pre-commit run --verbose --all-files
