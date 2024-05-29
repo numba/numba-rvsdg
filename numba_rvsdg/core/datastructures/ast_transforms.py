@@ -512,7 +512,7 @@ class AST2SCFGTransformer:
                 i = None                          ## assign target, i
                 while True:                       # loop until we break
                     __iter_last_1__ = i           ## backup value of i
-                    i = next(__iterator_1__, '__sentinel__')  # * get next i
+                    i = next(__iterator_1__, '__sentinel__')  ## get next i
                     if i != '__sentinel__':       ## regular iteration
                         c += i                    # add to accumulator
                         if i == a:                # check for early exit
@@ -539,7 +539,7 @@ class AST2SCFGTransformer:
         the loop.
 
          *      ``__iter_last_1__ = i           ## backup value of i``
-         *      ``i = next(__iterator_1__, '__sentinel__')  # * get next i``
+         *      ``i = next(__iterator_1__, '__sentinel__')  ## get next i``
          *      ``if i != '__sentinel__':       ## regular iteration``
 
          And lastly, one assignment in the for-else clause
