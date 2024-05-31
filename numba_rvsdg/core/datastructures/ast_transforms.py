@@ -787,7 +787,7 @@ class SCFG2ASTTransformer:
             ]
         elif type(block) is SyntheticTail:
             # Synthetic tails do nothing.
-            pass
+            return []
         elif type(block) is SyntheticFill:
             # Synthetic fills must have a pass statement to main syntactical
             # correctness of the final program.
@@ -861,7 +861,8 @@ class SCFG2ASTTransformer:
             return if_cascade(list(block.jump_targets[::-1]))
         else:
             raise NotImplementedError
-        return []
+
+        raise NotImplementedError("unreachable")
 
 
 def AST2SCFG(code: str | list[ast.FunctionDef] | Callable[..., Any]) -> SCFG:
