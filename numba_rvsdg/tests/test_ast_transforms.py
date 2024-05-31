@@ -37,11 +37,13 @@ class TestAST2SCFGTransformer(TestCase):
     ):
         # Execute function with first argument, if given. Ensure function is
         # sane and make sure it's picked up by coverage.
-        if type(function) is Callable:
+        try:
             if arguments:
                 function(*arguments[0])
             else:
                 function()
+        except Exception:
+            pass
         # First, test against the expected CFG...
         ast2scfg_transformer = AST2SCFGTransformer(function)
         astcfg = ast2scfg_transformer.transform_to_ASTCFG()
