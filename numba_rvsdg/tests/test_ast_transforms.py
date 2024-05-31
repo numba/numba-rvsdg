@@ -39,9 +39,10 @@ class TestAST2SCFGTransformer(TestCase):
         # sane and make sure it's picked up by coverage.
         try:
             if arguments:
-                function(*arguments[0])
+                for a in arguments:
+                    _ = function(*a)
             else:
-                function()
+                _ = function()
         except Exception:
             pass
         # First, test against the expected CFG...
