@@ -99,6 +99,9 @@ class TestAST2SCFGTransformer(TestCase):
         else:
             transformed_results = [temporary_transformed_function()]
 
+        assert len(original_callback.lines) > 0
+        assert len(transformed_callback.lines) > 0
+
         # Check call results
         assert original_results == transformed_results
 
