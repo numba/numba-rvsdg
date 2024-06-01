@@ -744,19 +744,13 @@ class SCFG2ASTTransformer:
             # blocks with multiple jump targets and all other regions must be
             # visited linearly.
             def codegen_view() -> list[Any]:
-                return [
-                    self.codegen(b)
-                    for b in block.subregion.concealed_region_view.values()  # type: ignore  # noqa
-                    if not (type(b) is RegionBlock and b.kind == "branch")
-                ]
+                r = []
+                for b in block.subregion.concealed_region_view.values():  # type: ignore  # noqa
+                    if not (type(b) is RegionBlock and b.kind == "branch"):
+                        r.extend(self.codegen(b))
+                return r
 
-            # Head, tail and branch regions themselves to use the custom view
-            # above.
-            if block.kind == "head":
-                rval = codegen_view()
-            elif block.kind == "tail":
-                rval = codegen_view()
-            elif block.kind == "branch":
+            if block.kind in ("head", "tail", "branch"):
                 rval = codegen_view()
             elif block.kind == "loop":
                 # A loop region gives rise to a Python while __loop_cont__
