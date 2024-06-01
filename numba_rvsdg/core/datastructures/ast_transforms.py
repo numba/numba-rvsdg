@@ -1,5 +1,6 @@
 import ast
 import inspect
+import itertools
 from typing import Callable, Any, MutableMapping
 import textwrap
 from dataclasses import dataclass
@@ -744,11 +745,13 @@ class SCFG2ASTTransformer:
             # blocks with multiple jump targets and all other regions must be
             # visited linearly.
             def codegen_view() -> list[Any]:
-                r = []
-                for b in block.subregion.concealed_region_view.values():  # type: ignore  # noqa
-                    if not (type(b) is RegionBlock and b.kind == "branch"):
-                        r.extend(self.codegen(b))
-                return r
+                return list(
+                    itertools.chain.from_iterable(
+                        self.codegen(b)
+                        for b in block.subregion.concealed_region_view.values()  # type: ignore  # noqa
+                        if not (type(b) is RegionBlock and b.kind == "branch")
+                    )
+                )
 
             if block.kind in ("head", "tail", "branch"):
                 rval = codegen_view()
