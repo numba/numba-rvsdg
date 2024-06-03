@@ -605,7 +605,7 @@ class AST2SCFGTransformer:
 
         # Emit header instructions. This first makes a backup of the iteration
         # target and then checks if the iterator is exhausted and if the loop
-        # should continue.  The '_scfg__sentinel__' is an singleton style
+        # should continue.  The '__scfg__sentinel__' is an singleton style
         # marker, so it need not be versioned.
 
         header_code = textwrap.dedent(
