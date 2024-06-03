@@ -780,9 +780,7 @@ class SCFG2ASTTransformer:
             # Synthetic assignments just create Python assignments, one for
             # each variable..
             return [
-                ast.Assign(
-                    [ast.Name(t)], ast.Constant(v), lineno=0
-                )
+                ast.Assign([ast.Name(t)], ast.Constant(v), lineno=0)
                 for t, v in block.variable_assignment.items()
             ]
         elif type(block) is SyntheticTail:
