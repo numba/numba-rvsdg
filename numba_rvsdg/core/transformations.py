@@ -448,7 +448,6 @@ def extract_region(
 def restructure_branch(parent_region: RegionBlock) -> None:
     assert parent_region.subregion is not None
     scfg: SCFG = parent_region.subregion
-    print("restructure_branch", scfg.graph)
     doms = _doms(scfg)
     postdoms = _post_doms(scfg)
     postimmdoms = _imm_doms(postdoms)
