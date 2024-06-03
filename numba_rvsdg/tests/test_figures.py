@@ -145,34 +145,34 @@ blocks:
         end: 22
     synth_asign_block_0:
         type: synth_asign
-        variable_assignment: {'control_var_0': 0}
+        variable_assignment: {'__scfg_control_var_0__': 0}
     synth_asign_block_1:
         type: synth_asign
-        variable_assignment: {'control_var_0': 1}
+        variable_assignment: {'__scfg_control_var_0__': 1}
     synth_asign_block_2:
         type: synth_asign
-        variable_assignment: {'control_var_0': 0, 'backedge_var_0': 1}
+        variable_assignment: {'__scfg_control_var_0__': 0, '__scfg_backedge_var_0__': 1}
     synth_asign_block_3:
         type: synth_asign
-        variable_assignment: {'backedge_var_0': 0, 'control_var_0': 1}
+        variable_assignment: {'__scfg_backedge_var_0__': 0, '__scfg_control_var_0__': 1}
     synth_asign_block_4:
         type: synth_asign
-        variable_assignment: {'control_var_0': 1, 'backedge_var_0': 1}
+        variable_assignment: {'__scfg_control_var_0__': 1, '__scfg_backedge_var_0__': 1}
     synth_asign_block_5:
         type: synth_asign
-        variable_assignment: {'backedge_var_0': 0, 'control_var_0': 0}
+        variable_assignment: {'__scfg_backedge_var_0__': 0, '__scfg_control_var_0__': 0}
     synth_exit_block_0:
         type: synth_exit_branch
         branch_value_table: {0: 'branch_region_2', 1: 'branch_region_3'}
-        variable: control_var_0
+        variable: __scfg_control_var_0__
     synth_exit_latch_block_0:
         type: synth_exit_latch
         branch_value_table: {1: 'synth_exit_block_0', 0: 'head_region_2'}
-        variable: backedge_var_0
+        variable: __scfg_backedge_var_0__
     synth_head_block_0:
         type: synth_head
         branch_value_table: {0: 'branch_region_4', 1: 'branch_region_5'}
-        variable: control_var_0
+        variable: __scfg_control_var_0__
     synth_tail_block_0:
         type: synth_tail
     synth_tail_block_1:
@@ -345,19 +345,19 @@ blocks:
         end: 20
     synth_asign_block_0:
         type: synth_asign
-        variable_assignment: {'control_var_0': 0}
+        variable_assignment: {'__scfg_control_var_0__': 0}
     synth_asign_block_1:
         type: synth_asign
-        variable_assignment: {'control_var_0': 1}
+        variable_assignment: {'__scfg_control_var_0__': 1}
     synth_asign_block_2:
         type: synth_asign
-        variable_assignment: {'control_var_0': 2}
+        variable_assignment: {'__scfg_control_var_0__': 2}
     synth_fill_block_0:
         type: synth_fill
     synth_head_block_0:
         type: synth_head
         branch_value_table: {0: 'branch_region_4', 2: 'branch_region_4', 1: 'branch_region_5'} # noqa
-        variable: control_var_0
+        variable: __scfg_control_var_0__
     synth_tail_block_0:
         type: synth_tail
     tail_region_0:

@@ -586,8 +586,8 @@ class AST2SCFGTransformer:
         # the CFG.
         target = ast.unparse(node.target)
         iter_setup = ast.unparse(node.iter)
-        iter_assign = f"__iterator_{head_index}__"
-        last_target_value = f"__iter_last_{head_index}__"
+        iter_assign = f"__scfg_iterator_{head_index}__"
+        last_target_value = f"__scfg_iter_last_{head_index}__"
 
         # Emit iterator setup to pre-header.
         preheader_code = textwrap.dedent(
@@ -605,14 +605,14 @@ class AST2SCFGTransformer:
 
         # Emit header instructions. This first makes a backup of the iteration
         # target and then checks if the iterator is exhausted and if the loop
-        # should continue.  The '__sentinel__' is an singleton style marker, so
-        # it need not be versioned.
+        # should continue.  The '_scfg__sentinel__' is an singleton style
+        # marker, so it need not be versioned.
 
         header_code = textwrap.dedent(
             f"""
             {last_target_value} = {target}
-            {target} = next({iter_assign}, "__sentinel__")
-            {target} != "__sentinel__"
+            {target} = next({iter_assign}, "__scfg_sentinel__")
+            {target} != "__scfg_sentinel__"
         """
         )
         self.codegen(ast.parse(header_code).body)
@@ -720,12 +720,13 @@ class SCFG2ASTTransformer:
                 # The value of the ast.Return could be either None or an
                 # ast.AST type. In the case of None, this refers to a plain
                 # 'return', which is implicitly 'return None'. So, if it is
-                # None, we assign the __return_value__ a ast.Constant(None) and
-                # whatever the ast.AST node is otherwise.
+                # None, we assign the __scfg_return_value__ an
+                # ast.Constant(None) and whatever the ast.AST node is
+                # otherwise.
                 val = block.tree[-1].value
                 return block.tree[:-1] + [
                     ast.Assign(
-                        [ast.Name("__return_value__")],
+                        [ast.Name("__scfg_return_value__")],
                         (ast.Constant(None) if val is None else val),
                         lineno=0,
                     )
@@ -756,17 +757,17 @@ class SCFG2ASTTransformer:
             if block.kind in ("head", "tail", "branch"):
                 rval = codegen_view()
             elif block.kind == "loop":
-                # A loop region gives rise to a Python while __loop_cont__
+                # A loop region gives rise to a Python while __scfg_loop_cont__
                 # loop. We recursively visit the body. The exiting latch will
-                # update __loop_continue__.
+                # update __scfg_loop_continue__.
                 rval = [
                     ast.Assign(
-                        [ast.Name("__loop_cont__")],
+                        [ast.Name("__scfg_loop_cont__")],
                         ast.Constant(True),
                         lineno=0,
                     ),
                     ast.While(
-                        test=ast.Name("__loop_cont__"),
+                        test=ast.Name("__scfg_loop_cont__"),
                         body=codegen_view(),
                         orelse=[],
                     ),
@@ -779,7 +780,9 @@ class SCFG2ASTTransformer:
             # Synthetic assignments just create Python assignments, one for
             # each variable..
             return [
-                ast.Assign([ast.Name(t)], ast.Constant(v), lineno=0)
+                ast.Assign(
+                    [ast.Name(t)], ast.Constant(v), lineno=0
+                )
                 for t, v in block.variable_assignment.items()
             ]
         elif type(block) is SyntheticTail:
@@ -792,15 +795,15 @@ class SCFG2ASTTransformer:
         elif type(block) is SyntheticReturn:
             # Synthetic return blocks must re-assigne the return value to a
             # special reserved variable.
-            return [ast.Return(ast.Name("__return_value__"))]
+            return [ast.Return(ast.Name("__scfg_return_value__"))]
         elif type(block) is SyntheticExitingLatch:
             # The synthetic exiting latch simply assigns the negated value of
-            # the exit variable to '__loop_cont__'.
+            # the exit variable to '__scfg_loop_cont__'.
             assert len(block.jump_targets) == 1
             assert len(block.backedges) == 1
             return [
                 ast.Assign(
-                    [ast.Name("__loop_cont__")],
+                    [ast.Name("__scfg_loop_cont__")],
                     ast.UnaryOp(ast.Not(), ast.Name(block.variable)),
                     lineno=0,
                 )

@@ -48,7 +48,7 @@ back edges: ()" shape=rect]
 		color=green label="branch_region_0
 jump targets: ('tail_region_0',)
 back edges: ()"
-		synth_asign_block_0 [label="synth_asign_block_0\lcontrol_var_0 = 0
+		synth_asign_block_0 [label="synth_asign_block_0\l__scfg_control_var_0__ = 0
 jump targets: ('tail_region_0',)
 back edges: ()" shape=rect]
 	}
@@ -56,7 +56,7 @@ back edges: ()" shape=rect]
 		color=green label="branch_region_1
 jump targets: ('tail_region_0',)
 back edges: ()"
-		synth_asign_block_1 [label="synth_asign_block_1\lcontrol_var_0 = 1
+		synth_asign_block_1 [label="synth_asign_block_1\l__scfg_control_var_0__ = 1
 jump targets: ('tail_region_0',)
 back edges: ()" shape=rect]
 	}
@@ -75,7 +75,7 @@ back edges: ()"
 				color=red label="head_region_1
 jump targets: ('branch_region_2', 'branch_region_3')
 back edges: ()"
-				synth_head_block_0 [label="synth_head_block_0\lvariable: control_var_0\l0=>branch_region_2\l1=>branch_region_3
+				synth_head_block_0 [label="synth_head_block_0\lvariable: __scfg_control_var_0__\l0=>branch_region_2\l1=>branch_region_3
 jump targets: ('branch_region_2', 'branch_region_3')
 back edges: ()" shape=rect]
 			}
@@ -98,7 +98,7 @@ back edges: ()" shape=rect]
 					color=green label="branch_region_4
 jump targets: ('tail_region_2',)
 back edges: ()"
-					synth_asign_block_2 [label="synth_asign_block_2\lbackedge_var_0 = 0\lcontrol_var_0 = 1
+					synth_asign_block_2 [label="synth_asign_block_2\l__scfg_backedge_var_0__ = 0\l__scfg_control_var_0__ = 1
 jump targets: ('tail_region_2',)
 back edges: ()" shape=rect]
 				}
@@ -106,7 +106,7 @@ back edges: ()" shape=rect]
 					color=green label="branch_region_5
 jump targets: ('tail_region_2',)
 back edges: ()"
-					synth_asign_block_3 [label="synth_asign_block_3\lbackedge_var_0 = 1
+					synth_asign_block_3 [label="synth_asign_block_3\l__scfg_backedge_var_0__ = 1
 jump targets: ('tail_region_2',)
 back edges: ()" shape=rect]
 				}
@@ -129,7 +129,7 @@ back edges: ()" shape=rect]
 				4 [label="4\l
 jump targets: ('synth_asign_block_4',)
 back edges: ()" shape=rect]
-				synth_asign_block_4 [label="synth_asign_block_4\lbackedge_var_0 = 0\lcontrol_var_0 = 0
+				synth_asign_block_4 [label="synth_asign_block_4\l__scfg_backedge_var_0__ = 0\l__scfg_control_var_0__ = 0
 jump targets: ('tail_region_1',)
 back edges: ()" shape=rect]
 			}
@@ -137,7 +137,7 @@ back edges: ()" shape=rect]
 				color=purple label="tail_region_1
 jump targets: ('5',)
 back edges: ()"
-				synth_exit_latch_block_0 [label="synth_exit_latch_block_0\lvariable: backedge_var_0\l1=>5\l0=>head_region_1
+				synth_exit_latch_block_0 [label="synth_exit_latch_block_0\lvariable: __scfg_backedge_var_0__\l1=>5\l0=>head_region_1
 jump targets: ('5',)
 back edges: ('head_region_1',)" shape=rect]
 			}

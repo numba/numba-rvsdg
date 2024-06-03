@@ -769,7 +769,7 @@ class TestAST2SCFGTransformer(TestCase):
             "0": {
                 "instructions": [
                     "x = 0",
-                    "__iterator_1__ = iter(range(10))",
+                    "__scfg_iterator_1__ = iter(range(10))",
                     "i = None",
                 ],
                 "jump_targets": ["1"],
@@ -777,9 +777,9 @@ class TestAST2SCFGTransformer(TestCase):
             },
             "1": {
                 "instructions": [
-                    "__iter_last_1__ = i",
-                    "i = next(__iterator_1__, '__sentinel__')",
-                    "i != '__sentinel__'",
+                    "__scfg_iter_last_1__ = i",
+                    "i = next(__scfg_iterator_1__, '__scfg_sentinel__')",
+                    "i != '__scfg_sentinel__'",
                 ],
                 "jump_targets": ["2", "3"],
                 "name": "1",
@@ -790,7 +790,7 @@ class TestAST2SCFGTransformer(TestCase):
                 "name": "2",
             },
             "3": {
-                "instructions": ["i = __iter_last_1__"],
+                "instructions": ["i = __scfg_iter_last_1__"],
                 "jump_targets": ["4"],
                 "name": "3",
             },
@@ -815,7 +815,7 @@ class TestAST2SCFGTransformer(TestCase):
             "0": {
                 "instructions": [
                     "x = 0",
-                    "__iterator_1__ = iter(range(3))",
+                    "__scfg_iterator_1__ = iter(range(3))",
                     "i = None",
                 ],
                 "jump_targets": ["1"],
@@ -823,9 +823,9 @@ class TestAST2SCFGTransformer(TestCase):
             },
             "1": {
                 "instructions": [
-                    "__iter_last_1__ = i",
-                    "i = next(__iterator_1__, '__sentinel__')",
-                    "i != '__sentinel__'",
+                    "__scfg_iter_last_1__ = i",
+                    "i = next(__scfg_iterator_1__, '__scfg_sentinel__')",
+                    "i != '__scfg_sentinel__'",
                 ],
                 "jump_targets": ["2", "3"],
                 "name": "1",
@@ -833,14 +833,14 @@ class TestAST2SCFGTransformer(TestCase):
             "2": {
                 "instructions": [
                     "x += i",
-                    "__iterator_5__ = iter(range(3))",
+                    "__scfg_iterator_5__ = iter(range(3))",
                     "j = None",
                 ],
                 "jump_targets": ["5"],
                 "name": "2",
             },
             "3": {
-                "instructions": ["i = __iter_last_1__"],
+                "instructions": ["i = __scfg_iter_last_1__"],
                 "jump_targets": ["4"],
                 "name": "3",
             },
@@ -851,9 +851,9 @@ class TestAST2SCFGTransformer(TestCase):
             },
             "5": {
                 "instructions": [
-                    "__iter_last_5__ = j",
-                    "j = next(__iterator_5__, '__sentinel__')",
-                    "j != '__sentinel__'",
+                    "__scfg_iter_last_5__ = j",
+                    "j = next(__scfg_iterator_5__, '__scfg_sentinel__')",
+                    "j != '__scfg_sentinel__'",
                 ],
                 "jump_targets": ["6", "7"],
                 "name": "5",
@@ -864,7 +864,7 @@ class TestAST2SCFGTransformer(TestCase):
                 "name": "6",
             },
             "7": {
-                "instructions": ["j = __iter_last_5__"],
+                "instructions": ["j = __scfg_iter_last_5__"],
                 "jump_targets": ["1"],
                 "name": "7",
             },
@@ -887,7 +887,7 @@ class TestAST2SCFGTransformer(TestCase):
         expected = {
             "0": {
                 "instructions": [
-                    "__iterator_1__ = iter(range(2))",
+                    "__scfg_iterator_1__ = iter(range(2))",
                     "i = None",
                 ],
                 "jump_targets": ["1"],
@@ -895,9 +895,9 @@ class TestAST2SCFGTransformer(TestCase):
             },
             "1": {
                 "instructions": [
-                    "__iter_last_1__ = i",
-                    "i = next(__iterator_1__, '__sentinel__')",
-                    "i != '__sentinel__'",
+                    "__scfg_iter_last_1__ = i",
+                    "i = next(__scfg_iterator_1__, '__scfg_sentinel__')",
+                    "i != '__scfg_sentinel__'",
                 ],
                 "jump_targets": ["2", "3"],
                 "name": "1",
@@ -908,7 +908,7 @@ class TestAST2SCFGTransformer(TestCase):
                 "name": "2",
             },
             "3": {
-                "instructions": ["i = __iter_last_1__"],
+                "instructions": ["i = __scfg_iter_last_1__"],
                 "jump_targets": ["4"],
                 "name": "3",
             },
@@ -957,7 +957,7 @@ class TestAST2SCFGTransformer(TestCase):
             "0": {
                 "instructions": [
                     "x = 0",
-                    "__iterator_1__ = iter(range(10))",
+                    "__scfg_iterator_1__ = iter(range(10))",
                     "i = None",
                 ],
                 "jump_targets": ["1"],
@@ -965,9 +965,9 @@ class TestAST2SCFGTransformer(TestCase):
             },
             "1": {
                 "instructions": [
-                    "__iter_last_1__ = i",
-                    "i = next(__iterator_1__, '__sentinel__')",
-                    "i != '__sentinel__'",
+                    "__scfg_iter_last_1__ = i",
+                    "i = next(__scfg_iterator_1__, '__scfg_sentinel__')",
+                    "i != '__scfg_sentinel__'",
                 ],
                 "jump_targets": ["2", "3"],
                 "name": "1",
@@ -978,7 +978,7 @@ class TestAST2SCFGTransformer(TestCase):
                 "name": "2",
             },
             "3": {
-                "instructions": ["i = __iter_last_1__", "y == 0"],
+                "instructions": ["i = __scfg_iter_last_1__", "y == 0"],
                 "jump_targets": ["5", "6"],
                 "name": "3",
             },
@@ -1023,7 +1023,7 @@ class TestAST2SCFGTransformer(TestCase):
             "0": {
                 "instructions": [
                     "x = 1",
-                    "__iterator_1__ = iter(range(1))",
+                    "__scfg_iterator_1__ = iter(range(1))",
                     "i = None",
                 ],
                 "jump_targets": ["1"],
@@ -1031,23 +1031,23 @@ class TestAST2SCFGTransformer(TestCase):
             },
             "1": {
                 "instructions": [
-                    "__iter_last_1__ = i",
-                    "i = next(__iterator_1__, '__sentinel__')",
-                    "i != '__sentinel__'",
+                    "__scfg_iter_last_1__ = i",
+                    "i = next(__scfg_iterator_1__, '__scfg_sentinel__')",
+                    "i != '__scfg_sentinel__'",
                 ],
                 "jump_targets": ["2", "3"],
                 "name": "1",
             },
             "2": {
                 "instructions": [
-                    "__iterator_5__ = iter(range(1))",
+                    "__scfg_iterator_5__ = iter(range(1))",
                     "j = None",
                 ],
                 "jump_targets": ["5"],
                 "name": "2",
             },
             "3": {
-                "instructions": ["i = __iter_last_1__", "x *= 9"],
+                "instructions": ["i = __scfg_iter_last_1__", "x *= 9"],
                 "jump_targets": ["4"],
                 "name": "3",
             },
@@ -1058,9 +1058,9 @@ class TestAST2SCFGTransformer(TestCase):
             },
             "5": {
                 "instructions": [
-                    "__iter_last_5__ = j",
-                    "j = next(__iterator_5__, '__sentinel__')",
-                    "j != '__sentinel__'",
+                    "__scfg_iter_last_5__ = j",
+                    "j = next(__scfg_iterator_5__, '__scfg_sentinel__')",
+                    "j != '__scfg_sentinel__'",
                 ],
                 "jump_targets": ["6", "7"],
                 "name": "5",
@@ -1071,7 +1071,7 @@ class TestAST2SCFGTransformer(TestCase):
                 "name": "6",
             },
             "7": {
-                "instructions": ["j = __iter_last_5__", "x *= 5"],
+                "instructions": ["j = __scfg_iter_last_5__", "x *= 5"],
                 "jump_targets": ["1"],
                 "name": "7",
             },
@@ -1122,7 +1122,7 @@ class TestAST2SCFGTransformer(TestCase):
         expected = {
             "0": {
                 "instructions": [
-                    "__iterator_1__ = iter(range(2))",
+                    "__scfg_iterator_1__ = iter(range(2))",
                     "i = None",
                 ],
                 "jump_targets": ["1"],
@@ -1130,9 +1130,9 @@ class TestAST2SCFGTransformer(TestCase):
             },
             "1": {
                 "instructions": [
-                    "__iter_last_1__ = i",
-                    "i = next(__iterator_1__, '__sentinel__')",
-                    "i != '__sentinel__'",
+                    "__scfg_iter_last_1__ = i",
+                    "i = next(__scfg_iterator_1__, '__scfg_sentinel__')",
+                    "i != '__scfg_sentinel__'",
                 ],
                 "jump_targets": ["2", "3"],
                 "name": "1",
@@ -1188,7 +1188,7 @@ class TestAST2SCFGTransformer(TestCase):
                 "name": "25",
             },
             "3": {
-                "instructions": ["i = __iter_last_1__"],
+                "instructions": ["i = __scfg_iter_last_1__"],
                 "jump_targets": ["4"],
                 "name": "3",
             },
