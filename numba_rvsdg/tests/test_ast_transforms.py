@@ -3,8 +3,26 @@ import ast
 import textwrap
 from typing import Callable, Any
 from unittest import main, TestCase
+from sys import monitoring as sm
 
-from numba_rvsdg.core.datastructures.ast_transforms import AST2SCFGTransformer
+from numba_rvsdg.core.datastructures.ast_transforms import (
+    unparse_code,
+    AST2SCFGTransformer,
+    SCFG2ASTTransformer,
+    AST2SCFG,
+    SCFG2AST,
+)
+
+sm.use_tool_id(sm.PROFILER_ID, "custom_tracer")
+
+
+class LineTraceCallback:
+
+    def __init__(self):
+        self.lines = set()
+
+    def __call__(self, code, line):
+        self.lines.add(line)
 
 
 class TestAST2SCFGTransformer(TestCase):
@@ -15,14 +33,97 @@ class TestAST2SCFGTransformer(TestCase):
         expected: dict[str, dict[str, Any]],
         unreachable: set[int] = set(),
         empty: set[int] = set(),
+        arguments: list[any] = [],
     ):
-        transformer = AST2SCFGTransformer(function)
-        astcfg = transformer.transform_to_ASTCFG()
+        # Execute function with first argument, if given. Ensure function is
+        # sane and make sure it's picked up by coverage.
+        try:
+            if arguments:
+                for a in arguments:
+                    _ = function(*a)
+            else:
+                _ = function()
+        except Exception:
+            pass
+        # First, test against the expected CFG...
+        ast2scfg_transformer = AST2SCFGTransformer(function)
+        astcfg = ast2scfg_transformer.transform_to_ASTCFG()
         self.assertEqual(expected, astcfg.to_dict())
         self.assertEqual(unreachable, {i.name for i in astcfg.unreachable})
         self.assertEqual(empty, {i.name for i in astcfg.empty})
 
+        # Then restructure, synthesize python and run original and transformed
+        # on the same arguments and assert they are the same.
+        scfg = astcfg.to_SCFG()
+        scfg.restructure()
+        scfg2ast = SCFG2ASTTransformer()
+        original_ast = unparse_code(function)[0]
+        transformed_ast = scfg2ast.transform(original=original_ast, scfg=scfg)
+
+        # use exec to obtin the function and the transformed_function
+        original_exec_locals = {}
+        exec(ast.unparse(original_ast), {}, original_exec_locals)
+        temporary_function = original_exec_locals["function"]
+        temporary_exec_locals = {}
+        exec(ast.unparse(transformed_ast), {}, temporary_exec_locals)
+        temporary_transformed_function = temporary_exec_locals[
+            "transformed_function"
+        ]
+
+        # Setup the profiler for both funstions and initialize the callbacks
+        sm.set_local_events(
+            sm.PROFILER_ID, temporary_function.__code__, sm.events.LINE
+        )
+        sm.set_local_events(
+            sm.PROFILER_ID,
+            temporary_transformed_function.__code__,
+            sm.events.LINE,
+        )
+        original_callback = LineTraceCallback()
+        transformed_callback = LineTraceCallback()
+
+        # Register the callbacks one at a time and collect results.
+        sm.register_callback(sm.PROFILER_ID, sm.events.LINE, original_callback)
+        if arguments:
+            original_results = [temporary_function(*a) for a in arguments]
+        else:
+            original_results = [temporary_function()]
+
+        # Only one callback can be registered at a time.
+        sm.register_callback(
+            sm.PROFILER_ID, sm.events.LINE, transformed_callback
+        )
+        if arguments:
+            transformed_results = [
+                temporary_transformed_function(*a) for a in arguments
+            ]
+        else:
+            transformed_results = [temporary_transformed_function()]
+
+        assert len(original_callback.lines) > 0
+        assert len(transformed_callback.lines) > 0
+
+        # Check call results
+        assert original_results == transformed_results
+
+        # Check line trace of original
+        original_source = ast.unparse(original_ast).splitlines()
+        assert [
+            i + 1
+            for i, l in enumerate(original_source)
+            if not l.startswith("def") and "else:" not in l
+        ] == sorted(original_callback.lines)
+
+        # Check line trace of transformed
+        transformed_source = ast.unparse(transformed_ast).splitlines()
+        assert [
+            i + 1
+            for i, l in enumerate(transformed_source)
+            if not l.startswith("def") and "else:" not in l
+        ] == sorted(transformed_callback.lines)
+
     def setUp(self):
+        # Enable pytest verbose output.
         self.maxDiff = None
 
     def test_solo_return(self):
@@ -116,13 +217,13 @@ class TestAST2SCFGTransformer(TestCase):
 
     def test_if_return(self):
         def function(x: int) -> int:
-            if x < 10:
+            if x < 1:
                 return 1
             return 2
 
         expected = {
             "0": {
-                "instructions": ["x < 10"],
+                "instructions": ["x < 1"],
                 "jump_targets": ["1", "3"],
                 "name": "0",
             },
@@ -137,18 +238,18 @@ class TestAST2SCFGTransformer(TestCase):
                 "name": "3",
             },
         }
-        self.compare(function, expected, empty={"2"})
+        self.compare(function, expected, empty={"2"}, arguments=[(0,), (1,)])
 
     def test_if_else_return(self):
         def function(x: int) -> int:
-            if x < 10:
+            if x < 1:
                 return 1
             else:
                 return 2
 
         expected = {
             "0": {
-                "instructions": ["x < 10"],
+                "instructions": ["x < 1"],
                 "jump_targets": ["1", "2"],
                 "name": "0",
             },
@@ -163,30 +264,70 @@ class TestAST2SCFGTransformer(TestCase):
                 "name": "2",
             },
         }
-        self.compare(function, expected, unreachable={"3"})
+        self.compare(
+            function, expected, unreachable={"3"}, arguments=[(0,), (1,)]
+        )
 
     def test_if_else_assign(self):
         def function(x: int) -> int:
-            if x < 10:
-                z = 1
+            if x < 1:
+                y = 1
             else:
-                z = 2
-            return z
+                y = 2
+            return y
 
         expected = {
             "0": {
-                "instructions": ["x < 10"],
+                "instructions": ["x < 1"],
                 "jump_targets": ["1", "2"],
                 "name": "0",
             },
             "1": {
-                "instructions": ["z = 1"],
+                "instructions": ["y = 1"],
                 "jump_targets": ["3"],
                 "name": "1",
             },
             "2": {
-                "instructions": ["z = 2"],
+                "instructions": ["y = 2"],
                 "jump_targets": ["3"],
+                "name": "2",
+            },
+            "3": {
+                "instructions": ["return y"],
+                "jump_targets": [],
+                "name": "3",
+            },
+        }
+        self.compare(function, expected, arguments=[(0,), (1,)])
+
+    def test_nested_if(self):
+        def function(x: int, y: int) -> int:
+            if x < 1:
+                if y < 1:
+                    z = 1
+                else:
+                    z = 2
+            else:
+                if y < 2:
+                    z = 3
+                else:
+                    z = 4
+            return z
+
+        expected = {
+            "0": {
+                "instructions": ["x < 1"],
+                "jump_targets": ["1", "2"],
+                "name": "0",
+            },
+            "1": {
+                "instructions": ["y < 1"],
+                "jump_targets": ["4", "5"],
+                "name": "1",
+            },
+            "2": {
+                "instructions": ["y < 2"],
+                "jump_targets": ["7", "8"],
                 "name": "2",
             },
             "3": {
@@ -194,143 +335,128 @@ class TestAST2SCFGTransformer(TestCase):
                 "jump_targets": [],
                 "name": "3",
             },
-        }
-        self.compare(function, expected)
-
-    def test_nested_if(self):
-        def function(x: int, y: int) -> int:
-            if x < 10:
-                if y < 5:
-                    y = 1
-                else:
-                    y = 2
-            else:
-                if y < 15:
-                    y = 3
-                else:
-                    y = 4
-            return y
-
-        expected = {
-            "0": {
-                "instructions": ["x < 10"],
-                "jump_targets": ["1", "2"],
-                "name": "0",
-            },
-            "1": {
-                "instructions": ["y < 5"],
-                "jump_targets": ["4", "5"],
-                "name": "1",
-            },
-            "2": {
-                "instructions": ["y < 15"],
-                "jump_targets": ["7", "8"],
-                "name": "2",
-            },
-            "3": {
-                "instructions": ["return y"],
-                "jump_targets": [],
-                "name": "3",
-            },
             "4": {
-                "instructions": ["y = 1"],
+                "instructions": ["z = 1"],
                 "jump_targets": ["3"],
                 "name": "4",
             },
             "5": {
-                "instructions": ["y = 2"],
+                "instructions": ["z = 2"],
                 "jump_targets": ["3"],
                 "name": "5",
             },
             "7": {
-                "instructions": ["y = 3"],
+                "instructions": ["z = 3"],
                 "jump_targets": ["3"],
                 "name": "7",
             },
             "8": {
-                "instructions": ["y = 4"],
+                "instructions": ["z = 4"],
                 "jump_targets": ["3"],
                 "name": "8",
             },
         }
-        self.compare(function, expected, empty={"6", "9"})
+        self.compare(
+            function,
+            expected,
+            empty={"6", "9"},
+            arguments=[(0, 0), (0, 1), (1, 1), (1, 2)],
+        )
 
     def test_nested_if_with_empty_else_and_return(self):
         def function(x: int, y: int) -> None:
-            y << 2
-            if x < 10:
-                y -= 1
-                if y < 5:
-                    y = 1
+            z = 0
+            if x < 1:
+                y << 2
+                if y < 1:
+                    z = 1
             else:
-                if y < 15:
-                    y = 2
+                if y < 2:
+                    z = 2
                 else:
-                    return
+                    return y, 4
                 y += 1
-            return y
+            return y, z
 
         expected = {
             "0": {
-                "instructions": ["y << 2", "x < 10"],
+                "instructions": ["z = 0", "x < 1"],
                 "jump_targets": ["1", "2"],
                 "name": "0",
             },
             "1": {
-                "instructions": ["y -= 1", "y < 5"],
+                "instructions": ["y << 2", "y < 1"],
                 "jump_targets": ["4", "3"],
                 "name": "1",
             },
             "2": {
-                "instructions": ["y < 15"],
+                "instructions": ["y < 2"],
                 "jump_targets": ["7", "8"],
                 "name": "2",
             },
             "3": {
-                "instructions": ["return y"],
+                "instructions": ["return (y, z)"],
                 "jump_targets": [],
                 "name": "3",
             },
             "4": {
-                "instructions": ["y = 1"],
+                "instructions": ["z = 1"],
                 "jump_targets": ["3"],
                 "name": "4",
             },
             "7": {
-                "instructions": ["y = 2"],
+                "instructions": ["z = 2"],
                 "jump_targets": ["9"],
                 "name": "7",
             },
-            "8": {"instructions": ["return"], "jump_targets": [], "name": "8"},
+            "8": {
+                "instructions": ["return (y, 4)"],
+                "jump_targets": [],
+                "name": "8",
+            },
             "9": {
                 "instructions": ["y += 1"],
                 "jump_targets": ["3"],
                 "name": "9",
             },
         }
-        self.compare(function, expected, empty={"5", "6"})
+        self.compare(
+            function,
+            expected,
+            empty={"5", "6"},
+            arguments=[
+                (0, 0),
+                (0, 1),
+                (1, 1),
+                (1, 2),
+            ],
+        )
 
     def test_elif(self):
-        def function(x: int, a: int, b: int) -> int:
-            if x < 10:
-                return
-            elif x < 15:
-                y = b - a
-            elif x < 20:
-                y = a**2
+        def function(x: int) -> int:
+            if x < 1:
+                return 10
+            elif x < 2:
+                y = 20
+            elif x < 3:
+                y = 30
             else:
-                y = a - b
+                y = 40
             return y
 
         expected = {
             "0": {
-                "instructions": ["x < 10"],
+                "instructions": ["x < 1"],
                 "jump_targets": ["1", "2"],
                 "name": "0",
             },
-            "1": {"instructions": ["return"], "jump_targets": [], "name": "1"},
+            "1": {
+                "instructions": ["return 10"],
+                "jump_targets": [],
+                "name": "1",
+            },
             "2": {
-                "instructions": ["x < 15"],
+                "instructions": ["x < 2"],
                 "jump_targets": ["4", "5"],
                 "name": "2",
             },
@@ -340,27 +466,37 @@ class TestAST2SCFGTransformer(TestCase):
                 "name": "3",
             },
             "4": {
-                "instructions": ["y = b - a"],
+                "instructions": ["y = 20"],
                 "jump_targets": ["3"],
                 "name": "4",
             },
             "5": {
-                "instructions": ["x < 20"],
+                "instructions": ["x < 3"],
                 "jump_targets": ["7", "8"],
                 "name": "5",
             },
             "7": {
-                "instructions": ["y = a ** 2"],
+                "instructions": ["y = 30"],
                 "jump_targets": ["3"],
                 "name": "7",
             },
             "8": {
-                "instructions": ["y = a - b"],
+                "instructions": ["y = 40"],
                 "jump_targets": ["3"],
                 "name": "8",
             },
         }
-        self.compare(function, expected, empty={"9", "6"})
+        self.compare(
+            function,
+            expected,
+            empty={"9", "6"},
+            arguments=[
+                (0,),
+                (1,),
+                (2,),
+                (3,),
+            ],
+        )
 
     def test_simple_while(self):
         def function() -> int:
@@ -483,9 +619,9 @@ class TestAST2SCFGTransformer(TestCase):
         self.compare(function, expected, empty={"4", "7"})
 
     def test_while_in_if(self):
-        def function(a: bool) -> int:
+        def function(y: int) -> int:
             x = 0
-            if a is True:
+            if y == 0:
                 while x < 10:
                     x += 2
             else:
@@ -495,7 +631,7 @@ class TestAST2SCFGTransformer(TestCase):
 
         expected = {
             "0": {
-                "instructions": ["x = 0", "a is True"],
+                "instructions": ["x = 0", "y == 0"],
                 "jump_targets": ["4", "8"],
                 "name": "0",
             },
@@ -526,55 +662,63 @@ class TestAST2SCFGTransformer(TestCase):
             },
         }
         self.compare(
-            function, expected, empty={"1", "2", "6", "7", "10", "11"}
+            function,
+            expected,
+            empty={"1", "2", "6", "7", "10", "11"},
+            arguments=[(0,), (1,)],
         )
 
     def test_while_break_continue(self):
-        def function() -> int:
-            x = 0
-            while x < 10:
-                x += 1
-                if x % 2 == 0:
+        def function(x: int) -> int:
+            y = 0
+            while y < 10:
+                y += 1
+                if x == 0:
                     continue
-                elif x == 9:
+                elif x == 1:
                     break
                 else:
-                    x += 1
-            return x
+                    y += 10
+            return y
 
         expected = {
             "0": {
-                "instructions": ["x = 0"],
+                "instructions": ["y = 0"],
                 "jump_targets": ["1"],
                 "name": "0",
             },
             "1": {
-                "instructions": ["x < 10"],
+                "instructions": ["y < 10"],
                 "jump_targets": ["2", "3"],
                 "name": "1",
             },
             "2": {
-                "instructions": ["x += 1", "x % 2 == 0"],
+                "instructions": ["y += 1", "x == 0"],
                 "jump_targets": ["1", "6"],
                 "name": "2",
             },
             "3": {
-                "instructions": ["return x"],
+                "instructions": ["return y"],
                 "jump_targets": [],
                 "name": "3",
             },
             "6": {
-                "instructions": ["x == 9"],
+                "instructions": ["x == 1"],
                 "jump_targets": ["3", "9"],
                 "name": "6",
             },
             "9": {
-                "instructions": ["x += 1"],
+                "instructions": ["y += 10"],
                 "jump_targets": ["1"],
                 "name": "9",
             },
         }
-        self.compare(function, expected, empty={"4", "5", "7", "8", "10"})
+        self.compare(
+            function,
+            expected,
+            empty={"4", "5", "7", "8", "10"},
+            arguments=[(0,), (1,), (2,)],
+        )
 
     def test_while_else(self):
         def function() -> int:
@@ -616,16 +760,16 @@ class TestAST2SCFGTransformer(TestCase):
 
     def test_simple_for(self):
         def function() -> int:
-            c = 0
+            x = 0
             for i in range(10):
-                c += i
-            return c
+                x += i
+            return x, i
 
         expected = {
             "0": {
                 "instructions": [
-                    "c = 0",
-                    "__iterator_1__ = iter(range(10))",
+                    "x = 0",
+                    "__scfg_iterator_1__ = iter(range(10))",
                     "i = None",
                 ],
                 "jump_targets": ["1"],
@@ -633,25 +777,25 @@ class TestAST2SCFGTransformer(TestCase):
             },
             "1": {
                 "instructions": [
-                    "__iter_last_1__ = i",
-                    "i = next(__iterator_1__, '__sentinel__')",
-                    "i != '__sentinel__'",
+                    "__scfg_iter_last_1__ = i",
+                    "i = next(__scfg_iterator_1__, '__scfg_sentinel__')",
+                    "i != '__scfg_sentinel__'",
                 ],
                 "jump_targets": ["2", "3"],
                 "name": "1",
             },
             "2": {
-                "instructions": ["c += i"],
+                "instructions": ["x += i"],
                 "jump_targets": ["1"],
                 "name": "2",
             },
             "3": {
-                "instructions": ["i = __iter_last_1__"],
+                "instructions": ["i = __scfg_iter_last_1__"],
                 "jump_targets": ["4"],
                 "name": "3",
             },
             "4": {
-                "instructions": ["return c"],
+                "instructions": ["return (x, i)"],
                 "jump_targets": [],
                 "name": "4",
             },
@@ -660,18 +804,18 @@ class TestAST2SCFGTransformer(TestCase):
 
     def test_nested_for(self):
         def function() -> int:
-            c = 0
+            x = 0
             for i in range(3):
-                c += i
+                x += i
                 for j in range(3):
-                    c += j
-            return c
+                    x += j
+            return x, i, j
 
         expected = {
             "0": {
                 "instructions": [
-                    "c = 0",
-                    "__iterator_1__ = iter(range(3))",
+                    "x = 0",
+                    "__scfg_iterator_1__ = iter(range(3))",
                     "i = None",
                 ],
                 "jump_targets": ["1"],
@@ -679,48 +823,48 @@ class TestAST2SCFGTransformer(TestCase):
             },
             "1": {
                 "instructions": [
-                    "__iter_last_1__ = i",
-                    "i = next(__iterator_1__, '__sentinel__')",
-                    "i != '__sentinel__'",
+                    "__scfg_iter_last_1__ = i",
+                    "i = next(__scfg_iterator_1__, '__scfg_sentinel__')",
+                    "i != '__scfg_sentinel__'",
                 ],
                 "jump_targets": ["2", "3"],
                 "name": "1",
             },
             "2": {
                 "instructions": [
-                    "c += i",
-                    "__iterator_5__ = iter(range(3))",
+                    "x += i",
+                    "__scfg_iterator_5__ = iter(range(3))",
                     "j = None",
                 ],
                 "jump_targets": ["5"],
                 "name": "2",
             },
             "3": {
-                "instructions": ["i = __iter_last_1__"],
+                "instructions": ["i = __scfg_iter_last_1__"],
                 "jump_targets": ["4"],
                 "name": "3",
             },
             "4": {
-                "instructions": ["return c"],
+                "instructions": ["return (x, i, j)"],
                 "jump_targets": [],
                 "name": "4",
             },
             "5": {
                 "instructions": [
-                    "__iter_last_5__ = j",
-                    "j = next(__iterator_5__, '__sentinel__')",
-                    "j != '__sentinel__'",
+                    "__scfg_iter_last_5__ = j",
+                    "j = next(__scfg_iterator_5__, '__scfg_sentinel__')",
+                    "j != '__scfg_sentinel__'",
                 ],
                 "jump_targets": ["6", "7"],
                 "name": "5",
             },
             "6": {
-                "instructions": ["c += j"],
+                "instructions": ["x += j"],
                 "jump_targets": ["5"],
                 "name": "6",
             },
             "7": {
-                "instructions": ["j = __iter_last_5__"],
+                "instructions": ["j = __scfg_iter_last_5__"],
                 "jump_targets": ["1"],
                 "name": "7",
             },
@@ -728,12 +872,12 @@ class TestAST2SCFGTransformer(TestCase):
         self.compare(function, expected, empty={"8"})
 
     def test_for_with_return_break_and_continue(self):
-        def function(a: int, b: int) -> int:
+        def function(x: int, y: int) -> int:
             for i in range(2):
-                if i == a:
+                if i == x:
                     i = 3
                     return i
-                elif i == b:
+                elif i == y:
                     i = 4
                     break
                 else:
@@ -743,7 +887,7 @@ class TestAST2SCFGTransformer(TestCase):
         expected = {
             "0": {
                 "instructions": [
-                    "__iterator_1__ = iter(range(2))",
+                    "__scfg_iterator_1__ = iter(range(2))",
                     "i = None",
                 ],
                 "jump_targets": ["1"],
@@ -751,20 +895,20 @@ class TestAST2SCFGTransformer(TestCase):
             },
             "1": {
                 "instructions": [
-                    "__iter_last_1__ = i",
-                    "i = next(__iterator_1__, '__sentinel__')",
-                    "i != '__sentinel__'",
+                    "__scfg_iter_last_1__ = i",
+                    "i = next(__scfg_iterator_1__, '__scfg_sentinel__')",
+                    "i != '__scfg_sentinel__'",
                 ],
                 "jump_targets": ["2", "3"],
                 "name": "1",
             },
             "2": {
-                "instructions": ["i == a"],
+                "instructions": ["i == x"],
                 "jump_targets": ["5", "6"],
                 "name": "2",
             },
             "3": {
-                "instructions": ["i = __iter_last_1__"],
+                "instructions": ["i = __scfg_iter_last_1__"],
                 "jump_targets": ["4"],
                 "name": "3",
             },
@@ -779,7 +923,7 @@ class TestAST2SCFGTransformer(TestCase):
                 "name": "5",
             },
             "6": {
-                "instructions": ["i == b"],
+                "instructions": ["i == y"],
                 "jump_targets": ["8", "1"],
                 "name": "6",
             },
@@ -789,25 +933,31 @@ class TestAST2SCFGTransformer(TestCase):
                 "name": "8",
             },
         }
-        self.compare(function, expected, unreachable={"7", "10"}, empty={"9"})
+        self.compare(
+            function,
+            expected,
+            unreachable={"7", "10"},
+            empty={"9"},
+            arguments=[(0, 0), (2, 0), (2, 2)],
+        )
 
     def test_for_with_if_in_else(self):
-        def function(a: int):
-            c = 0
+        def function(y: int):
+            x = 0
             for i in range(10):
-                c += i
+                x += i
             else:
-                if a:
-                    r = c
+                if y == 0:
+                    x += 10
                 else:
-                    r = -1 * c
-            return r
+                    x += 20
+            return (x, y, i)
 
         expected = {
             "0": {
                 "instructions": [
-                    "c = 0",
-                    "__iterator_1__ = iter(range(10))",
+                    "x = 0",
+                    "__scfg_iterator_1__ = iter(range(10))",
                     "i = None",
                 ],
                 "jump_targets": ["1"],
@@ -815,65 +965,65 @@ class TestAST2SCFGTransformer(TestCase):
             },
             "1": {
                 "instructions": [
-                    "__iter_last_1__ = i",
-                    "i = next(__iterator_1__, '__sentinel__')",
-                    "i != '__sentinel__'",
+                    "__scfg_iter_last_1__ = i",
+                    "i = next(__scfg_iterator_1__, '__scfg_sentinel__')",
+                    "i != '__scfg_sentinel__'",
                 ],
                 "jump_targets": ["2", "3"],
                 "name": "1",
             },
             "2": {
-                "instructions": ["c += i"],
+                "instructions": ["x += i"],
                 "jump_targets": ["1"],
                 "name": "2",
             },
             "3": {
-                "instructions": ["i = __iter_last_1__", "a"],
+                "instructions": ["i = __scfg_iter_last_1__", "y == 0"],
                 "jump_targets": ["5", "6"],
                 "name": "3",
             },
             "4": {
-                "instructions": ["return r"],
+                "instructions": ["return (x, y, i)"],
                 "jump_targets": [],
                 "name": "4",
             },
             "5": {
-                "instructions": ["r = c"],
+                "instructions": ["x += 10"],
                 "jump_targets": ["4"],
                 "name": "5",
             },
             "6": {
-                "instructions": ["r = -1 * c"],
+                "instructions": ["x += 20"],
                 "jump_targets": ["4"],
                 "name": "6",
             },
         }
-        self.compare(function, expected, empty={"7"})
+        self.compare(function, expected, empty={"7"}, arguments=[(0,), (1,)])
 
     def test_for_with_nested_for_else(self):
-        def function(a: bool) -> int:
-            c = 1
+        def function(y: int) -> int:
+            x = 1
             for i in range(1):
                 for j in range(1):
-                    if a:
-                        c *= 3
+                    if y == 0:
+                        x *= 3
                         break  # This break decides, if True skip continue.
                 else:
-                    c *= 5
+                    x *= 5
                     continue  # Causes break below to be skipped.
-                c *= 7
+                x *= 7
                 break  # Causes the else below to be skipped
             else:
-                c *= 9  # Not breaking in inner loop leads here
-            return c
+                x *= 9  # Not breaking in inner loop leads here
+            return x, y, i
 
-        self.assertEqual(function(True), 3 * 7)
-        self.assertEqual(function(False), 5 * 9)
+        self.assertEqual(function(1)[0], 5 * 9)
+        self.assertEqual(function(0)[0], 3 * 7)
         expected = {
             "0": {
                 "instructions": [
-                    "c = 1",
-                    "__iterator_1__ = iter(range(1))",
+                    "x = 1",
+                    "__scfg_iterator_1__ = iter(range(1))",
                     "i = None",
                 ],
                 "jump_targets": ["1"],
@@ -881,96 +1031,98 @@ class TestAST2SCFGTransformer(TestCase):
             },
             "1": {
                 "instructions": [
-                    "__iter_last_1__ = i",
-                    "i = next(__iterator_1__, '__sentinel__')",
-                    "i != '__sentinel__'",
+                    "__scfg_iter_last_1__ = i",
+                    "i = next(__scfg_iterator_1__, '__scfg_sentinel__')",
+                    "i != '__scfg_sentinel__'",
                 ],
                 "jump_targets": ["2", "3"],
                 "name": "1",
             },
             "2": {
                 "instructions": [
-                    "__iterator_5__ = iter(range(1))",
+                    "__scfg_iterator_5__ = iter(range(1))",
                     "j = None",
                 ],
                 "jump_targets": ["5"],
                 "name": "2",
             },
             "3": {
-                "instructions": ["i = __iter_last_1__", "c *= 9"],
+                "instructions": ["i = __scfg_iter_last_1__", "x *= 9"],
                 "jump_targets": ["4"],
                 "name": "3",
             },
             "4": {
-                "instructions": ["return c"],
+                "instructions": ["return (x, y, i)"],
                 "jump_targets": [],
                 "name": "4",
             },
             "5": {
                 "instructions": [
-                    "__iter_last_5__ = j",
-                    "j = next(__iterator_5__, '__sentinel__')",
-                    "j != '__sentinel__'",
+                    "__scfg_iter_last_5__ = j",
+                    "j = next(__scfg_iterator_5__, '__scfg_sentinel__')",
+                    "j != '__scfg_sentinel__'",
                 ],
                 "jump_targets": ["6", "7"],
                 "name": "5",
             },
             "6": {
-                "instructions": ["a"],
+                "instructions": ["y == 0"],
                 "jump_targets": ["9", "5"],
                 "name": "6",
             },
             "7": {
-                "instructions": ["j = __iter_last_5__", "c *= 5"],
+                "instructions": ["j = __scfg_iter_last_5__", "x *= 5"],
                 "jump_targets": ["1"],
                 "name": "7",
             },
             "8": {
-                "instructions": ["c *= 7"],
+                "instructions": ["x *= 7"],
                 "jump_targets": ["4"],
                 "name": "8",
             },
             "9": {
-                "instructions": ["c *= 3"],
+                "instructions": ["x *= 3"],
                 "jump_targets": ["8"],
                 "name": "9",
             },
         }
 
-        self.compare(function, expected, empty={"11", "10"})
+        self.compare(
+            function, expected, empty={"11", "10"}, arguments=[(0,), (1,)]
+        )
 
     def test_for_with_nested_else_return_break_and_continue(self):
-        def function(a: int, b: int, c: int, d: int, e: int, f: int) -> int:
+        def function(x: int) -> int:
             for i in range(2):
-                if i == a:
-                    i = 3
+                if x == 1:
+                    i += 1
                     return i
-                elif i == b:
-                    i = 4
+                elif x == 2:
+                    i += 2
                     break
-                elif i == c:
-                    i = 5
+                elif x == 3:
+                    i += 3
                     continue
                 else:
                     while i < 10:
                         i += 1
-                        if i == d:
-                            i = 3
+                        if x == 4:
+                            i += 4
                             return i
-                        elif i == e:
-                            i = 4
+                        elif x == 5:
+                            i += 5
                             break
-                        elif i == f:
-                            i = 5
+                        elif x == 6:
+                            i += 6
                             continue
                         else:
-                            i += 1
-            return i
+                            i += 7
+            return x, i
 
         expected = {
             "0": {
                 "instructions": [
-                    "__iterator_1__ = iter(range(2))",
+                    "__scfg_iterator_1__ = iter(range(2))",
                     "i = None",
                 ],
                 "jump_targets": ["1"],
@@ -978,15 +1130,15 @@ class TestAST2SCFGTransformer(TestCase):
             },
             "1": {
                 "instructions": [
-                    "__iter_last_1__ = i",
-                    "i = next(__iterator_1__, '__sentinel__')",
-                    "i != '__sentinel__'",
+                    "__scfg_iter_last_1__ = i",
+                    "i = next(__scfg_iterator_1__, '__scfg_sentinel__')",
+                    "i != '__scfg_sentinel__'",
                 ],
                 "jump_targets": ["2", "3"],
                 "name": "1",
             },
             "11": {
-                "instructions": ["i = 5"],
+                "instructions": ["i += 3"],
                 "jump_targets": ["1"],
                 "name": "11",
             },
@@ -996,78 +1148,104 @@ class TestAST2SCFGTransformer(TestCase):
                 "name": "14",
             },
             "15": {
-                "instructions": ["i += 1", "i == d"],
+                "instructions": ["i += 1", "x == 4"],
                 "jump_targets": ["18", "19"],
                 "name": "15",
             },
             "18": {
-                "instructions": ["i = 3", "return i"],
+                "instructions": ["i += 4", "return i"],
                 "jump_targets": [],
                 "name": "18",
             },
             "19": {
-                "instructions": ["i == e"],
+                "instructions": ["x == 5"],
                 "jump_targets": ["21", "22"],
                 "name": "19",
             },
             "2": {
-                "instructions": ["i == a"],
+                "instructions": ["x == 1"],
                 "jump_targets": ["5", "6"],
                 "name": "2",
             },
             "21": {
-                "instructions": ["i = 4"],
+                "instructions": ["i += 5"],
                 "jump_targets": ["1"],
                 "name": "21",
             },
             "22": {
-                "instructions": ["i == f"],
+                "instructions": ["x == 6"],
                 "jump_targets": ["24", "25"],
                 "name": "22",
             },
             "24": {
-                "instructions": ["i = 5"],
+                "instructions": ["i += 6"],
                 "jump_targets": ["14"],
                 "name": "24",
             },
             "25": {
-                "instructions": ["i += 1"],
+                "instructions": ["i += 7"],
                 "jump_targets": ["14"],
                 "name": "25",
             },
             "3": {
-                "instructions": ["i = __iter_last_1__"],
+                "instructions": ["i = __scfg_iter_last_1__"],
                 "jump_targets": ["4"],
                 "name": "3",
             },
             "4": {
-                "instructions": ["return i"],
+                "instructions": ["return (x, i)"],
                 "jump_targets": [],
                 "name": "4",
             },
             "5": {
-                "instructions": ["i = 3", "return i"],
+                "instructions": ["i += 1", "return i"],
                 "jump_targets": [],
                 "name": "5",
             },
             "6": {
-                "instructions": ["i == b"],
+                "instructions": ["x == 2"],
                 "jump_targets": ["8", "9"],
                 "name": "6",
             },
             "8": {
-                "instructions": ["i = 4"],
+                "instructions": ["i += 2"],
                 "jump_targets": ["4"],
                 "name": "8",
             },
             "9": {
-                "instructions": ["i == c"],
+                "instructions": ["x == 3"],
                 "jump_targets": ["11", "14"],
                 "name": "9",
             },
         }
         empty = {"7", "10", "12", "13", "16", "17", "20", "23", "26"}
-        self.compare(function, expected, empty=empty)
+        arguments = [(1,), (2,), (3,), (4,), (5,), (6,), (7,)]
+        self.compare(
+            function,
+            expected,
+            empty=empty,
+            arguments=arguments,
+        )
+
+
+class TestEntryPoints(TestCase):
+
+    def test_rondtrip(self):
+
+        def function() -> int:
+            x = 0
+            for i in range(2):
+                x += i
+            return x, i
+
+        scfg = AST2SCFG(function)
+        scfg.restructure()
+        ast_ = SCFG2AST(function, scfg)
+
+        exec_locals = {}
+        exec(ast.unparse(ast_), {}, exec_locals)
+        transformed = exec_locals["transformed_function"]
+        assert function() == transformed()
 
 
 if __name__ == "__main__":

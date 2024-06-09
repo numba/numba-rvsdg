@@ -138,11 +138,11 @@ class NameGenerator:
         """
         if kind in self.kinds.keys():
             idx = self.kinds[kind]
-            name = str(kind) + "_var_" + str(idx)
+            name = "__scfg_" + str(kind) + "_var_" + str(idx) + "__"
             self.kinds[kind] = idx + 1
         else:
             idx = 0
-            name = str(kind) + "_var_" + str(idx)
+            name = "__scfg_" + str(kind) + "_var_" + str(idx) + "__"
             self.kinds[kind] = idx + 1
         return name
 
