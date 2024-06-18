@@ -352,7 +352,7 @@ class SCFGRenderer(BaseRenderer):
         self.g.view(name)
 
 
-logging.basicConfig(level=logging.DEBUG)
+# logging.basicConfig(level=logging.DEBUG)
 
 
 def render_func(func) -> None:  # type: ignore
