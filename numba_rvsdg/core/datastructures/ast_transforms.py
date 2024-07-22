@@ -686,8 +686,8 @@ class SCFG2ASTTransformer:
             lineno=0,
             decorator_list=original.decorator_list,
             returns=original.returns,
-        )
-        return fdef
+        )  # type: ignore
+        return fdef  # type: ignore
 
     def lookup(self, item: Any) -> Any:
         subregion_scfg = self.region_stack[-1].subregion
@@ -714,7 +714,7 @@ class SCFG2ASTTransformer:
                     test = block.tree[-1].value  # type: ignore
                 body = self.codegen(self.lookup(block.jump_targets[0]))
                 orelse = self.codegen(self.lookup(block.jump_targets[1]))
-                if_node = ast.If(test, body, orelse)
+                if_node = ast.If(test, body, orelse)  # type: ignore
                 return block.tree[:-1] + [if_node]
             elif block.fallthrough and type(block.tree[-1]) is ast.Return:
                 # The value of the ast.Return could be either None or an
@@ -850,8 +850,10 @@ class SCFG2ASTTransformer:
                     # recurse for the rest of the jump_targets.
                     if_node = ast.If(
                         test=if_test,
-                        body=self.codegen(self.lookup(current)),
-                        orelse=if_cascade(jump_targets),
+                        body=self.codegen(
+                            self.lookup(current)
+                        ),  # type: ignore
+                        orelse=if_cascade(jump_targets),  # type: ignore
                     )
                     return [if_node]
 
