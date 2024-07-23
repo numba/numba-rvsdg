@@ -1,7 +1,7 @@
 import ast
 import inspect
 import itertools
-from typing import Callable, Any, MutableMapping
+from typing import Callable, Any, MutableMapping, MutableSequence, cast
 import textwrap
 from dataclasses import dataclass
 from collections import defaultdict
@@ -672,22 +672,23 @@ class SCFG2ASTTransformer:
     def transform(
         self, original: ast.FunctionDef, scfg: SCFG
     ) -> ast.FunctionDef:
-        body: list[ast.AST] = []
+        body: MutableSequence[ast.AST] = []
         self.region_stack = [scfg.region]
         self.scfg = scfg
         for name, block in scfg.concealed_region_view.items():
             if type(block) is RegionBlock and block.kind == "branch":
                 continue
             body.extend(self.codegen(block))
-        fdef = ast.FunctionDef(
+        return ast.FunctionDef(
             name="transformed_function",
             args=original.args,
-            body=body,
-            lineno=0,
+            body=cast(list[ast.stmt], body),
             decorator_list=original.decorator_list,
             returns=original.returns,
-        )  # type: ignore
-        return fdef  # type: ignore
+            type_comment=original.type_comment,
+            type_params=original.type_params,
+            lineno=0,
+        )
 
     def lookup(self, item: Any) -> Any:
         subregion_scfg = self.region_stack[-1].subregion
