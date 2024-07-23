@@ -706,16 +706,23 @@ class SCFG2ASTTransformer:
         else:
             raise KeyError(f"Item {item} not found in subregion or parent")
 
-    def codegen(self, block: Any) -> list[ast.AST]:
+    def codegen(self, block: Any) -> MutableSequence[ast.AST]:
         if type(block) is PythonASTBlock:
             if len(block.jump_targets) == 2:
+                test: ast.expr
                 if type(block.tree[-1]) in (ast.Name, ast.Compare):
-                    test = block.tree[-1]
+                    test = cast(ast.expr, block.tree[-1])
                 else:
-                    test = block.tree[-1].value  # type: ignore
-                body = self.codegen(self.lookup(block.jump_targets[0]))
-                orelse = self.codegen(self.lookup(block.jump_targets[1]))
-                if_node = ast.If(test, body, orelse)  # type: ignore
+                    test = cast(ast.Expr, block.tree[-1]).value
+                body: list[ast.stmt] = cast(
+                    list[ast.stmt],
+                    self.codegen(self.lookup(block.jump_targets[0])),
+                )
+                orelse: list[ast.stmt] = cast(
+                    list[ast.stmt],
+                    self.codegen(self.lookup(block.jump_targets[1])),
+                )
+                if_node = ast.If(test, body, orelse)
                 return block.tree[:-1] + [if_node]
             elif block.fallthrough and type(block.tree[-1]) is ast.Return:
                 # The value of the ast.Return could be either None or an
@@ -825,7 +832,9 @@ class SCFG2ASTTransformer:
                 reverse[jump_target].append(variable_value)
             # recursive generation of if-cascade
 
-            def if_cascade(jump_targets: list[str]) -> list[ast.AST]:
+            def if_cascade(
+                jump_targets: list[str],
+            ) -> MutableSequence[ast.AST]:
                 if len(jump_targets) == 1:
                     # base case, final else
                     return self.codegen(self.lookup(jump_targets.pop()))
@@ -851,10 +860,10 @@ class SCFG2ASTTransformer:
                     # recurse for the rest of the jump_targets.
                     if_node = ast.If(
                         test=if_test,
-                        body=self.codegen(
-                            self.lookup(current)
-                        ),  # type: ignore
-                        orelse=if_cascade(jump_targets),  # type: ignore
+                        body=cast(
+                            list[ast.stmt], self.codegen(self.lookup(current))
+                        ),
+                        orelse=cast(list[ast.stmt], if_cascade(jump_targets)),
                     )
                     return [if_node]
 
