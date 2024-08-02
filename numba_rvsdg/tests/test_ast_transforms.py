@@ -33,7 +33,7 @@ class TestAST2SCFGTransformer(TestCase):
         expected: dict[str, dict[str, Any]],
         unreachable: set[int] = set(),
         empty: set[int] = set(),
-        arguments: list[any] = [],
+        arguments: list[Any] = [],
     ):
         # Execute function with first argument, if given. Ensure function is
         # sane and make sure it's picked up by coverage.
