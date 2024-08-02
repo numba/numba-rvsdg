@@ -344,14 +344,14 @@ def update_exiting(
     )
     jt = list(region_exiting_block._jump_targets)
     for idx, s in enumerate(jt):
-        if s is new_region_header:
+        if s == new_region_header:
             jt[idx] = new_region_name
     region_exiting_block = region_exiting_block.replace_jump_targets(
         jump_targets=tuple(jt)
     )
     be = list(region_exiting_block.backedges)
     for idx, s in enumerate(be):
-        if s is new_region_header:
+        if s == new_region_header:
             be[idx] = new_region_name
     region_exiting_block = region_exiting_block.replace_backedges(
         backedges=tuple(be)
@@ -399,12 +399,12 @@ def extract_region(
         entry = scfg.graph.pop(name)
         jt = list(entry._jump_targets)
         for idx, s in enumerate(jt):
-            if s is region_header:
+            if s == region_header:
                 jt[idx] = region_name
         entry = entry.replace_jump_targets(jump_targets=tuple(jt))
         be = list(entry.backedges)
         for idx, s in enumerate(be):
-            if s is region_header:
+            if s == region_header:
                 be[idx] = region_name
         entry = entry.replace_backedges(backedges=tuple(be))
         # If the entry itself is a region, update it's
