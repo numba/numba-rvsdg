@@ -1,7 +1,7 @@
 import ast
 import inspect
 import itertools
-from typing import Callable, Any, MutableMapping
+from typing import Callable, Any, MutableMapping, MutableSequence, cast
 import textwrap
 from dataclasses import dataclass
 from collections import defaultdict
@@ -672,22 +672,23 @@ class SCFG2ASTTransformer:
     def transform(
         self, original: ast.FunctionDef, scfg: SCFG
     ) -> ast.FunctionDef:
-        body: list[ast.AST] = []
+        body: MutableSequence[ast.AST] = []
         self.region_stack = [scfg.region]
         self.scfg = scfg
         for name, block in scfg.concealed_region_view.items():
             if type(block) is RegionBlock and block.kind == "branch":
                 continue
             body.extend(self.codegen(block))
-        fdef = ast.FunctionDef(
+        return ast.FunctionDef(
             name="transformed_function",
             args=original.args,
-            body=body,
-            lineno=0,
+            body=cast(list[ast.stmt], body),
             decorator_list=original.decorator_list,
             returns=original.returns,
-        )  # type: ignore
-        return fdef  # type: ignore
+            type_comment=original.type_comment,
+            type_params=original.type_params,
+            lineno=0,
+        )
 
     def lookup(self, item: Any) -> Any:
         subregion_scfg = self.region_stack[-1].subregion
@@ -705,16 +706,23 @@ class SCFG2ASTTransformer:
         else:
             raise KeyError(f"Item {item} not found in subregion or parent")
 
-    def codegen(self, block: Any) -> list[ast.AST]:
+    def codegen(self, block: Any) -> MutableSequence[ast.AST]:
         if type(block) is PythonASTBlock:
             if len(block.jump_targets) == 2:
+                test: ast.expr
                 if type(block.tree[-1]) in (ast.Name, ast.Compare):
-                    test = block.tree[-1]
+                    test = cast(ast.expr, block.tree[-1])
                 else:
-                    test = block.tree[-1].value  # type: ignore
-                body = self.codegen(self.lookup(block.jump_targets[0]))
-                orelse = self.codegen(self.lookup(block.jump_targets[1]))
-                if_node = ast.If(test, body, orelse)  # type: ignore
+                    test = cast(ast.Expr, block.tree[-1]).value
+                body: list[ast.stmt] = cast(
+                    list[ast.stmt],
+                    self.codegen(self.lookup(block.jump_targets[0])),
+                )
+                orelse: list[ast.stmt] = cast(
+                    list[ast.stmt],
+                    self.codegen(self.lookup(block.jump_targets[1])),
+                )
+                if_node = ast.If(test, body, orelse)
                 return block.tree[:-1] + [if_node]
             elif block.fallthrough and type(block.tree[-1]) is ast.Return:
                 # The value of the ast.Return could be either None or an
@@ -824,7 +832,9 @@ class SCFG2ASTTransformer:
                 reverse[jump_target].append(variable_value)
             # recursive generation of if-cascade
 
-            def if_cascade(jump_targets: list[str]) -> list[ast.AST]:
+            def if_cascade(
+                jump_targets: list[str],
+            ) -> MutableSequence[ast.AST]:
                 if len(jump_targets) == 1:
                     # base case, final else
                     return self.codegen(self.lookup(jump_targets.pop()))
@@ -850,10 +860,10 @@ class SCFG2ASTTransformer:
                     # recurse for the rest of the jump_targets.
                     if_node = ast.If(
                         test=if_test,
-                        body=self.codegen(
-                            self.lookup(current)
-                        ),  # type: ignore
-                        orelse=if_cascade(jump_targets),  # type: ignore
+                        body=cast(
+                            list[ast.stmt], self.codegen(self.lookup(current))
+                        ),
+                        orelse=cast(list[ast.stmt], if_cascade(jump_targets)),
                     )
                     return [if_node]
 
