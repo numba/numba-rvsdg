@@ -17,6 +17,9 @@ from typing import Dict, Optional
 from graphviz import Digraph
 
 
+node_style_kwargs = {"shape": "rect", "style": "rounded"}
+
+
 class BaseRenderer:
     """Base Renderer class.
 
@@ -252,15 +255,15 @@ class SCFGRenderer(BaseRenderer):
                 color = "purple"
             if regionblock.kind == "head":
                 color = "red"
-            label = (
-                regionblock.name
-                + "\njump targets: "
-                + str(regionblock.jump_targets)
-                + "\nback edges: "
-                + str(regionblock.backedges)
-            )
+            label = [regionblock.name, r"\n"]
+            if regionblock.jump_targets:
+                label.append(
+                    f"\njump targets: {str(regionblock.jump_targets)}"
+                )
+            if regionblock.backedges:
+                label.append(f"\nback edges: {str(regionblock.backedges)}")
 
-            subg.attr(color=color, label=label)
+            subg.attr(color=color, label="".join(label), **node_style_kwargs)
             assert regionblock.subregion is not None
             for name, block in regionblock.subregion.graph.items():
                 self.render_block(subg, name, block)
@@ -268,16 +271,13 @@ class SCFGRenderer(BaseRenderer):
     def render_basic_block(
         self, digraph: "Digraph", name: str, block: BasicBlock
     ) -> None:
-        body = (
-            name
-            + r"\l"
-            + "\njump targets: "
-            + str(block.jump_targets)
-            + "\nback edges: "
-            + str(block.backedges)
-        )
+        label = [name, r"\n"]
+        if block.jump_targets:
+            label.append(f"\njump targets: {str(block.jump_targets)}")
+        if block.backedges:
+            label.append(f"\nback edges: {str(block.backedges)}")
 
-        digraph.node(str(name), shape="rect", label=body)
+        digraph.node(str(name), label="".join(label), **node_style_kwargs)
 
     def render_python_ast_block(
         self, digraph: "Digraph", name: str, block: BasicBlock
@@ -285,56 +285,50 @@ class SCFGRenderer(BaseRenderer):
         code = r"\l".join(
             ast.unparse(n) for n in block.get_tree()  # type: ignore
         )
-        body = (
-            name
-            + "\n\n"
-            + code
-            + r"\l\ljump targets: "
-            + str(block.jump_targets)
-            + r"\lback edges: "
-            + str(block.backedges)
-        )
+        label = [name, r"\n\l", code, r"\l"]
+        if block.jump_targets:
+            label.append(f"\njump targets: {str(block.jump_targets)}")
+        if block.backedges:
+            label.append(f"\nback edges: {str(block.backedges)}")
 
-        digraph.node(str(name), shape="rect", label=body)
+        digraph.node(str(name), label="".join(label), **node_style_kwargs)
 
     def render_control_variable_block(
         self, digraph: "Digraph", name: str, block: SyntheticAssignment
     ) -> None:
         if isinstance(name, str):
-            body = name + r"\l"
-            body += r"\l".join(
-                (f"{k} = {v}" for k, v in block.variable_assignment.items())
+            assignments = r"\l".join(
+                (
+                    f"{k} = {v}"
+                    for k, v in sorted(block.variable_assignment.items())
+                )
             )
-            body += (
-                "\njump targets: "
-                + str(block.jump_targets)
-                + "\nback edges: "
-                + str(block.backedges)
-            )
+            label = [name, r"\n\l", assignments, r"\l"]
+            if block.jump_targets:
+                label.append(f"\njump targets: {str(block.jump_targets)}")
+            if block.backedges:
+                label.append(f"\nback edges: {str(block.backedges)}")
 
         else:
             raise Exception("Unknown name type: " + name)
-        digraph.node(str(name), shape="rect", label=body)
+        digraph.node(str(name), label="".join(label), **node_style_kwargs)
 
     def render_branching_block(
         self, digraph: "Digraph", name: str, block: SyntheticBranch
     ) -> None:
         if isinstance(name, str):
-            body = name + r"\l"
-            body += rf"variable: {block.variable}\l"
-            body += r"\l".join(
-                (f"{k}=>{v}" for k, v in block.branch_value_table.items())
+            branches = rf"variable: {block.variable}\l" + r"\l".join(
+                (f"{k} → {v}" for k, v in block.branch_value_table.items())
             )
-            body += (
-                "\njump targets: "
-                + str(block.jump_targets)
-                + "\nback edges: "
-                + str(block.backedges)
-            )
+            label = [name, r"\n\l", branches, r"\l"]
+            if block.jump_targets:
+                label.append(f"\njump targets: {str(block.jump_targets)}")
+            if block.backedges:
+                label.append(f"\nback edges: {str(block.backedges)}")
 
         else:
             raise Exception("Unknown name type: " + name)
-        digraph.node(str(name), shape="rect", label=body)
+        digraph.node(str(name), label="".join(label), **node_style_kwargs)
 
     def render_scfg(self) -> "Digraph":
         """Return the graphviz Digraph that contains the rendered SCFG."""
