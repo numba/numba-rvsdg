@@ -680,7 +680,7 @@ class SCFG2ASTTransformer:
                 continue
             body.extend(self.codegen(block))
         return ast.FunctionDef(
-            name="transformed_function",
+            name=f"transformed_{original.name}",
             args=original.args,
             body=cast(list[ast.stmt], body),
             decorator_list=original.decorator_list,
