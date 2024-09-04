@@ -770,12 +770,12 @@ class SCFG2ASTTransformer:
                 # update __scfg_loop_continue__.
                 rval = [
                     ast.Assign(
-                        [ast.Name("__scfg_loop_cont__")],
+                        [ast.Name("__scfg_loop_cont__", ctx=ast.Store())],
                         ast.Constant(True),
                         lineno=0,
                     ),
                     ast.While(
-                        test=ast.Name("__scfg_loop_cont__"),
+                        test=ast.Name("__scfg_loop_cont__", ctx=ast.Load()),
                         body=codegen_view(),
                         orelse=[],
                     ),
@@ -788,7 +788,7 @@ class SCFG2ASTTransformer:
             # Synthetic assignments just create Python assignments, one for
             # each variable..
             return [
-                ast.Assign([ast.Name(t)], ast.Constant(v), lineno=0)
+                ast.Assign([ast.Name(t, ctx=ast.Store())], ast.Constant(v), lineno=0)
                 for t, v in block.variable_assignment.items()
             ]
         elif type(block) is SyntheticTail:
@@ -801,7 +801,7 @@ class SCFG2ASTTransformer:
         elif type(block) is SyntheticReturn:
             # Synthetic return blocks must re-assigne the return value to a
             # special reserved variable.
-            return [ast.Return(ast.Name("__scfg_return_value__"))]
+            return [ast.Return(ast.Name("__scfg_return_value__", ctx=ast.Load()))]
         elif type(block) is SyntheticExitingLatch:
             # The synthetic exiting latch simply assigns the negated value of
             # the exit variable to '__scfg_loop_cont__'.
@@ -809,8 +809,8 @@ class SCFG2ASTTransformer:
             assert len(block.backedges) == 1
             return [
                 ast.Assign(
-                    [ast.Name("__scfg_loop_cont__")],
-                    ast.UnaryOp(ast.Not(), ast.Name(block.variable)),
+                    [ast.Name("__scfg_loop_cont__", ctx=ast.Store())],
+                    ast.UnaryOp(ast.Not(), ast.Name(block.variable, ctx=ast.Load())),
                     lineno=0,
                 )
             ]
@@ -844,7 +844,7 @@ class SCFG2ASTTransformer:
                     # compare to all variable values that point to this
                     # jump_target
                     if_test = ast.Compare(
-                        left=ast.Name(block.variable),
+                        left=ast.Name(block.variable, ctx=ast.Load()),
                         ops=[ast.In()],
                         comparators=[
                             ast.Tuple(
