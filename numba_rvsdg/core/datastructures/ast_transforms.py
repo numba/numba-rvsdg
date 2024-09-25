@@ -190,7 +190,7 @@ class ASTCFG(dict[str, WritableASTBlock]):
         """Prune empty blocks from the CFG."""
         empty = set()
         for name, block in list(self.items()):
-            if not block.instructions:
+            if not block.instructions and name != "0":
                 empty.add(self.pop(name))
                 # Empty blocks can only have a single jump target.
                 it = block.jump_targets[0]
@@ -724,6 +724,9 @@ class SCFG2ASTTransformer:
                 )
                 if_node = ast.If(test, body, orelse)
                 return block.tree[:-1] + [if_node]
+            elif block.fallthrough and len(block.tree) == 0:
+                # Am empty block, do nothing.
+                return [ast.Pass()]
             elif block.fallthrough and type(block.tree[-1]) is ast.Return:
                 # The value of the ast.Return could be either None or an
                 # ast.AST type. In the case of None, this refers to a plain
