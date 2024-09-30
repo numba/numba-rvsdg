@@ -675,6 +675,7 @@ class SCFG2ASTTransformer:
         body: MutableSequence[ast.AST] = []
         self.region_stack = [scfg.region]
         self.scfg = scfg
+        self.loop_cont_counter = 0
         for name, block in scfg.concealed_region_view.items():
             if type(block) is RegionBlock and block.kind == "branch":
                 continue
@@ -768,14 +769,16 @@ class SCFG2ASTTransformer:
                 # A loop region gives rise to a Python while __scfg_loop_cont__
                 # loop. We recursively visit the body. The exiting latch will
                 # update __scfg_loop_continue__.
+                self.loop_cont_counter += 1
+                loop_continue = f"__scfg_loop_cont_{self.loop_cont_counter}__"
                 rval = [
                     ast.Assign(
-                        [ast.Name("__scfg_loop_cont__")],
+                        [ast.Name(loop_continue)],
                         ast.Constant(True),
                         lineno=0,
                     ),
                     ast.While(
-                        test=ast.Name("__scfg_loop_cont__"),
+                        test=ast.Name(loop_continue),
                         body=codegen_view(),
                         orelse=[],
                     ),
@@ -807,9 +810,11 @@ class SCFG2ASTTransformer:
             # the exit variable to '__scfg_loop_cont__'.
             assert len(block.jump_targets) == 1
             assert len(block.backedges) == 1
+            loop_continue = f"__scfg_loop_cont_{self.loop_cont_counter}__"
+            self.loop_cont_counter -= 1
             return [
                 ast.Assign(
-                    [ast.Name("__scfg_loop_cont__")],
+                    [ast.Name(loop_continue)],
                     ast.UnaryOp(ast.Not(), ast.Name(block.variable)),
                     lineno=0,
                 )
