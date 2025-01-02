@@ -31,9 +31,9 @@ class TestAST2SCFGTransformer(TestCase):
         self,
         function: Callable[..., Any],
         expected: dict[str, dict[str, Any]],
-        unreachable: set[int] = set(),
-        empty: set[int] = set(),
-        arguments: list[any] = [],
+        unreachable: set[str] = set(),
+        empty: set[str] = set(),
+        arguments: list[Any] = [],
     ):
         # Execute function with first argument, if given. Ensure function is
         # sane and make sure it's picked up by coverage.
