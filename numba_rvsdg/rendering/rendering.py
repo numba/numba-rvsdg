@@ -156,13 +156,13 @@ class ByteFlowRenderer(BaseRenderer):
     ) -> None:
         # render subgraph
         with digraph.subgraph(name=f"cluster_{name}") as subg:
-            color = "blue"
+            color = "#648FFF"
             if regionblock.kind == "branch":
-                color = "green"
+                color = "#FFB000"
             if regionblock.kind == "tail":
-                color = "purple"
+                color = "#785EF0"
             if regionblock.kind == "head":
-                color = "red"
+                color = "#DC267F"
             subg.attr(color=color, label=regionblock.name)
             assert regionblock.subregion is not None
             for name, block in regionblock.subregion.graph.items():
@@ -248,13 +248,13 @@ class SCFGRenderer(BaseRenderer):
     ) -> None:
         # render subgraph
         with digraph.subgraph(name=f"cluster_{name}") as subg:
-            color = "blue"
+            color = "#648FFF"
             if regionblock.kind == "branch":
-                color = "green"
+                color = "#FFB000"
             if regionblock.kind == "tail":
-                color = "purple"
+                color = "#785EF0"
             if regionblock.kind == "head":
-                color = "red"
+                color = "#DC267F"
             label = [regionblock.name, r"\n"]
             if regionblock.jump_targets:
                 label.append(
