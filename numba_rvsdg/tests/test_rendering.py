@@ -30,40 +30,40 @@ jump targets: ('1',)" shape=rect style=rounded]
 
 expected_restructured = r"""digraph {
 	subgraph cluster_head_region_0 {
-		color=red label="head_region_0\n
+		color="#DC267F" label="head_region_0\n
 jump targets: ('branch_region_0', 'branch_region_1')" shape=rect style=rounded
 		0 [label="0\n
 jump targets: ('branch_region_0', 'branch_region_1')" shape=rect style=rounded]
 	}
 	subgraph cluster_branch_region_0 {
-		color=green label="branch_region_0\n
+		color="#FFB000" label="branch_region_0\n
 jump targets: ('tail_region_0',)" shape=rect style=rounded
 		synth_asign_block_0 [label="synth_asign_block_0\n\l__scfg_control_var_0__ = 0\l
 jump targets: ('tail_region_0',)" shape=rect style=rounded]
 	}
 	subgraph cluster_branch_region_1 {
-		color=green label="branch_region_1\n
+		color="#FFB000" label="branch_region_1\n
 jump targets: ('tail_region_0',)" shape=rect style=rounded
 		synth_asign_block_1 [label="synth_asign_block_1\n\l__scfg_control_var_0__ = 1\l
 jump targets: ('tail_region_0',)" shape=rect style=rounded]
 	}
 	subgraph cluster_tail_region_0 {
-		color=purple label="tail_region_0\n" shape=rect style=rounded
+		color="#785EF0" label="tail_region_0\n" shape=rect style=rounded
 		5 [label="5\n" shape=rect style=rounded]
 		subgraph cluster_loop_region_0 {
-			color=blue label="loop_region_0\n
+			color="#648FFF" label="loop_region_0\n
 jump targets: ('5',)" shape=rect style=rounded
 			subgraph cluster_head_region_1 {
-				color=red label="head_region_1\n
+				color="#DC267F" label="head_region_1\n
 jump targets: ('branch_region_2', 'branch_region_3')" shape=rect style=rounded
 				synth_head_block_0 [label="synth_head_block_0\n\lvariable: __scfg_control_var_0__\l0 → branch_region_2\l1 → branch_region_3\l
 jump targets: ('branch_region_2', 'branch_region_3')" shape=rect style=rounded]
 			}
 			subgraph cluster_branch_region_2 {
-				color=green label="branch_region_2\n
+				color="#FFB000" label="branch_region_2\n
 jump targets: ('tail_region_1',)" shape=rect style=rounded
 				subgraph cluster_head_region_2 {
-					color=red label="head_region_2\n
+					color="#DC267F" label="head_region_2\n
 jump targets: ('branch_region_4', 'branch_region_5')" shape=rect style=rounded
 					1 [label="1\n
 jump targets: ('3',)" shape=rect style=rounded]
@@ -71,26 +71,26 @@ jump targets: ('3',)" shape=rect style=rounded]
 jump targets: ('branch_region_4', 'branch_region_5')" shape=rect style=rounded]
 				}
 				subgraph cluster_branch_region_4 {
-					color=green label="branch_region_4\n
+					color="#FFB000" label="branch_region_4\n
 jump targets: ('tail_region_2',)" shape=rect style=rounded
 					synth_asign_block_2 [label="synth_asign_block_2\n\l__scfg_backedge_var_0__ = 0\l__scfg_control_var_0__ = 1\l
 jump targets: ('tail_region_2',)" shape=rect style=rounded]
 				}
 				subgraph cluster_branch_region_5 {
-					color=green label="branch_region_5\n
+					color="#FFB000" label="branch_region_5\n
 jump targets: ('tail_region_2',)" shape=rect style=rounded
 					synth_asign_block_3 [label="synth_asign_block_3\n\l__scfg_backedge_var_0__ = 1\l
 jump targets: ('tail_region_2',)" shape=rect style=rounded]
 				}
 				subgraph cluster_tail_region_2 {
-					color=purple label="tail_region_2\n
+					color="#785EF0" label="tail_region_2\n
 jump targets: ('tail_region_1',)" shape=rect style=rounded
 					synth_tail_block_0 [label="synth_tail_block_0\n
 jump targets: ('tail_region_1',)" shape=rect style=rounded]
 				}
 			}
 			subgraph cluster_branch_region_3 {
-				color=green label="branch_region_3\n
+				color="#FFB000" label="branch_region_3\n
 jump targets: ('tail_region_1',)" shape=rect style=rounded
 				2 [label="2\n
 jump targets: ('4',)" shape=rect style=rounded]
@@ -100,7 +100,7 @@ jump targets: ('synth_asign_block_4',)" shape=rect style=rounded]
 jump targets: ('tail_region_1',)" shape=rect style=rounded]
 			}
 			subgraph cluster_tail_region_1 {
-				color=purple label="tail_region_1\n
+				color="#785EF0" label="tail_region_1\n
 jump targets: ('5',)" shape=rect style=rounded
 				synth_exit_latch_block_0 [label="synth_exit_latch_block_0\n\lvariable: __scfg_backedge_var_0__\l1 → 5\l0 → head_region_1\l
 jump targets: ('5',)
