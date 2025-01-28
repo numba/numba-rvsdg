@@ -445,9 +445,7 @@ class AST2SCFGTransformer:
             self.add_block(merge_block_index)
 
         else:
-            raise NotImplementedError(
-                "Only 'or' operations currently supported"
-            )
+            raise NotImplementedError("unreachable")
 
         # Return name node referencing our result variable
         return ast.Name(id=result_var, ctx=ast.Load())
