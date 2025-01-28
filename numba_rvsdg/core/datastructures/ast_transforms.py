@@ -317,9 +317,16 @@ class AST2SCFGTransformer:
             node,
             (
                 ast.Assign,
-                ast.AugAssign,
                 ast.Expr,
                 ast.Return,
+            ),
+        ):
+            node.value = self.handle_expression(node.value)
+            self.current_block.instructions.append(node)
+        elif isinstance(
+            node,
+            (
+                ast.AugAssign,
                 ast.Break,
                 ast.Continue,
                 ast.Pass,
@@ -334,6 +341,116 @@ class AST2SCFGTransformer:
             self.handle_for(node)
         else:
             raise NotImplementedError(f"Node type {node} not implemented")
+
+    def handle_expression(self, node: Any) -> Any:
+        """Recursively handle expression nodes and their subexpressions.
+        Returns the processed expression."""
+
+        if isinstance(node, ast.BoolOp):
+            # Handle or/and operations
+            return self.handle_bool_op(node)
+        elif isinstance(node, ast.Compare):
+            # Recursively handle left and right sides of comparison
+            node.left = self.handle_expression(node.left)
+            for i, comparator in enumerate(node.comparators):
+                node.comparators[i] = self.handle_expression(comparator)
+            return node
+        elif isinstance(node, ast.BinOp):
+            # Handle binary operations (+, -, *, / etc)
+            node.left = self.handle_expression(node.left)
+            node.right = self.handle_expression(node.right)
+            return node
+        elif isinstance(node, ast.Call):
+            # Handle function calls
+            for i, arg in enumerate(node.args):
+                node.args[i] = self.handle_expression(arg)
+            return node
+        else:
+            # Base case: literals, names, etc.
+            return node
+
+    def handle_bool_op(self, node: ast.BoolOp) -> ast.Name:
+        """Handle boolean operations (and/or).
+        Returns an ast.Name representing the result variable."""
+
+        # Create a new temp variable to store the result
+        result_var = f"__scfg_bool_op_{self.block_index}__"
+
+        # Generate code for first value
+        left = self.handle_expression(node.values[0])
+        self.current_block.instructions.append(
+            ast.Assign(
+                targets=[ast.Name(id=result_var, ctx=ast.Store())],
+                value=left,
+                lineno=0,
+            )
+        )
+
+        if isinstance(node.op, ast.Or):
+            # Create blocks for the true and false paths
+            false_block_index = self.block_index
+            merge_block_index = self.block_index + 1
+            self.block_index += 2
+
+            # Test and jump based on first value
+            self.current_block.instructions.append(
+                ast.Name(id=result_var, ctx=ast.Load())
+            )
+            self.current_block.set_jump_targets(
+                merge_block_index, false_block_index
+            )
+
+            # False block evaluates second value
+            self.add_block(false_block_index)
+            right = self.handle_expression(node.values[1])
+            self.current_block.instructions.append(
+                ast.Assign(
+                    targets=[ast.Name(id=result_var, ctx=ast.Store())],
+                    value=right,
+                    lineno=0,
+                )
+            )
+            self.current_block.set_jump_targets(merge_block_index)
+
+            # Create merge block
+            self.add_block(merge_block_index)
+
+        elif isinstance(node.op, ast.And):
+            # Create blocks for the true and false paths
+            true_block_index = self.block_index
+            merge_block_index = self.block_index + 1
+            self.block_index += 2
+
+            # Test and jump based on first value
+            self.current_block.instructions.append(
+                ast.Name(id=result_var, ctx=ast.Load())
+            )
+            self.current_block.set_jump_targets(
+                true_block_index, merge_block_index
+            )
+
+            # True block evaluates second value
+            self.add_block(true_block_index)
+            right = self.handle_expression(node.values[1])
+            self.current_block.instructions.append(
+                ast.Assign(
+                    targets=[ast.Name(id=result_var, ctx=ast.Store())],
+                    value=right,
+                    lineno=0,
+                )
+            )
+            self.current_block.set_jump_targets(merge_block_index)
+
+            # Create merge block
+            self.add_block(merge_block_index)
+
+        else:
+            raise NotImplementedError(
+                "Only 'or' operations currently supported"
+            )
+
+        # Return name node referencing our result variable
+        return ast.Name(id=result_var, ctx=ast.Load())
 
     def handle_function_def(self, node: ast.FunctionDef) -> None:
         """Handle a function definition."""

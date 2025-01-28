@@ -1227,6 +1227,71 @@ class TestAST2SCFGTransformer(TestCase):
             arguments=arguments,
         )
 
+    def test_and(self):
+        def function(x: int, y: int) -> int:
+            return (
+                x and y
+            )  # Returns last truthy value, or False if any others are falsy
+
+        expected = {
+            "0": {
+                "instructions": [
+                    "__scfg_bool_op_1__ = x",
+                    "__scfg_bool_op_1__",
+                ],
+                "jump_targets": ["1", "2"],
+                "name": "0",
+            },
+            "1": {
+                "instructions": ["__scfg_bool_op_1__ = y"],
+                "jump_targets": ["2"],
+                "name": "1",
+            },
+            "2": {
+                "instructions": ["return __scfg_bool_op_1__"],
+                "jump_targets": [],
+                "name": "2",
+            },
+        }
+        self.compare(function, expected, arguments=[(0, 0), (0, 1), (1, 0)])
+
+    def test_or(self):
+        def function(x: int, y: int) -> int:
+            return (
+                x or y
+            )  # Returns first truthy value, or last value if all falsy
+
+        expected = {
+            "0": {
+                "instructions": [
+                    "__scfg_bool_op_1__ = x",
+                    "__scfg_bool_op_1__",
+                ],
+                "jump_targets": ["2", "1"],
+                "name": "0",
+            },
+            "1": {
+                "instructions": ["__scfg_bool_op_1__ = y"],
+                "jump_targets": ["2"],
+                "name": "1",
+            },
+            "2": {
+                "instructions": ["return __scfg_bool_op_1__"],
+                "jump_targets": [],
+                "name": "2",
+            },
+        }
+
+        self.compare(
+            function,
+            expected,
+            arguments=[
+                (1, 0),  # First value truthy
+                (0, 2),  # First value falsy, second truthy
+                (0, 0),  # All values falsy - returns last value
+            ],
+        )
+
 
 class TestEntryPoints(TestCase):
 
