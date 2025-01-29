@@ -855,7 +855,7 @@ class SCFG(Sized):
 
     @staticmethod
     def from_dict(
-        graph_dict: Dict[str, Dict[str, List[str]]]
+        graph_dict: Dict[str, Dict[str, List[str]]],
     ) -> Tuple["SCFG", Dict[str, str]]:
         """Static method that creates an SCFG object from a dictionary
         representation.
@@ -967,7 +967,7 @@ class SCFGIO:
 
     @staticmethod
     def from_dict(
-        graph_dict: Dict[str, Dict[str, Any]]
+        graph_dict: Dict[str, Dict[str, Any]],
     ) -> "Tuple[SCFG, Dict[str, str]]":
         """Static method that creates an SCFG object from a dictionary
         representation.
