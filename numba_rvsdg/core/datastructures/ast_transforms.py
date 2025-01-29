@@ -378,12 +378,6 @@ class AST2SCFGTransformer:
 
     def handle_while(self, node: ast.While) -> None:
         """Handle while statement."""
-        # If the current block already has instructions, we need a new block as
-        # header. Otherwise just re-use the current_block. This happens
-        # when the previous statement was an if-statement with an empty
-        # endif_block, for example. This is possible because the Python
-        # while-loop does not need to modify it's preheader.
-
         # Preallocate header, body, else and exiting indices.
         # (Technically, we could re-use the current block as header if it is
         # still empty. We elect to potentially leave a block empty instead,
