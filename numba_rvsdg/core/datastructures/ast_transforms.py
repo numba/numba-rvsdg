@@ -21,7 +21,7 @@ from numba_rvsdg.core.datastructures.basic_block import (
 
 
 def unparse_code(
-    code: str | list[ast.FunctionDef] | Callable[..., Any]
+    code: str | list[ast.FunctionDef] | Callable[..., Any],
 ) -> list[type[ast.AST]]:
     # Convert source code into AST.
     if isinstance(code, str):
