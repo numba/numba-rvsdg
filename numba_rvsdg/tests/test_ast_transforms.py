@@ -1592,6 +1592,45 @@ class TestAST2SCFGTransformer(TestCase):
             ],
         )
 
+    def test_bool_op_assignment(self):
+        def function(x: int, y: int) -> bool:
+            result = x and y
+            return result
+
+        expected = {
+            "0": {
+                "instructions": [
+                    "__scfg_bool_op_1__ = x",
+                    "__scfg_bool_op_1__",
+                ],
+                "jump_targets": ["1", "2"],
+                "name": "0",
+            },
+            "1": {
+                "instructions": ["__scfg_bool_op_1__ = y"],
+                "jump_targets": ["2"],
+                "name": "1",
+            },
+            "2": {
+                "instructions": [
+                    "result = __scfg_bool_op_1__",
+                    "return result",
+                ],
+                "jump_targets": [],
+                "name": "2",
+            },
+        }
+        self.compare(
+            function,
+            expected,
+            arguments=[
+                (0, 0),  # Both false
+                (0, 1),  # x false, y true
+                (1, 0),  # x true, y false
+                (1, 1),  # Both true
+            ],
+        )
+
 
 class TestEntryPoints(TestCase):
 
