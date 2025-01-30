@@ -1538,6 +1538,62 @@ class TestAST2SCFGTransformer(TestCase):
             ],
         )
 
+    def test_while_bool_ops(self):
+        def function(x: int, y: int) -> int:
+            count = 0
+            while x and y:
+                count += 1
+                x -= 1
+                y -= 1
+            return count
+
+        expected = {
+            "0": {
+                "instructions": ["count = 0"],
+                "jump_targets": ["1"],
+                "name": "0",
+            },
+            "1": {
+                "instructions": [
+                    "__scfg_bool_op_1__ = x",
+                    "__scfg_bool_op_1__",
+                ],
+                "jump_targets": ["5", "6"],
+                "name": "1",
+            },
+            "2": {
+                "instructions": ["count += 1", "x -= 1", "y -= 1"],
+                "jump_targets": ["1"],
+                "name": "2",
+            },
+            "3": {
+                "instructions": ["return count"],
+                "jump_targets": [],
+                "name": "3",
+            },
+            "5": {
+                "instructions": ["__scfg_bool_op_1__ = y"],
+                "jump_targets": ["6"],
+                "name": "5",
+            },
+            "6": {
+                "instructions": ["__scfg_bool_op_1__"],
+                "jump_targets": ["2", "3"],
+                "name": "6",
+            },
+        }
+        self.compare(
+            function,
+            expected,
+            empty={"4"},
+            arguments=[
+                (0, 0),  # Both false, loop doesn't run
+                (2, 1),  # y becomes false first, runs once
+                (1, 2),  # x becomes false first, runs once
+                (2, 2),  # Both true, runs twice
+            ],
+        )
+
 
 class TestEntryPoints(TestCase):
 

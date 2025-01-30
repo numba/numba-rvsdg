@@ -538,8 +538,10 @@ class AST2SCFGTransformer:
         # And create new header block
         self.add_block(head_index)
 
+        # Desugar test expression if needed, may modify currect_block.
+        test_name = self.handle_expression(node.test)
         # Emit comparison expression into header.
-        self.current_block.instructions.append(node.test)
+        self.current_block.instructions.append(test_name)
         # Set the jump targets to be the body and the else branch.
         self.current_block.set_jump_targets(body_index, else_index)
 
