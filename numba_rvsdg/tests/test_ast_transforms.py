@@ -1229,9 +1229,8 @@ class TestAST2SCFGTransformer(TestCase):
 
     def test_and(self):
         def function(x: int, y: int) -> int:
-            return (
-                x and y
-            )  # Returns last truthy value, or False if any others are falsy
+            # Returns last truthy value, or False if any others are falsy.
+            return x and y
 
         expected = {
             "0": {
@@ -1257,9 +1256,8 @@ class TestAST2SCFGTransformer(TestCase):
 
     def test_or(self):
         def function(x: int, y: int) -> int:
-            return (
-                x or y
-            )  # Returns first truthy value, or last value if all falsy
+            # Returns first truthy value, or last value if all falsy.
+            return x or y
 
         expected = {
             "0": {
@@ -1286,9 +1284,9 @@ class TestAST2SCFGTransformer(TestCase):
             function,
             expected,
             arguments=[
-                (1, 0),  # First value truthy
-                (0, 2),  # First value falsy, second truthy
-                (0, 0),  # All values falsy - returns last value
+                (1, 0),  # First value truthy.
+                (0, 2),  # First value falsy, second truthy.
+                (0, 0),  # All values falsy - returns last value.
             ],
         )
 
@@ -1333,14 +1331,14 @@ class TestAST2SCFGTransformer(TestCase):
             function,
             expected,
             arguments=[
-                (0, 0, 0),  # All false
-                (0, 0, 1),  # Only z true - short circuits at x
-                (0, 1, 0),  # Only y true - short circuits at x
-                (0, 1, 1),  # y and z true - short circuits at x
-                (1, 0, 0),  # Only x true - short circuits at y
-                (1, 0, 1),  # x and z true - short circuits at y
-                (1, 1, 0),  # x and y true - fails at z
-                (1, 1, 1),  # All true - complete evaluation
+                (0, 0, 0),  # All false.
+                (0, 0, 1),  # Only z true - short circuits at x.
+                (0, 1, 0),  # Only y true - short circuits at x.
+                (0, 1, 1),  # y and z true - short circuits at x.
+                (1, 0, 0),  # Only x true - short circuits at y.
+                (1, 0, 1),  # x and z true - short circuits at y.
+                (1, 1, 0),  # x and y true - fails at z.
+                (1, 1, 1),  # All true - complete evaluation.
             ],
         )
 
@@ -1538,7 +1536,7 @@ class TestAST2SCFGTransformer(TestCase):
             ],
         )
 
-    def test_while_bool_ops(self):
+    def test_while_with_bool_ops(self):
         def function(x: int, y: int) -> int:
             count = 0
             while x and y:
