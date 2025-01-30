@@ -317,17 +317,18 @@ class AST2SCFGTransformer:
         elif isinstance(
             node,
             (
+                ast.AugAssign,
                 ast.Assign,
                 ast.Expr,
                 ast.Return,
             ),
         ):
+            # Node has an expression, must handle it.
             node.value = self.handle_expression(node.value)
             self.current_block.instructions.append(node)
         elif isinstance(
             node,
             (
-                ast.AugAssign,
                 ast.Break,
                 ast.Continue,
                 ast.Pass,
@@ -348,7 +349,7 @@ class AST2SCFGTransformer:
         Returns the processed expression."""
 
         if isinstance(node, ast.BoolOp):
-            # Handle or/and operations
+            # Handle or/and operations.
             if len(node.values) > 2:
                 # In this case the bool operation has more than two operands,
                 # we need to deconstruct this into a binary tree of bool
@@ -372,18 +373,19 @@ class AST2SCFGTransformer:
             else:
                 raise NotImplementedError("unreachable")
         elif isinstance(node, ast.Compare):
-            # Recursively handle left and right sides of comparison
+            # Recursively handle left and right sides of comparison.
             node.left = self.handle_expression(node.left)
             for i, comparator in enumerate(node.comparators):
                 node.comparators[i] = self.handle_expression(comparator)
             return node
         elif isinstance(node, ast.BinOp):
-            # Handle binary operations (+, -, *, / etc)
-            node.left = self.handle_expression(node.left)
-            node.right = self.handle_expression(node.right)
+            # Handle binary operations (+, -, *, / etc).
+            node.left, node.right = self.handle_expression(
+                node.left
+            ), self.handle_expression(node.right)
             return node
         elif isinstance(node, ast.Call):
-            # Handle function calls
+            # Handle function calls.
             for i, arg in enumerate(node.args):
                 node.args[i] = self.handle_expression(arg)
             return node
@@ -395,11 +397,12 @@ class AST2SCFGTransformer:
         """Handle boolean operations (and/or).
         Returns an ast.Name representing the result variable."""
 
-        # Create a new temp variable to store the result
+        # Create a new temp variable to store the result.
         self.bool_op_index += 1
         result_var = f"__scfg_bool_op_{self.bool_op_index}__"
 
-        # Generate code for first value
+        # Create an assignment to bin temp variable from above to the left most
+        # value in the expression.
         left = self.handle_expression(node.values[0])
         self.current_block.instructions.append(
             ast.Assign(
@@ -409,13 +412,14 @@ class AST2SCFGTransformer:
             )
         )
 
+        # Handle the or operator.
         if isinstance(node.op, ast.Or):
-            # Create blocks for the true and false paths
+            # Create blocks for the true and false paths.
             false_block_index = self.block_index
             merge_block_index = self.block_index + 1
             self.block_index += 2
 
-            # Test and jump based on first value
+            # Test and jump based on first value.
             self.current_block.instructions.append(
                 ast.Name(id=result_var, ctx=ast.Load())
             )
@@ -423,7 +427,7 @@ class AST2SCFGTransformer:
                 merge_block_index, false_block_index
             )
 
-            # False block evaluates second value
+            # False block evaluates second value.
             self.add_block(false_block_index)
             right = self.handle_expression(node.values[1])
             self.current_block.instructions.append(
@@ -438,13 +442,14 @@ class AST2SCFGTransformer:
             # Create merge block
             self.add_block(merge_block_index)
 
+        # Handle the and operator.
         elif isinstance(node.op, ast.And):
-            # Create blocks for the true and false paths
+            # Create blocks for the true and false paths.
             true_block_index = self.block_index
             merge_block_index = self.block_index + 1
             self.block_index += 2
 
-            # Test and jump based on first value
+            # Test and jump based on first value.
             self.current_block.instructions.append(
                 ast.Name(id=result_var, ctx=ast.Load())
             )
@@ -452,7 +457,7 @@ class AST2SCFGTransformer:
                 true_block_index, merge_block_index
             )
 
-            # True block evaluates second value
+            # True block evaluates second value.
             self.add_block(true_block_index)
             right = self.handle_expression(node.values[1])
             self.current_block.instructions.append(
@@ -464,13 +469,13 @@ class AST2SCFGTransformer:
             )
             self.current_block.set_jump_targets(merge_block_index)
 
-            # Create merge block
+            # Create merge block.
             self.add_block(merge_block_index)
 
         else:
             raise NotImplementedError("unreachable")
 
-        # Return name node referencing our result variable
+        # Return name node referencing our result variable.
         return ast.Name(id=result_var, ctx=ast.Load())
 
     def handle_function_def(self, node: ast.FunctionDef) -> None:
