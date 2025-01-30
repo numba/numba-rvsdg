@@ -1292,6 +1292,58 @@ class TestAST2SCFGTransformer(TestCase):
             ],
         )
 
+    def test_complex_and(self):
+        def function(x: int, y: int, z: int) -> bool:
+            return x and y and z
+
+        expected = {
+            "0": {
+                "instructions": [
+                    "__scfg_bool_op_1__ = x",
+                    "__scfg_bool_op_1__",
+                ],
+                "jump_targets": ["1", "2"],
+                "name": "0",
+            },
+            "1": {
+                "instructions": [
+                    "__scfg_bool_op_2__ = y",
+                    "__scfg_bool_op_2__",
+                ],
+                "jump_targets": ["3", "4"],
+                "name": "1",
+            },
+            "2": {
+                "instructions": ["return __scfg_bool_op_1__"],
+                "jump_targets": [],
+                "name": "2",
+            },
+            "3": {
+                "instructions": ["__scfg_bool_op_2__ = z"],
+                "jump_targets": ["4"],
+                "name": "3",
+            },
+            "4": {
+                "instructions": ["__scfg_bool_op_1__ = __scfg_bool_op_2__"],
+                "jump_targets": ["2"],
+                "name": "4",
+            },
+        }
+        self.compare(
+            function,
+            expected,
+            arguments=[
+                (0, 0, 0),  # All false
+                (0, 0, 1),  # Only z true - short circuits at x
+                (0, 1, 0),  # Only y true - short circuits at x
+                (0, 1, 1),  # y and z true - short circuits at x
+                (1, 0, 0),  # Only x true - short circuits at y
+                (1, 0, 1),  # x and z true - short circuits at y
+                (1, 1, 0),  # x and y true - fails at z
+                (1, 1, 1),  # All true - complete evaluation
+            ],
+        )
+
 
 class TestEntryPoints(TestCase):
 

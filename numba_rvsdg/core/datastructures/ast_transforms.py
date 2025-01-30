@@ -251,6 +251,7 @@ class AST2SCFGTransformer:
         self.code = code
         self.tree = unparse_code(code)
         self.block_index: int = 1  # 0 is reserved for genesis block
+        self.bool_op_index = 0  # can have multiple of these per block
         self.blocks = ASTCFG()
         # Initialize first (genesis) block, assume it's named zero.
         # (This also initializes the self.current_block attribute.)
@@ -348,7 +349,20 @@ class AST2SCFGTransformer:
 
         if isinstance(node, ast.BoolOp):
             # Handle or/and operations
-            return self.handle_bool_op(node)
+            if len(node.values) > 2:
+                # In this case the bool operation has more than two operands,
+                # we need to deconstruct this into a binary tree of bool
+                # operations and recursively deal with those. The tail_node
+                # contains the tail of the operand list.
+                tail_node = ast.BoolOp(node.op, node.values[1:])
+                return self.handle_bool_op(
+                    ast.BoolOp(node.op, [node.values[0], tail_node])
+                )
+            elif len(node.values) == 2:
+                # Base case, boolean operation has only two operands.
+                return self.handle_bool_op(node)
+            else:
+                raise NotImplementedError("unreachable")
         elif isinstance(node, ast.Compare):
             # Recursively handle left and right sides of comparison
             node.left = self.handle_expression(node.left)
@@ -374,7 +388,8 @@ class AST2SCFGTransformer:
         Returns an ast.Name representing the result variable."""
 
         # Create a new temp variable to store the result
-        result_var = f"__scfg_bool_op_{self.block_index}__"
+        self.bool_op_index += 1
+        result_var = f"__scfg_bool_op_{self.bool_op_index}__"
 
         # Generate code for first value
         left = self.handle_expression(node.values[0])
