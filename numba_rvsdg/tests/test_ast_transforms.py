@@ -1631,6 +1631,38 @@ class TestAST2SCFGTransformer(TestCase):
             ],
         )
 
+    def test_bool_base_expression(self):
+        def function(x: int) -> int:
+            result = []
+            x or [result.append(i) for i in [0, 0, 0]]
+            return len(result)
+
+        expected = {
+            "0": {
+                "instructions": [
+                    "result = []",
+                    "__scfg_bool_op_1__ = x",
+                    "__scfg_bool_op_1__",
+                ],
+                "jump_targets": ["2", "1"],
+                "name": "0",
+            },
+            "1": {
+                "instructions": [
+                    "__scfg_bool_op_1__ = "
+                    "[result.append(i) for i in [0, 0, 0]]"
+                ],
+                "jump_targets": ["2"],
+                "name": "1",
+            },
+            "2": {
+                "instructions": ["__scfg_bool_op_1__", "return len(result)"],
+                "jump_targets": [],
+                "name": "2",
+            },
+        }
+        self.compare(function, expected, arguments=[(0,), (1,)])
+
 
 class TestEntryPoints(TestCase):
 
