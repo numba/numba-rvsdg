@@ -1344,6 +1344,79 @@ class TestAST2SCFGTransformer(TestCase):
             ],
         )
 
+    def test_nested_andor(self):
+        def function(x: int, y: int, a: int, b: int) -> bool:
+            return (x and y) or (a and b)
+
+        expected = {
+            "0": {
+                "instructions": [
+                    "__scfg_bool_op_1__ = x",
+                    "__scfg_bool_op_1__",
+                ],
+                "jump_targets": ["1", "2"],
+                "name": "0",
+            },
+            "1": {
+                "instructions": ["__scfg_bool_op_1__ = y"],
+                "jump_targets": ["2"],
+                "name": "1",
+            },
+            "2": {
+                "instructions": [
+                    "__scfg_bool_op_2__ = a",
+                    "__scfg_bool_op_2__",
+                ],
+                "jump_targets": ["3", "4"],
+                "name": "2",
+            },
+            "3": {
+                "instructions": ["__scfg_bool_op_2__ = b"],
+                "jump_targets": ["4"],
+                "name": "3",
+            },
+            "4": {
+                "instructions": [
+                    "__scfg_bool_op_3__ = __scfg_bool_op_1__",
+                    "__scfg_bool_op_3__",
+                ],
+                "jump_targets": ["6", "5"],
+                "name": "4",
+            },
+            "5": {
+                "instructions": ["__scfg_bool_op_3__ = __scfg_bool_op_2__"],
+                "jump_targets": ["6"],
+                "name": "5",
+            },
+            "6": {
+                "instructions": ["return __scfg_bool_op_3__"],
+                "jump_targets": [],
+                "name": "6",
+            },
+        }
+        self.compare(
+            function,
+            expected,
+            arguments=[
+                (0, 0, 0, 0),  # F F F F -> False
+                (0, 0, 0, 1),  # F F F T -> False
+                (0, 0, 1, 0),  # F F T F -> False
+                (0, 0, 1, 1),  # F F T T -> True
+                (0, 1, 0, 0),  # F T F F -> False
+                (0, 1, 0, 1),  # F T F T -> False
+                (0, 1, 1, 0),  # F T T F -> False
+                (0, 1, 1, 1),  # F T T T -> True
+                (1, 0, 0, 0),  # T F F F -> False
+                (1, 0, 0, 1),  # T F F T -> False
+                (1, 0, 1, 0),  # T F T F -> False
+                (1, 0, 1, 1),  # T F T T -> True
+                (1, 1, 0, 0),  # T T F F -> True
+                (1, 1, 0, 1),  # T T F T -> True
+                (1, 1, 1, 0),  # T T T F -> True
+                (1, 1, 1, 1),  # T T T T -> True
+            ],
+        )
+
 
 class TestEntryPoints(TestCase):
 

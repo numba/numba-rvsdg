@@ -356,11 +356,19 @@ class AST2SCFGTransformer:
                 # contains the tail of the operand list.
                 tail_node = ast.BoolOp(node.op, node.values[1:])
                 return self.handle_bool_op(
-                    ast.BoolOp(node.op, [node.values[0], tail_node])
+                    ast.BoolOp(
+                        self.handle_expression(node.op),
+                        [node.values[0], tail_node],
+                    )
                 )
             elif len(node.values) == 2:
                 # Base case, boolean operation has only two operands.
-                return self.handle_bool_op(node)
+                return self.handle_bool_op(
+                    ast.BoolOp(
+                        node.op,
+                        [self.handle_expression(v) for v in node.values],
+                    )
+                )
             else:
                 raise NotImplementedError("unreachable")
         elif isinstance(node, ast.Compare):
