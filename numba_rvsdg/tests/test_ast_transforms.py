@@ -1292,7 +1292,7 @@ class TestAST2SCFGTransformer(TestCase):
             ],
         )
 
-    def test_complex_and(self):
+    def test_multi_operand_and(self):
         def function(x: int, y: int, z: int) -> bool:
             return x and y and z
 
