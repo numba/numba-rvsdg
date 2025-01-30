@@ -1417,6 +1417,127 @@ class TestAST2SCFGTransformer(TestCase):
             ],
         )
 
+    def test_if_with_bool_ops(self):
+        def function(a: int, b: int) -> int:
+            if a and b:
+                return 1
+            return 0
+
+        expected = {
+            "0": {
+                "instructions": [
+                    "__scfg_bool_op_1__ = a",
+                    "__scfg_bool_op_1__",
+                ],
+                "jump_targets": ["4", "5"],
+                "name": "0",
+            },
+            "1": {
+                "instructions": ["return 1"],
+                "jump_targets": [],
+                "name": "1",
+            },
+            "3": {
+                "instructions": ["return 0"],
+                "jump_targets": [],
+                "name": "3",
+            },
+            "4": {
+                "instructions": ["__scfg_bool_op_1__ = b"],
+                "jump_targets": ["5"],
+                "name": "4",
+            },
+            "5": {
+                "instructions": ["__scfg_bool_op_1__"],
+                "jump_targets": ["1", "3"],
+                "name": "5",
+            },
+        }
+        self.compare(
+            function,
+            expected,
+            empty={"2"},
+            arguments=[
+                (0, 0),  # All false
+                (0, 1),  # b true
+                (1, 0),  # a true
+                (1, 1),  # All true
+            ],
+        )
+
+    def test_elif_with_bool_ops(self):
+        def function(a: int, b: int) -> int:
+            if a and b:
+                return 1
+            elif a or b:
+                return 2
+            return 0
+
+        expected = {
+            "0": {
+                "instructions": [
+                    "__scfg_bool_op_1__ = a",
+                    "__scfg_bool_op_1__",
+                ],
+                "jump_targets": ["4", "5"],
+                "name": "0",
+            },
+            "1": {
+                "instructions": ["return 1"],
+                "jump_targets": [],
+                "name": "1",
+            },
+            "10": {
+                "instructions": ["__scfg_bool_op_2__"],
+                "jump_targets": ["6", "3"],
+                "name": "10",
+            },
+            "2": {
+                "instructions": [
+                    "__scfg_bool_op_2__ = a",
+                    "__scfg_bool_op_2__",
+                ],
+                "jump_targets": ["10", "9"],
+                "name": "2",
+            },
+            "3": {
+                "instructions": ["return 0"],
+                "jump_targets": [],
+                "name": "3",
+            },
+            "4": {
+                "instructions": ["__scfg_bool_op_1__ = b"],
+                "jump_targets": ["5"],
+                "name": "4",
+            },
+            "5": {
+                "instructions": ["__scfg_bool_op_1__"],
+                "jump_targets": ["1", "2"],
+                "name": "5",
+            },
+            "6": {
+                "instructions": ["return 2"],
+                "jump_targets": [],
+                "name": "6",
+            },
+            "9": {
+                "instructions": ["__scfg_bool_op_2__ = b"],
+                "jump_targets": ["10"],
+                "name": "9",
+            },
+        }
+        self.compare(
+            function,
+            expected,
+            empty={"8", "7"},
+            arguments=[
+                (0, 0),  # All false
+                (0, 1),  # b true
+                (1, 0),  # a true
+                (1, 1),  # All true
+            ],
+        )
+
 
 class TestEntryPoints(TestCase):
 

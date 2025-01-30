@@ -490,8 +490,10 @@ class AST2SCFGTransformer:
         enif_index = self.block_index + 2
         self.block_index += 3
 
+        # Desugar test expression if needed, may modify currect_block.
+        test_name = self.handle_expression(node.test)
         # Emit comparison value to current/header block.
-        self.current_block.instructions.append(node.test)
+        self.current_block.instructions.append(test_name)
         # Setup jump targets for current/header block.
         self.current_block.set_jump_targets(then_index, else_index)
 
