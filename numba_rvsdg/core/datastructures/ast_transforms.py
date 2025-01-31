@@ -375,19 +375,18 @@ class AST2SCFGTransformer:
         elif isinstance(node, ast.Compare):
             # Recursively handle left and right sides of comparison.
             node.left = self.handle_expression(node.left)
-            for i, comparator in enumerate(node.comparators):
-                node.comparators[i] = self.handle_expression(comparator)
+            node.comparators = [
+                self.handle_expression(c) for c in node.comparators
+            ]
             return node
         elif isinstance(node, ast.BinOp):
             # Handle binary operations (+, -, *, / etc).
-            node.left, node.right = self.handle_expression(
-                node.left
-            ), self.handle_expression(node.right)
+            node.left = self.handle_expression(node.left)
+            node.right = self.handle_expression(node.right)
             return node
         elif isinstance(node, ast.Call):
             # Handle function calls.
-            for i, arg in enumerate(node.args):
-                node.args[i] = self.handle_expression(arg)
+            node.args = [self.handle_expression(a) for a in node.args]
             return node
         else:
             # Base case: literals, names, etc.
