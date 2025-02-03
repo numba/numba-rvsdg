@@ -1663,6 +1663,42 @@ class TestAST2SCFGTransformer(TestCase):
         }
         self.compare(function, expected, arguments=[(0,), (1,)])
 
+    def test_expression_in_function_call(self):
+        def function(a: int, b: int) -> int:
+            return int(a or b)
+
+        expected = {
+            "0": {
+                "instructions": [
+                    "__scfg_bool_op_1__ = a",
+                    "__scfg_bool_op_1__",
+                ],
+                "jump_targets": ["2", "1"],
+                "name": "0",
+            },
+            "1": {
+                "instructions": ["__scfg_bool_op_1__ = b"],
+                "jump_targets": ["2"],
+                "name": "1",
+            },
+            "2": {
+                "instructions": ["return int(__scfg_bool_op_1__)"],
+                "jump_targets": [],
+                "name": "2",
+            },
+        }
+
+        self.compare(
+            function,
+            expected,
+            arguments=[
+                (0, 0),
+                (0, 1),
+                (1, 0),
+                (1, 1),
+            ],
+        )
+
 
 class TestEntryPoints(TestCase):
 
