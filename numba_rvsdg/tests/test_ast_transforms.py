@@ -1220,6 +1220,7 @@ class TestAST2SCFGTransformer(TestCase):
         }
         empty = {"7", "10", "12", "13", "16", "17", "20", "23", "26"}
         arguments = [(1,), (2,), (3,), (4,), (5,), (6,), (7,)]
+
         self.compare(
             function,
             expected,
@@ -1252,6 +1253,7 @@ class TestAST2SCFGTransformer(TestCase):
                 "name": "2",
             },
         }
+
         self.compare(function, expected, arguments=[(0, 0), (0, 1), (1, 0)])
 
     def test_or(self):
@@ -1327,6 +1329,7 @@ class TestAST2SCFGTransformer(TestCase):
                 "name": "4",
             },
         }
+
         self.compare(
             function,
             expected,
@@ -1392,6 +1395,7 @@ class TestAST2SCFGTransformer(TestCase):
                 "name": "6",
             },
         }
+
         self.compare(
             function,
             expected,
@@ -1451,6 +1455,7 @@ class TestAST2SCFGTransformer(TestCase):
                 "name": "5",
             },
         }
+
         self.compare(
             function,
             expected,
@@ -1524,6 +1529,7 @@ class TestAST2SCFGTransformer(TestCase):
                 "name": "9",
             },
         }
+
         self.compare(
             function,
             expected,
@@ -1580,6 +1586,7 @@ class TestAST2SCFGTransformer(TestCase):
                 "name": "6",
             },
         }
+
         self.compare(
             function,
             expected,
@@ -1620,6 +1627,7 @@ class TestAST2SCFGTransformer(TestCase):
                 "name": "2",
             },
         }
+
         self.compare(
             function,
             expected,
@@ -1661,6 +1669,7 @@ class TestAST2SCFGTransformer(TestCase):
                 "name": "2",
             },
         }
+
         self.compare(function, expected, arguments=[(0,), (1,)])
 
     def test_expression_in_function_call(self):
