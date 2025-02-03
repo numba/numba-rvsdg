@@ -494,7 +494,7 @@ class AST2SCFGTransformer:
         enif_index = self.block_index + 2
         self.block_index += 3
 
-        # Desugar test expression if needed, may modify currect_block.
+        # Desugar test expression if needed, may modify current_block.
         test_name = self.handle_expression(node.test)
         # Emit comparison value to current/header block.
         self.current_block.instructions.append(test_name)
@@ -542,7 +542,7 @@ class AST2SCFGTransformer:
         # And create new header block
         self.add_block(head_index)
 
-        # Desugar test expression if needed, may modify currect_block.
+        # Desugar test expression if needed, may modify current_block.
         test_name = self.handle_expression(node.test)
         # Emit comparison expression into header.
         self.current_block.instructions.append(test_name)
