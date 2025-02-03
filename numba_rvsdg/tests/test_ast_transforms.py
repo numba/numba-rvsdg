@@ -1420,15 +1420,15 @@ class TestAST2SCFGTransformer(TestCase):
         )
 
     def test_if_with_bool_ops(self):
-        def function(a: int, b: int) -> int:
-            if a and b:
+        def function(x: int, y: int) -> int:
+            if x and y:
                 return 1
             return 0
 
         expected = {
             "0": {
                 "instructions": [
-                    "__scfg_bool_op_1__ = a",
+                    "__scfg_bool_op_1__ = x",
                     "__scfg_bool_op_1__",
                 ],
                 "jump_targets": ["4", "5"],
@@ -1445,7 +1445,7 @@ class TestAST2SCFGTransformer(TestCase):
                 "name": "3",
             },
             "4": {
-                "instructions": ["__scfg_bool_op_1__ = b"],
+                "instructions": ["__scfg_bool_op_1__ = y"],
                 "jump_targets": ["5"],
                 "name": "4",
             },
@@ -1462,24 +1462,24 @@ class TestAST2SCFGTransformer(TestCase):
             empty={"2"},
             arguments=[
                 (0, 0),  # All false
-                (0, 1),  # b true
-                (1, 0),  # a true
+                (0, 1),  # y true
+                (1, 0),  # x true
                 (1, 1),  # All true
             ],
         )
 
     def test_elif_with_bool_ops(self):
-        def function(a: int, b: int) -> int:
-            if a and b:
+        def function(x: int, y: int) -> int:
+            if x and y:
                 return 1
-            elif a or b:
+            elif x or y:
                 return 2
             return 0
 
         expected = {
             "0": {
                 "instructions": [
-                    "__scfg_bool_op_1__ = a",
+                    "__scfg_bool_op_1__ = x",
                     "__scfg_bool_op_1__",
                 ],
                 "jump_targets": ["4", "5"],
@@ -1497,7 +1497,7 @@ class TestAST2SCFGTransformer(TestCase):
             },
             "2": {
                 "instructions": [
-                    "__scfg_bool_op_2__ = a",
+                    "__scfg_bool_op_2__ = x",
                     "__scfg_bool_op_2__",
                 ],
                 "jump_targets": ["10", "9"],
@@ -1509,7 +1509,7 @@ class TestAST2SCFGTransformer(TestCase):
                 "name": "3",
             },
             "4": {
-                "instructions": ["__scfg_bool_op_1__ = b"],
+                "instructions": ["__scfg_bool_op_1__ = y"],
                 "jump_targets": ["5"],
                 "name": "4",
             },
@@ -1524,7 +1524,7 @@ class TestAST2SCFGTransformer(TestCase):
                 "name": "6",
             },
             "9": {
-                "instructions": ["__scfg_bool_op_2__ = b"],
+                "instructions": ["__scfg_bool_op_2__ = y"],
                 "jump_targets": ["10"],
                 "name": "9",
             },
@@ -1536,8 +1536,8 @@ class TestAST2SCFGTransformer(TestCase):
             empty={"8", "7"},
             arguments=[
                 (0, 0),  # All false
-                (0, 1),  # b true
-                (1, 0),  # a true
+                (0, 1),  # y true
+                (1, 0),  # x true
                 (1, 1),  # All true
             ],
         )
@@ -1673,20 +1673,20 @@ class TestAST2SCFGTransformer(TestCase):
         self.compare(function, expected, arguments=[(0,), (1,)])
 
     def test_expression_in_function_call(self):
-        def function(a: int, b: int) -> int:
-            return int(a or b)
+        def function(x: int, y: int) -> int:
+            return int(x or y)
 
         expected = {
             "0": {
                 "instructions": [
-                    "__scfg_bool_op_1__ = a",
+                    "__scfg_bool_op_1__ = x",
                     "__scfg_bool_op_1__",
                 ],
                 "jump_targets": ["2", "1"],
                 "name": "0",
             },
             "1": {
-                "instructions": ["__scfg_bool_op_1__ = b"],
+                "instructions": ["__scfg_bool_op_1__ = y"],
                 "jump_targets": ["2"],
                 "name": "1",
             },
