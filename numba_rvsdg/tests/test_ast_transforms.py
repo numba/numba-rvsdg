@@ -1220,11 +1220,492 @@ class TestAST2SCFGTransformer(TestCase):
         }
         empty = {"7", "10", "12", "13", "16", "17", "20", "23", "26"}
         arguments = [(1,), (2,), (3,), (4,), (5,), (6,), (7,)]
+
         self.compare(
             function,
             expected,
             empty=empty,
             arguments=arguments,
+        )
+
+    def test_and(self):
+        def function(x: int, y: int) -> int:
+            # Returns last truthy value, or False if any others are falsy.
+            return x and y
+
+        expected = {
+            "0": {
+                "instructions": [
+                    "__scfg_bool_op_1__ = x",
+                    "__scfg_bool_op_1__",
+                ],
+                "jump_targets": ["1", "2"],
+                "name": "0",
+            },
+            "1": {
+                "instructions": ["__scfg_bool_op_1__ = y"],
+                "jump_targets": ["2"],
+                "name": "1",
+            },
+            "2": {
+                "instructions": ["return __scfg_bool_op_1__"],
+                "jump_targets": [],
+                "name": "2",
+            },
+        }
+
+        self.compare(function, expected, arguments=[(0, 0), (0, 1), (1, 0)])
+
+    def test_or(self):
+        def function(x: int, y: int) -> int:
+            # Returns first truthy value, or last value if all falsy.
+            return x or y
+
+        expected = {
+            "0": {
+                "instructions": [
+                    "__scfg_bool_op_1__ = x",
+                    "__scfg_bool_op_1__",
+                ],
+                "jump_targets": ["2", "1"],
+                "name": "0",
+            },
+            "1": {
+                "instructions": ["__scfg_bool_op_1__ = y"],
+                "jump_targets": ["2"],
+                "name": "1",
+            },
+            "2": {
+                "instructions": ["return __scfg_bool_op_1__"],
+                "jump_targets": [],
+                "name": "2",
+            },
+        }
+
+        self.compare(
+            function,
+            expected,
+            arguments=[
+                (1, 0),  # First value truthy.
+                (0, 2),  # First value falsy, second truthy.
+                (0, 0),  # All values falsy - returns last value.
+            ],
+        )
+
+    def test_multi_operand_and(self):
+        def function(x: int, y: int, z: int) -> bool:
+            return x and y and z
+
+        expected = {
+            "0": {
+                "instructions": [
+                    "__scfg_bool_op_1__ = x",
+                    "__scfg_bool_op_1__",
+                ],
+                "jump_targets": ["1", "2"],
+                "name": "0",
+            },
+            "1": {
+                "instructions": [
+                    "__scfg_bool_op_2__ = y",
+                    "__scfg_bool_op_2__",
+                ],
+                "jump_targets": ["3", "4"],
+                "name": "1",
+            },
+            "2": {
+                "instructions": ["return __scfg_bool_op_1__"],
+                "jump_targets": [],
+                "name": "2",
+            },
+            "3": {
+                "instructions": ["__scfg_bool_op_2__ = z"],
+                "jump_targets": ["4"],
+                "name": "3",
+            },
+            "4": {
+                "instructions": ["__scfg_bool_op_1__ = __scfg_bool_op_2__"],
+                "jump_targets": ["2"],
+                "name": "4",
+            },
+        }
+
+        self.compare(
+            function,
+            expected,
+            arguments=[
+                (0, 0, 0),  # All false.
+                (0, 0, 1),  # Only z true - short circuits at x.
+                (0, 1, 0),  # Only y true - short circuits at x.
+                (0, 1, 1),  # y and z true - short circuits at x.
+                (1, 0, 0),  # Only x true - short circuits at y.
+                (1, 0, 1),  # x and z true - short circuits at y.
+                (1, 1, 0),  # x and y true - fails at z.
+                (1, 1, 1),  # All true - complete evaluation.
+            ],
+        )
+
+    def test_nested_andor(self):
+        def function(x: int, y: int, a: int, b: int) -> bool:
+            return (x and y) or (a and b)
+
+        expected = {
+            "0": {
+                "instructions": [
+                    "__scfg_bool_op_1__ = x",
+                    "__scfg_bool_op_1__",
+                ],
+                "jump_targets": ["1", "2"],
+                "name": "0",
+            },
+            "1": {
+                "instructions": ["__scfg_bool_op_1__ = y"],
+                "jump_targets": ["2"],
+                "name": "1",
+            },
+            "2": {
+                "instructions": [
+                    "__scfg_bool_op_2__ = a",
+                    "__scfg_bool_op_2__",
+                ],
+                "jump_targets": ["3", "4"],
+                "name": "2",
+            },
+            "3": {
+                "instructions": ["__scfg_bool_op_2__ = b"],
+                "jump_targets": ["4"],
+                "name": "3",
+            },
+            "4": {
+                "instructions": [
+                    "__scfg_bool_op_3__ = __scfg_bool_op_1__",
+                    "__scfg_bool_op_3__",
+                ],
+                "jump_targets": ["6", "5"],
+                "name": "4",
+            },
+            "5": {
+                "instructions": ["__scfg_bool_op_3__ = __scfg_bool_op_2__"],
+                "jump_targets": ["6"],
+                "name": "5",
+            },
+            "6": {
+                "instructions": ["return __scfg_bool_op_3__"],
+                "jump_targets": [],
+                "name": "6",
+            },
+        }
+
+        self.compare(
+            function,
+            expected,
+            arguments=[
+                (0, 0, 0, 0),  # F F F F -> False
+                (0, 0, 0, 1),  # F F F T -> False
+                (0, 0, 1, 0),  # F F T F -> False
+                (0, 0, 1, 1),  # F F T T -> True
+                (0, 1, 0, 0),  # F T F F -> False
+                (0, 1, 0, 1),  # F T F T -> False
+                (0, 1, 1, 0),  # F T T F -> False
+                (0, 1, 1, 1),  # F T T T -> True
+                (1, 0, 0, 0),  # T F F F -> False
+                (1, 0, 0, 1),  # T F F T -> False
+                (1, 0, 1, 0),  # T F T F -> False
+                (1, 0, 1, 1),  # T F T T -> True
+                (1, 1, 0, 0),  # T T F F -> True
+                (1, 1, 0, 1),  # T T F T -> True
+                (1, 1, 1, 0),  # T T T F -> True
+                (1, 1, 1, 1),  # T T T T -> True
+            ],
+        )
+
+    def test_if_with_bool_ops(self):
+        def function(x: int, y: int) -> int:
+            if x and y:
+                return 1
+            return 0
+
+        expected = {
+            "0": {
+                "instructions": [
+                    "__scfg_bool_op_1__ = x",
+                    "__scfg_bool_op_1__",
+                ],
+                "jump_targets": ["4", "5"],
+                "name": "0",
+            },
+            "1": {
+                "instructions": ["return 1"],
+                "jump_targets": [],
+                "name": "1",
+            },
+            "3": {
+                "instructions": ["return 0"],
+                "jump_targets": [],
+                "name": "3",
+            },
+            "4": {
+                "instructions": ["__scfg_bool_op_1__ = y"],
+                "jump_targets": ["5"],
+                "name": "4",
+            },
+            "5": {
+                "instructions": ["__scfg_bool_op_1__"],
+                "jump_targets": ["1", "3"],
+                "name": "5",
+            },
+        }
+
+        self.compare(
+            function,
+            expected,
+            empty={"2"},
+            arguments=[
+                (0, 0),  # All false
+                (0, 1),  # y true
+                (1, 0),  # x true
+                (1, 1),  # All true
+            ],
+        )
+
+    def test_elif_with_bool_ops(self):
+        def function(x: int, y: int) -> int:
+            if x and y:
+                return 1
+            elif x or y:
+                return 2
+            return 0
+
+        expected = {
+            "0": {
+                "instructions": [
+                    "__scfg_bool_op_1__ = x",
+                    "__scfg_bool_op_1__",
+                ],
+                "jump_targets": ["4", "5"],
+                "name": "0",
+            },
+            "1": {
+                "instructions": ["return 1"],
+                "jump_targets": [],
+                "name": "1",
+            },
+            "10": {
+                "instructions": ["__scfg_bool_op_2__"],
+                "jump_targets": ["6", "3"],
+                "name": "10",
+            },
+            "2": {
+                "instructions": [
+                    "__scfg_bool_op_2__ = x",
+                    "__scfg_bool_op_2__",
+                ],
+                "jump_targets": ["10", "9"],
+                "name": "2",
+            },
+            "3": {
+                "instructions": ["return 0"],
+                "jump_targets": [],
+                "name": "3",
+            },
+            "4": {
+                "instructions": ["__scfg_bool_op_1__ = y"],
+                "jump_targets": ["5"],
+                "name": "4",
+            },
+            "5": {
+                "instructions": ["__scfg_bool_op_1__"],
+                "jump_targets": ["1", "2"],
+                "name": "5",
+            },
+            "6": {
+                "instructions": ["return 2"],
+                "jump_targets": [],
+                "name": "6",
+            },
+            "9": {
+                "instructions": ["__scfg_bool_op_2__ = y"],
+                "jump_targets": ["10"],
+                "name": "9",
+            },
+        }
+
+        self.compare(
+            function,
+            expected,
+            empty={"8", "7"},
+            arguments=[
+                (0, 0),  # All false
+                (0, 1),  # y true
+                (1, 0),  # x true
+                (1, 1),  # All true
+            ],
+        )
+
+    def test_while_with_bool_ops(self):
+        def function(x: int, y: int) -> int:
+            count = 0
+            while x and y:
+                count += 1
+                x -= 1
+                y -= 1
+            return count
+
+        expected = {
+            "0": {
+                "instructions": ["count = 0"],
+                "jump_targets": ["1"],
+                "name": "0",
+            },
+            "1": {
+                "instructions": [
+                    "__scfg_bool_op_1__ = x",
+                    "__scfg_bool_op_1__",
+                ],
+                "jump_targets": ["5", "6"],
+                "name": "1",
+            },
+            "2": {
+                "instructions": ["count += 1", "x -= 1", "y -= 1"],
+                "jump_targets": ["1"],
+                "name": "2",
+            },
+            "3": {
+                "instructions": ["return count"],
+                "jump_targets": [],
+                "name": "3",
+            },
+            "5": {
+                "instructions": ["__scfg_bool_op_1__ = y"],
+                "jump_targets": ["6"],
+                "name": "5",
+            },
+            "6": {
+                "instructions": ["__scfg_bool_op_1__"],
+                "jump_targets": ["2", "3"],
+                "name": "6",
+            },
+        }
+
+        self.compare(
+            function,
+            expected,
+            empty={"4"},
+            arguments=[
+                (0, 0),  # Both false, loop doesn't run
+                (2, 1),  # y becomes false first, runs once
+                (1, 2),  # x becomes false first, runs once
+                (2, 2),  # Both true, runs twice
+            ],
+        )
+
+    def test_bool_op_assignment(self):
+        def function(x: int, y: int) -> bool:
+            result = x and y
+            return result
+
+        expected = {
+            "0": {
+                "instructions": [
+                    "__scfg_bool_op_1__ = x",
+                    "__scfg_bool_op_1__",
+                ],
+                "jump_targets": ["1", "2"],
+                "name": "0",
+            },
+            "1": {
+                "instructions": ["__scfg_bool_op_1__ = y"],
+                "jump_targets": ["2"],
+                "name": "1",
+            },
+            "2": {
+                "instructions": [
+                    "result = __scfg_bool_op_1__",
+                    "return result",
+                ],
+                "jump_targets": [],
+                "name": "2",
+            },
+        }
+
+        self.compare(
+            function,
+            expected,
+            arguments=[
+                (0, 0),  # Both false
+                (0, 1),  # x false, y true
+                (1, 0),  # x true, y false
+                (1, 1),  # Both true
+            ],
+        )
+
+    def test_bool_base_expression(self):
+        def function(x: int) -> int:
+            result = []
+            x or [result.append(i) for i in [0, 0, 0]]
+            return len(result)
+
+        expected = {
+            "0": {
+                "instructions": [
+                    "result = []",
+                    "__scfg_bool_op_1__ = x",
+                    "__scfg_bool_op_1__",
+                ],
+                "jump_targets": ["2", "1"],
+                "name": "0",
+            },
+            "1": {
+                "instructions": [
+                    "__scfg_bool_op_1__ = "
+                    "[result.append(i) for i in [0, 0, 0]]"
+                ],
+                "jump_targets": ["2"],
+                "name": "1",
+            },
+            "2": {
+                "instructions": ["__scfg_bool_op_1__", "return len(result)"],
+                "jump_targets": [],
+                "name": "2",
+            },
+        }
+
+        self.compare(function, expected, arguments=[(0,), (1,)])
+
+    def test_expression_in_function_call(self):
+        def function(x: int, y: int) -> int:
+            return int(x or y)
+
+        expected = {
+            "0": {
+                "instructions": [
+                    "__scfg_bool_op_1__ = x",
+                    "__scfg_bool_op_1__",
+                ],
+                "jump_targets": ["2", "1"],
+                "name": "0",
+            },
+            "1": {
+                "instructions": ["__scfg_bool_op_1__ = y"],
+                "jump_targets": ["2"],
+                "name": "1",
+            },
+            "2": {
+                "instructions": ["return int(__scfg_bool_op_1__)"],
+                "jump_targets": [],
+                "name": "2",
+            },
+        }
+
+        self.compare(
+            function,
+            expected,
+            arguments=[
+                (0, 0),
+                (0, 1),
+                (1, 0),
+                (1, 1),
+            ],
         )
 
 
