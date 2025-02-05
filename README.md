@@ -14,6 +14,14 @@ algorithms in Bahmann 2015, specifically those from section 4.1 and 4.2: namely
 Numba because they serve to clearly identify regions within the Python source-
 and bytecode.
 
+Note: The project was previously known and `numba-rvsdg` and was renamed to
+`numba-scfg` in early 2025. The original scope was to implement Regional Value
+State Dependence Graphs (RVSDG), where SCFGs are necessary intermediary for the
+transformation from Python to RVSDG. But over time it became evident that the
+full RVSDG representation wasn't needed and so this package implements the SCFG
+transformations. Thus, the decision was taken to rename the package such that
+it better describes what it is about.
+
 ## Development
 
 If you have `make` and `conda` available, a common setting up workflow could
