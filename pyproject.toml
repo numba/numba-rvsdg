@@ -4,12 +4,12 @@ requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "numba_rvsdg"
+name = "numba_scfg"
 version = "0.0.6-dev0"
 authors = [
     {name = "Numba Developers", email="none@none.none"},
 ]
-description = "Numba Compatible RVSDG utilities"
+description = "Numba Compatible SCFG utilities"
 readme = "README.md"
 requires-python = ">=3.11"
 keywords = ["numba"]
