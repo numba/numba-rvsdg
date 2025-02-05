@@ -2,5 +2,5 @@
 Rendering API Reference
 =======================
 
-.. automodule:: numba_rvsdg.rendering.rendering
+.. automodule:: numba_scfg.rendering.rendering
     :members:
