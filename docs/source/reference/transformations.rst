@@ -2,5 +2,5 @@
 Graph Transformation API Reference
 ==================================
 
-.. automodule:: numba_rscfg.core.transformations
+.. automodule:: numba_scfg.core.transformations
     :members:
