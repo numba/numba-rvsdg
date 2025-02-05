@@ -1,7 +1,7 @@
 import ast
 import logging
 from abc import abstractmethod
-from numba_rvsdg.core.datastructures.basic_block import (
+from numba_scfg.core.datastructures.basic_block import (
     BasicBlock,
     RegionBlock,
     PythonBytecodeBlock,
@@ -10,8 +10,8 @@ from numba_rvsdg.core.datastructures.basic_block import (
     SyntheticBranch,
     SyntheticBlock,
 )
-from numba_rvsdg.core.datastructures.scfg import SCFG
-from numba_rvsdg.core.datastructures.byte_flow import ByteFlow
+from numba_scfg.core.datastructures.scfg import SCFG
+from numba_scfg.core.datastructures.byte_flow import ByteFlow
 import dis
 from typing import Dict, Optional
 from graphviz import Digraph

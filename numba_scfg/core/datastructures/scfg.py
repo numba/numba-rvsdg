@@ -17,7 +17,7 @@ from textwrap import indent
 from dataclasses import dataclass, field
 from collections import deque
 
-from numba_rvsdg.core.datastructures.basic_block import (
+from numba_scfg.core.datastructures.basic_block import (
     BasicBlock,
     SyntheticBlock,
     SyntheticAssignment,
@@ -31,7 +31,7 @@ from numba_rvsdg.core.datastructures.basic_block import (
     SyntheticBranch,
     block_type_names,
 )
-from numba_rvsdg.core.datastructures.block_names import (
+from numba_scfg.core.datastructures.block_names import (
     block_types,
     SYNTH_TAIL,
     SYNTH_EXIT,
@@ -329,7 +329,7 @@ class SCFG(Sized):
 
         This method of SCFG computes the strongly connected components of
         the graph using Tarjan's algorithm. The implementation is at the
-        scc function from the numba_rvsdg.networkx_vendored.scc module.
+        scc function from the numba_scfg.networkx_vendored.scc module.
         It returns a list of sets, where each set represents an SCC in
         the graph. SCCs are useful for detecting loops in the graph.
 
@@ -338,7 +338,7 @@ class SCFG(Sized):
         components: List[Set[str]]
             A list of sets of strongly connected components/BasicBlocks.
         """
-        from numba_rvsdg.networkx_vendored.scc import scc
+        from numba_scfg.networkx_vendored.scc import scc
 
         class GraphWrap:
             def __init__(self, graph: Mapping[str, BasicBlock]) -> None:
@@ -563,7 +563,7 @@ class SCFG(Sized):
 
         See also
         --------
-        numba_rvsdg.core.datastructures.scfg.SCFG.insert_block
+        numba_scfg.core.datastructures.scfg.SCFG.insert_block
         """
         self.insert_block(new_name, predecessors, successors, SyntheticExit)
 
@@ -578,7 +578,7 @@ class SCFG(Sized):
 
         See also
         --------
-        numba_rvsdg.core.datastructures.scfg.SCFG.insert_block
+        numba_scfg.core.datastructures.scfg.SCFG.insert_block
         """
         self.insert_block(new_name, predecessors, successors, SyntheticTail)
 
@@ -593,7 +593,7 @@ class SCFG(Sized):
 
         See also
         --------
-        numba_rvsdg.core.datastructures.scfg.SCFG.insert_block
+        numba_scfg.core.datastructures.scfg.SCFG.insert_block
         """
         self.insert_block(new_name, predecessors, successors, SyntheticReturn)
 
@@ -608,7 +608,7 @@ class SCFG(Sized):
 
         See also
         --------
-        numba_rvsdg.core.datastructures.scfg.SCFG.insert_block
+        numba_scfg.core.datastructures.scfg.SCFG.insert_block
         """
         self.insert_block(new_name, predecessors, successors, SyntheticFill)
 
@@ -621,7 +621,7 @@ class SCFG(Sized):
 
         See also
         --------
-        numba_rvsdg.core.datastructures.scfg.SCFG.insert_block
+        numba_scfg.core.datastructures.scfg.SCFG.insert_block
         """
         # TODO: needs a diagram and documentaion
         # name of the variable for this branching assignment
@@ -707,7 +707,7 @@ class SCFG(Sized):
 
         """
         # Avoid cyclic imports
-        from numba_rvsdg.core.transformations import restructure_loop
+        from numba_scfg.core.transformations import restructure_loop
 
         restructure_loop(self.region)
         for region in self.iter_subregions():
@@ -723,7 +723,7 @@ class SCFG(Sized):
 
         """
         # Avoid cyclic imports
-        from numba_rvsdg.core.transformations import restructure_branch
+        from numba_scfg.core.transformations import restructure_branch
 
         restructure_branch(self.region)
         for region in self.iter_subregions():
@@ -813,7 +813,7 @@ class SCFG(Sized):
         name: str
             Name to be given to the external graphviz generated PDF file.
         """
-        from numba_rvsdg.rendering.rendering import SCFGRenderer
+        from numba_scfg.rendering.rendering import SCFGRenderer
 
         SCFGRenderer(self).view(name)
 
@@ -849,7 +849,7 @@ class SCFG(Sized):
 
         See also
         --------
-        numba_rvsdg.core.datastructures.scfg.SCFGIO.from_yaml()
+        numba_scfg.core.datastructures.scfg.SCFGIO.from_yaml()
         """
         return SCFGIO.from_yaml(yaml_string)
 
@@ -884,7 +884,7 @@ class SCFG(Sized):
 
         See also
         --------
-        numba_rvsdg.core.datastructures.scfg.SCFGIO.from_dict()
+        numba_scfg.core.datastructures.scfg.SCFGIO.from_dict()
         """
         return SCFGIO.from_dict(graph_dict)
 
@@ -906,7 +906,7 @@ class SCFG(Sized):
 
         See also
         --------
-        numba_rvsdg.core.datastructures.scfg.SCFGIO.to_yaml()
+        numba_scfg.core.datastructures.scfg.SCFGIO.to_yaml()
         """
         return SCFGIO.to_yaml(self)
 
@@ -928,7 +928,7 @@ class SCFG(Sized):
 
         See also
         --------
-        numba_rvsdg.core.datastructures.scfg.SCFGIO.to_dict()
+        numba_scfg.core.datastructures.scfg.SCFGIO.to_dict()
         """
         return SCFGIO.to_dict(self)
 

@@ -2,9 +2,9 @@ import dis
 from dataclasses import dataclass
 from typing import Callable
 
-from numba_rvsdg.core.datastructures.scfg import SCFG
-from numba_rvsdg.core.datastructures.flow_info import FlowInfo
-from numba_rvsdg.core.utils import _logger, _LogWrap
+from numba_scfg.core.datastructures.scfg import SCFG
+from numba_scfg.core.datastructures.flow_info import FlowInfo
+from numba_scfg.core.utils import _logger, _LogWrap
 
 
 @dataclass(frozen=True)

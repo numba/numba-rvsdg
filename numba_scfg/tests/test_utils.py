@@ -3,8 +3,8 @@
 from unittest import TestCase
 import yaml
 
-from numba_rvsdg.core.datastructures.scfg import SCFG
-from numba_rvsdg.core.datastructures.basic_block import (
+from numba_scfg.core.datastructures.scfg import SCFG
+from numba_scfg.core.datastructures.basic_block import (
     BasicBlock,
     RegionBlock,
     SyntheticBranch,

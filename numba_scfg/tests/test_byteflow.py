@@ -1,11 +1,11 @@
 # mypy: ignore-errors
 from dis import Bytecode, Instruction, Positions
 import unittest
-from numba_rvsdg.core.datastructures.basic_block import PythonBytecodeBlock
-from numba_rvsdg.core.datastructures.byte_flow import ByteFlow
-from numba_rvsdg.core.datastructures.scfg import SCFG, NameGenerator
-from numba_rvsdg.core.datastructures.flow_info import FlowInfo
-from numba_rvsdg.core.datastructures import block_names
+from numba_scfg.core.datastructures.basic_block import PythonBytecodeBlock
+from numba_scfg.core.datastructures.byte_flow import ByteFlow
+from numba_scfg.core.datastructures.scfg import SCFG, NameGenerator
+from numba_scfg.core.datastructures.flow_info import FlowInfo
+from numba_scfg.core.datastructures import block_names
 
 
 def fun():
