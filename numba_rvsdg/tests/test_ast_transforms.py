@@ -616,7 +616,33 @@ class TestAST2SCFGTransformer(TestCase):
                 "name": "6",
             },
         }
-        self.compare(function, expected, empty={"4", "7"})
+        self.compare(function, expected, empty={"7", "4"})
+
+    def test_if_in_while_without_else(self):
+        def function(i) -> int:
+            while i < 10:
+                i += 1
+            return i
+
+        expected = {
+            "0": {"instructions": [], "jump_targets": ["1"], "name": "0"},
+            "1": {
+                "instructions": ["i < 10"],
+                "jump_targets": ["2", "3"],
+                "name": "1",
+            },
+            "2": {
+                "instructions": ["i += 1"],
+                "jump_targets": ["1"],
+                "name": "2",
+            },
+            "3": {
+                "instructions": ["return i"],
+                "jump_targets": [],
+                "name": "3",
+            },
+        }
+        self.compare(function, expected, empty={"4"}, arguments=[(0,)])
 
     def test_while_in_if(self):
         def function(y: int) -> int:
