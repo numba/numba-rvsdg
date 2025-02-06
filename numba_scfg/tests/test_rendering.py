@@ -4,8 +4,8 @@
 # Also ignore types, since we don't type annotate tests.
 # mypy: ignore-errors
 
-from numba_rvsdg.core.datastructures.scfg import SCFG
-from numba_rvsdg.rendering.rendering import SCFGRenderer
+from numba_scfg.core.datastructures.scfg import SCFG
+from numba_scfg.rendering.rendering import SCFGRenderer
 
 expected_original = r"""digraph {
 	0 [label="0\n

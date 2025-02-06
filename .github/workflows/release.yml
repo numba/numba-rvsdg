@@ -39,7 +39,7 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          path: ./wheelhouse/numba_rvsdg-*.whl
+          path: ./wheelhouse/numba_scfg-*.whl
 
   build-sdist:
     # Build a source package. This is actually easy.

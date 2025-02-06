@@ -28,7 +28,7 @@ jobs:
         run: make conda-install
       - name: Lint code with pre-commit
         run: make lint
-      - name: Install numba_rvsdg with pip
+      - name: Install numba_scfg with pip
         run: make build
       - name: Run pytest and print coverage Report
         run: make test

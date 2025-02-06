@@ -1,5 +1,5 @@
 *.pyc
-numba_rvsdg.egg-info
+numba_scfg.egg-info
 .pytest_cache
 *__pycache__
 .coverage

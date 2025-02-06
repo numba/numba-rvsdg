@@ -3,8 +3,8 @@ import ast
 from typing import Tuple, Dict, List, Optional
 from dataclasses import dataclass, replace, field
 
-from numba_rvsdg.core.utils import _next_inst_offset
-from numba_rvsdg.core.datastructures import block_names
+from numba_scfg.core.utils import _next_inst_offset
+from numba_scfg.core.datastructures import block_names
 
 
 @dataclass(frozen=True)

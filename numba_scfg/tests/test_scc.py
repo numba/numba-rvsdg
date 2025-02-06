@@ -1,7 +1,7 @@
 # mypy: ignore-errors
 
-from numba_rvsdg.core.datastructures.byte_flow import ByteFlow
-from numba_rvsdg.rendering.rendering import render_flow
+from numba_scfg.core.datastructures.byte_flow import ByteFlow
+from numba_scfg.rendering.rendering import render_flow
 
 
 def scc(G):

@@ -1,8 +1,8 @@
 # mypy: ignore-errors
 
-from numba_rvsdg.core.datastructures.flow_info import FlowInfo
-from numba_rvsdg.core.datastructures.scfg import SCFG
-from numba_rvsdg.tests.test_utils import SCFGComparator
+from numba_scfg.core.datastructures.flow_info import FlowInfo
+from numba_scfg.core.datastructures.scfg import SCFG
+from numba_scfg.tests.test_utils import SCFGComparator
 import dis
 
 fig_3_yaml = """

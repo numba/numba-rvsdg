@@ -5,7 +5,7 @@ from typing import Callable, Any
 from unittest import main, TestCase
 from sys import monitoring as sm
 
-from numba_rvsdg.core.datastructures.ast_transforms import (
+from numba_scfg.core.datastructures.ast_transforms import (
     unparse_code,
     AST2SCFGTransformer,
     SCFG2ASTTransformer,

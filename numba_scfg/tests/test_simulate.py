@@ -1,7 +1,7 @@
 # mypy: ignore-errors
 
-from numba_rvsdg.core.datastructures.byte_flow import ByteFlow
-from numba_rvsdg.tests.simulator import Simulator
+from numba_scfg.core.datastructures.byte_flow import ByteFlow
+from numba_scfg.tests.simulator import Simulator
 import unittest
 
 #    flow = ByteFlow.from_bytecode(foo)

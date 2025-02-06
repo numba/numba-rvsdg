@@ -3,10 +3,10 @@ import dis
 from typing import Set, Tuple, Dict, Sequence, Optional
 from dataclasses import dataclass, field
 
-from numba_rvsdg.core.datastructures.basic_block import PythonBytecodeBlock
-from numba_rvsdg.core.datastructures import block_names
-from numba_rvsdg.core.datastructures.scfg import SCFG
-from numba_rvsdg.core.utils import (
+from numba_scfg.core.datastructures.basic_block import PythonBytecodeBlock
+from numba_scfg.core.datastructures import block_names
+from numba_scfg.core.datastructures.scfg import SCFG
+from numba_scfg.core.utils import (
     is_conditional_jump,
     _next_inst_offset,
     is_unconditional_jump,

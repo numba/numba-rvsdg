@@ -1,19 +1,26 @@
-# numba-rvsdg
+# numba-scfg
 
-Numba compatible RVSDG (Regionalized Value State Dependence Graph)  utilities.
+Numba compatible SCFG (Structured Control Flow Graph)  utilities.
 
 ## About
 
-This repository contains Numba compatible utilities for working with RVSDGs
-(Regionalized Value State Dependency Graphs). RVSDGs are a type of
-Intermediary Representation (IR) suitable for regularizing Python bytecode
-within Numba.
+This repository contains Numba compatible utilities for working with SCFG
+(Structured Control FLow Graphs). SCFGs are a type of Intermediary
+Representation (IR) suitable for regularizing Python source and bytecode.
 
 The code in this repository is an implementation of the CFG restructuring
 algorithms in Bahmann 2015, specifically those from section 4.1 and 4.2: namely
 "loop restructuring" and "branch restructuring". These are interesting for
-Numba because they serve to clearly identify regions within the Python
-bytecode.
+Numba because they serve to clearly identify regions within the Python source
+and bytecode.
+
+Note: The project was previously known as `numba-rvsdg` and was renamed to
+`numba-scfg` in early 2025. The original scope was to implement Regional Value
+State Dependence Graphs (RVSDG), where SCFGs are necessary intermediary for the
+transformation from Python to RVSDG. Over time, it became evident that the SCFG
+transformations are important and reusable enough in their own right to warrant
+their own package and so this package was renamed.
+
 
 ## Development
 
@@ -22,7 +29,7 @@ be:
 
 ```
 $ make conda-env                        # setup conda environment
-$ conda activate numba-rvsdg            # activate it
+$ conda activate numba-scfg             # activate it
 $ make conda-install                    # install dependencies
 $ make                                  # lint, build and test the project
 ```
@@ -33,7 +40,6 @@ development commands.
 
 ## References
 
-* `Reismann2020` -- https://arxiv.org/pdf/1912.05036.pdf -- Describes the concept of RVSDGs
 * `Bahmann2015` -- https://dl.acm.org/doi/pdf/10.1145/2693261 -- Describes the transformation
   algorithms implemented
 

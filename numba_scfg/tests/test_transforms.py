@@ -2,11 +2,11 @@
 
 from unittest import main
 
-from numba_rvsdg.core.datastructures.scfg import SCFG
-from numba_rvsdg.core.datastructures.basic_block import BasicBlock
-from numba_rvsdg.core.transformations import loop_restructure_helper
-from numba_rvsdg.tests.test_utils import SCFGComparator
-from numba_rvsdg.core.datastructures import block_names
+from numba_scfg.core.datastructures.scfg import SCFG
+from numba_scfg.core.datastructures.basic_block import BasicBlock
+from numba_scfg.core.transformations import loop_restructure_helper
+from numba_scfg.tests.test_utils import SCFGComparator
+from numba_scfg.core.datastructures import block_names
 
 
 class TestInsertBlock(SCFGComparator):

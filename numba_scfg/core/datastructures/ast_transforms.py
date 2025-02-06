@@ -6,8 +6,8 @@ import textwrap
 from dataclasses import dataclass
 from collections import defaultdict
 
-from numba_rvsdg.core.datastructures.scfg import SCFG
-from numba_rvsdg.core.datastructures.basic_block import (
+from numba_scfg.core.datastructures.scfg import SCFG
+from numba_scfg.core.datastructures.basic_block import (
     PythonASTBlock,
     RegionBlock,
     SyntheticHead,
