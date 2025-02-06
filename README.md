@@ -17,12 +17,10 @@ and bytecode.
 Note: The project was previously known as `numba-rvsdg` and was renamed to
 `numba-scfg` in early 2025. The original scope was to implement Regional Value
 State Dependence Graphs (RVSDG), where SCFGs are necessary intermediary for the
-transformation from Python to RVSDG. But over time it became evident that the
-full RVSDG representation was not as important as initially anticipated and so
-this package implements only the SCFG transformations. Thus, the decision was
-taken to rename the package such that it better describes what it is about. Th
-SCFG transformation are important enough in their own right to warrant a
-separate package.
+transformation from Python to RVSDG. Over time, it became evident that the SCFG
+transformations are important and reusable enough in their own right to warrant
+their own package and so this package was renamed.
+
 
 ## Development
 
