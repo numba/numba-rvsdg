@@ -11,7 +11,7 @@ Representation (IR) suitable for regularizing Python source and bytecode.
 The code in this repository is an implementation of the CFG restructuring
 algorithms in Bahmann 2015, specifically those from section 4.1 and 4.2: namely
 "loop restructuring" and "branch restructuring". These are interesting for
-Numba because they serve to clearly identify regions within the Python source-
+Numba because they serve to clearly identify regions within the Python source
 and bytecode.
 
 Note: The project was previously known as `numba-rvsdg` and was renamed to
