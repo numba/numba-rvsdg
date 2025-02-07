@@ -6,7 +6,7 @@
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
-project = 'numba-rvsdg'
+project = 'numba-scfg'
 copyright = '2023, Numba Developers'
 author = 'Numba Developers'
 release = '0.0.6-dev0'
