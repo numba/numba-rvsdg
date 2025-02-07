@@ -9,7 +9,7 @@
 project = 'numba-scfg'
 copyright = '2023, Numba Developers'
 author = 'Numba Developers'
-release = '0.0.6-dev0'
+release = '0.0.8-dev0'
 
 import os
 import sys
