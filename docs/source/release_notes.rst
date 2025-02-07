@@ -2,6 +2,19 @@
 Release Notes
 =============
 
+Vetsion 0.0.7 - 2024-02-07
+==========================
+
+The first release of the project under the new name ``numba-rvsdg``.
+
+Pull-Requests:
+
+* PR `#169 <https://github.com/numba/numba-scfg/pull/169>`_: Rename from `numba_rvsdg` to `numba_scfg` (`esc <https://github.com/esc>`_)
+
+Authors:
+
+* `esc <https://github.com/esc>`_
+
 Version 0.0.6 - 2024-02-07
 ==========================
 
