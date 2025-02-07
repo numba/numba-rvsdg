@@ -4,38 +4,11 @@ Numba compatible RVSDG (Regionalized Value State Dependence Graph)  utilities.
 
 ## About
 
-This repository contains Numba compatible utilities for working with RVSDGs
-(Regionalized Value State Dependency Graphs). RVSDGs are a type of
-Intermediary Representation (IR) suitable for regularizing Python bytecode
-within Numba.
+This project was renamed:
 
-The code in this repository is an implementation of the CFG restructuring
-algorithms in Bahmann 2015, specifically those from section 4.1 and 4.2: namely
-"loop restructuring" and "branch restructuring". These are interesting for
-Numba because they serve to clearly identify regions within the Python
-bytecode.
+https://pypi.org/project/numba-scfg/
 
-## Development
-
-If you have `make` and `conda` available, a common setting up workflow could
-be:
-
-```
-$ make conda-env                        # setup conda environment
-$ conda activate numba-rvsdg            # activate it
-$ make conda-install                    # install dependencies
-$ make                                  # lint, build and test the project
-```
-
-Feel free to look at the
-[`makefile`](https://github.com/numba/numba-rvsdg/blob/main/makefile) for all
-development commands.
-
-## References
-
-* `Reismann2020` -- https://arxiv.org/pdf/1912.05036.pdf -- Describes the concept of RVSDGs
-* `Bahmann2015` -- https://dl.acm.org/doi/pdf/10.1145/2693261 -- Describes the transformation
-  algorithms implemented
+And the PyPI Project `numba-rvsgd` has been archived.
 
 ## License
 
