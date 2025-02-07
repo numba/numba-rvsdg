@@ -2,16 +2,16 @@
 
 from unittest import main, TestCase
 from textwrap import dedent
-from numba_rvsdg.core.datastructures.scfg import SCFG, NameGenerator
+from numba_scfg.core.datastructures.scfg import SCFG, NameGenerator
 
-from numba_rvsdg.tests.test_utils import SCFGComparator
-from numba_rvsdg.core.datastructures.basic_block import (
+from numba_scfg.tests.test_utils import SCFGComparator
+from numba_scfg.core.datastructures.basic_block import (
     BasicBlock,
     RegionBlock,
     PythonBytecodeBlock,
 )
-from numba_rvsdg.core.datastructures.byte_flow import ByteFlow
-from numba_rvsdg.core.datastructures import block_names
+from numba_scfg.core.datastructures.byte_flow import ByteFlow
+from numba_scfg.core.datastructures import block_names
 
 
 class TestSCFGConversion(SCFGComparator):

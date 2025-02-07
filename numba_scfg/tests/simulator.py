@@ -2,13 +2,13 @@
 
 from collections import ChainMap
 from dis import Instruction
-from numba_rvsdg.core.datastructures.byte_flow import ByteFlow
-from numba_rvsdg.core.datastructures.basic_block import (
+from numba_scfg.core.datastructures.byte_flow import ByteFlow
+from numba_scfg.core.datastructures.basic_block import (
     PythonBytecodeBlock,
     RegionBlock,
     SyntheticBlock,
 )
-from numba_rvsdg.core.utils import PYVERSION
+from numba_scfg.core.utils import PYVERSION
 
 import builtins
 
