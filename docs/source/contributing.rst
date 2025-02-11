@@ -2,7 +2,7 @@
 Contributing Guidelines
 =======================
 
-numba-rvsdg originated to fulfill the needs of the Numba_ project.
+numba-scfg originated to fulfill the needs of the Numba_ project.
 It is maintained mostly by the Numba team. We tend to prioritize
 the needs and constraints of Numba over other conflicting desires.
 
@@ -21,7 +21,7 @@ Communication methods
 Forum
 -----
 
-numba-rvsdg uses the Numba Discourse as a forum for longer running threads such as
+numba-scfg uses the Numba Discourse as a forum for longer running threads such as
 design discussions and roadmap planning. There are various categories available
 and it can be reached at: `numba.discourse.group
 <https://numba.discourse.group/>`_.
@@ -32,7 +32,7 @@ Bug reports
 -----------
 
 We use the
-`Github issue tracker <https://github.com/numba/numba-rvsdg/issues>`_
+`Github issue tracker <https://github.com/numba/numba-scfg/issues>`_
 to track both bug reports and feature requests. If you report an
 issue, please include:
 
@@ -40,7 +40,7 @@ issue, please include:
 
 * Your operating system.
 
-* What version of numba-rvsdg you are running.
+* What version of numba-scfg you are running.
 
 * A description of the problem---for example, the full error
   traceback or the unexpected results you are getting.
@@ -55,7 +55,7 @@ Pull requests
 
 To contribute code:
 
-#. Fork our `Github repository <https://github.com/numba/numba-rvsdg>`_.
+#. Fork our `Github repository <https://github.com/numba/numba-scfg>`_.
 
 #. Create a branch representing your work.
 
@@ -78,9 +78,9 @@ Coding conventions
 Documentation
 =============
 
-This numba-rvsdg documentation is built using Sphinx and maintained
+This numba-scfg documentation is built using Sphinx and maintained
 in the ``docs`` directory inside the
-`numba-rvsdg repository <https://github.com/numba/numba-rvsdg>`_.
+`numba-scfg repository <https://github.com/numba/numba-scfg>`_.
 
 #. Edit the source files under ``docs/source/``.
 

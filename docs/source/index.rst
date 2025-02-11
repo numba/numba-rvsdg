@@ -1,16 +1,16 @@
-.. numba-rvsdg documentation master file, created by
+.. numba-scfg documentation master file, created by
    sphinx-quickstart on Tue May 16 17:22:12 2023.
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
 ===========
-numba-rvsdg
+numba-scfg
 ===========
 
-:emphasis:`Numba compatible RVSDG (Regionalized Value State Dependence Graph) utilities.`
+:emphasis:`Numba compatible SCFG (Structured Control Flow Graph) utilities.`
 
-This repository contains Numba_ compatible utilities for working with RVSDGs 
-(Regionalized Value State Dependency Graphs). RVSDGs are a type of Intermediary 
+This repository contains Numba_ compatible utilities for working with SCFGs 
+(Structured Control Flow Graphs). SCFGs are a type of Intermediary 
 Representation (IR) suitable for regularizing Python bytecode within Numba_.
 
 The code in this repository is an implementation of the CFG restructuring 
