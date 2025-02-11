@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "numba_scfg"
-version = "0.0.6-dev0"
+version = "0.0.8-dev0"
 authors = [
     {name = "Numba Developers", email="none@none.none"},
 ]
