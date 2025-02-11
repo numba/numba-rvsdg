@@ -2,7 +2,7 @@
 Release Notes
 =============
 
-Vetsion 0.0.7 - 2024-02-07
+Version 0.0.7 - 2024-02-07
 ==========================
 
 The first release of the project under the new name ``numba-scfg``.
